@@ -70,7 +70,15 @@ private fun WorkoutCard(item: WorkoutDetail, onDelete: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f).padding(top = 12.dp)) {
                     Text(item.workout.trainingDate, style = MaterialTheme.typography.titleMedium)
-                    Text("${exercises.size} 个动作 · ${item.loggedSetCount} 组", style = MaterialTheme.typography.bodySmall)
+                    if (item.hasLogged) {
+                        Text("${exercises.size} 个动作 · ${item.loggedSetCount} 组", style = MaterialTheme.typography.bodySmall)
+                    } else {
+                        Text(
+                            "未确认 · 只有待确认的组",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
                 IconButton(onClick = onDelete) {
                     Icon(Icons.Filled.Delete, contentDescription = "删除 ${item.workout.trainingDate} 的训练")

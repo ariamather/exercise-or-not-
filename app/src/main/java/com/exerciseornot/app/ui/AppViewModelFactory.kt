@@ -12,7 +12,7 @@ object AppViewModelFactory {
     val Factory: ViewModelProvider.Factory = viewModelFactory {
         initializer {
             val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ExerciseOrNotApp
-            RecordViewModel(app.container.workoutRepository, createSavedStateHandle())
+            RecordViewModel(app.container.workoutRepository, app.container.exerciseRepository, createSavedStateHandle())
         }
         initializer {
             val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ExerciseOrNotApp

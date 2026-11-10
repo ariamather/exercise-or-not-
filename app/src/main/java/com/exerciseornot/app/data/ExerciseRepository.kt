@@ -3,8 +3,11 @@ package com.exerciseornot.app.data
 import androidx.room.withTransaction
 import com.exerciseornot.app.data.db.AppDatabase
 import com.exerciseornot.app.data.db.ExerciseEntity
+import com.exerciseornot.app.data.db.ExerciseWithLastUsed
 import com.exerciseornot.app.data.db.WeightMode
+import kotlinx.coroutines.flow.Flow
 import java.time.Clock
+import java.util.UUID
 
 /**
  * Exercise definitions. Exercises are archived, never deleted, so history keeps its references;
@@ -13,10 +16,33 @@ import java.time.Clock
 class ExerciseRepository(
     private val db: AppDatabase,
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val newId: () -> String = { UUID.randomUUID().toString() },
 ) {
     private val dao = db.workoutDao()
 
     suspend fun get(id: String): ExerciseEntity? = dao.getExercise(id)
+
+    /** Active exercises, most recently used first; never-used ones after, by name. */
+    fun observePickerList(): Flow<List<ExerciseWithLastUsed>> = dao.observePickerList()
+
+    /**
+     * Creates an exercise. An archived exercise with the same name is brought back instead
+     * (keeping its own weight mode), so history stays continuous.
+     */
+    suspend fun create(name: String, mode: WeightMode): ExerciseEntity = db.withTransaction {
+        val trimmed = name.trim()
+        require(trimmed.isNotEmpty()) { "请填写动作名称" }
+        val found = dao.findExerciseByName(trimmed)
+        when {
+            found == null -> {
+                val now = clock.millis()
+                ExerciseEntity(newId(), trimmed, mode, createdAt = now, updatedAt = now)
+                    .also { dao.upsertExercise(it) }
+            }
+            found.archived -> found.copy(archived = false, updatedAt = clock.millis()).also { dao.upsertExercise(it) }
+            else -> throw IllegalArgumentException("已有同名动作「${found.name}」")
+        }
+    }
 
     suspend fun rename(id: String, newName: String) = db.withTransaction {
         val name = newName.trim()

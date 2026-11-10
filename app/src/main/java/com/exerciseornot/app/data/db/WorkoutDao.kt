@@ -39,6 +39,15 @@ interface WorkoutDao {
     )
     suspend fun findExerciseByName(name: String): ExerciseEntity?
 
+    @Query(
+        "SELECT e.*, MAX(s.loggedAt) AS lastUsedAt FROM exercise e " +
+            "LEFT JOIN workout_exercise we ON we.exerciseId = e.id " +
+            "LEFT JOIN set_entry s ON s.workoutExerciseId = we.id AND s.status = 'LOGGED' " +
+            "WHERE e.archived = 0 GROUP BY e.id " +
+            "ORDER BY lastUsedAt IS NULL, lastUsedAt DESC, e.name COLLATE NOCASE"
+    )
+    fun observePickerList(): Flow<List<ExerciseWithLastUsed>>
+
     @Query("SELECT EXISTS(SELECT 1 FROM workout_exercise WHERE exerciseId = :exerciseId)")
     suspend fun isExerciseUsed(exerciseId: String): Boolean
 
@@ -105,6 +114,27 @@ interface WorkoutDao {
 
     @Query("SELECT MAX(position) FROM set_entry WHERE workoutExerciseId = :workoutExerciseId")
     suspend fun maxSetPosition(workoutExerciseId: String): Int?
+
+    @Query("SELECT * FROM set_entry WHERE workoutExerciseId = :workoutExerciseId AND status = 'DRAFT' ORDER BY position")
+    suspend fun draftsOf(workoutExerciseId: String): List<SetEntryEntity>
+
+    @Query("SELECT * FROM set_entry WHERE workoutExerciseId = :workoutExerciseId AND status = 'LOGGED' ORDER BY position")
+    suspend fun loggedOf(workoutExerciseId: String): List<SetEntryEntity>
+
+    /**
+     * Logged sets of [exerciseId] in the most recent workout that happened before the given one
+     * (by training date, then time), skipping workouts with no logged set for it.
+     */
+    @Query(
+        "SELECT s.* FROM set_entry s WHERE s.status = 'LOGGED' AND s.workoutExerciseId = (" +
+            "SELECT we.id FROM workout_exercise we JOIN workout w ON w.id = we.workoutId " +
+            "WHERE we.exerciseId = :exerciseId AND w.id != :workoutId " +
+            "AND (w.trainingDate < :date OR (w.trainingDate = :date AND w.performedAt < :performedAt)) " +
+            "AND EXISTS (SELECT 1 FROM set_entry x WHERE x.workoutExerciseId = we.id AND x.status = 'LOGGED') " +
+            "ORDER BY w.trainingDate DESC, w.performedAt DESC LIMIT 1" +
+            ") ORDER BY s.position"
+    )
+    suspend fun previousLoggedSets(exerciseId: String, workoutId: String, date: String, performedAt: Long): List<SetEntryEntity>
 
     // ---- test / diagnostics ----
 

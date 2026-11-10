@@ -18,3 +18,9 @@ data class WorkoutWithExercises(
     )
     val exercises: List<WorkoutExerciseWithSets>,
 )
+
+data class ExerciseWithLastUsed(
+    @Embedded val exercise: ExerciseEntity,
+    /** When a set of this exercise was last confirmed; null if never. */
+    val lastUsedAt: Long?,
+)

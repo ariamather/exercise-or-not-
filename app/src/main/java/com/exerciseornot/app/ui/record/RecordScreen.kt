@@ -2,6 +2,7 @@ package com.exerciseornot.app.ui.record
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,21 +11,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -34,19 +36,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.flow.collectLatest
 import com.exerciseornot.app.data.WorkoutTarget
 import com.exerciseornot.app.data.db.SetEntryEntity
 import com.exerciseornot.app.data.db.WeightMode
 import com.exerciseornot.app.data.model.ExerciseItem
 import com.exerciseornot.app.ui.displayText
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -62,14 +68,33 @@ fun RecordScreen(
 ) {
     val target by viewModel.target.collectAsStateWithLifecycle()
     val detail by viewModel.detail.collectAsStateWithLifecycle()
+    val previous by viewModel.previous.collectAsStateWithLifecycle()
     val resume by viewModel.resumeCandidate.collectAsStateWithLifecycle()
+    val pickerList by viewModel.pickerList.collectAsStateWithLifecycle()
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var dateDialog by rememberSaveable { mutableStateOf<DateDialog?>(null) }
+    var showPicker by rememberSaveable { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.flushDrafts() }
 
     LaunchedEffect(viewModel) {
         viewModel.deletions.collectLatest { snapshot ->
             val result = snackbarHostState.showSnackbar("已删除", actionLabel = "撤销", duration = SnackbarDuration.Long)
             if (result == SnackbarResult.ActionPerformed) viewModel.undo(snapshot)
+        }
+    }
+
+    val items = detail?.items.orEmpty()
+
+    LaunchedEffect(viewModel) {
+        viewModel.scrollTo.collect { weId ->
+            // The event can beat the Room flow; wait until the card is actually in the list.
+            val d = withTimeoutOrNull(2_000) {
+                viewModel.detail.first { d -> d?.items?.any { it.workoutExercise.id == weId } == true }
+            }
+            val index = d?.items?.indexOfFirst { it.workoutExercise.id == weId } ?: return@collect
+            listState.animateScrollToItem(index)
         }
     }
 
@@ -79,8 +104,8 @@ fun RecordScreen(
         null -> null
     }
 
-    Column(modifier.fillMaxSize().imePadding().padding(16.dp)) {
-        OutlinedCard(Modifier.fillMaxWidth()) {
+    Column(modifier.fillMaxSize().imePadding().padding(horizontal = 16.dp)) {
+        OutlinedCard(Modifier.fillMaxWidth().padding(top = 16.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text("今天练不练？", style = MaterialTheme.typography.titleMedium)
                 Text("骰子功能将在后续阶段提供", style = MaterialTheme.typography.bodySmall)
@@ -115,65 +140,62 @@ fun RecordScreen(
             )
             OutlinedButton(onClick = { dateDialog = DateDialog.NewRecord }) { Text("新建记录") }
         }
+
+        ui.error?.let {
+            Text(
+                it,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(vertical = 4.dp).clickable { viewModel.dismissError() },
+            )
+        }
         Spacer(Modifier.height(8.dp))
 
-        val items = detail?.loggedItems.orEmpty()
         LazyColumn(
+            state = listState,
             modifier = Modifier.weight(1f).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (items.isEmpty()) {
-                item { Text("这次还没有记录。填写下方动作、重量和次数，点 ✓ 记录一组。") }
-            }
             items(items, key = { it.workoutExercise.id }) { item ->
-                ExerciseCard(item, onSetClick = { viewModel.startEditing(it, item.workoutExercise.weightModeSnapshot) })
+                ExerciseCard(
+                    item = item,
+                    previous = previous[item.workoutExercise.id].orEmpty(),
+                    viewModel = viewModel,
+                )
             }
-        }
-
-        ui.error?.let {
-            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 4.dp))
-        }
-
-        OutlinedTextField(
-            value = viewModel.exerciseName,
-            onValueChange = viewModel::onExerciseNameChange,
-            label = { Text("动作") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        ) {
-            OutlinedTextField(
-                value = viewModel.weightKg,
-                onValueChange = viewModel::onWeightChange,
-                label = { Text("重量 kg") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.weight(1f),
-            )
-            OutlinedTextField(
-                value = viewModel.reps,
-                onValueChange = viewModel::onRepsChange,
-                label = { Text("次数") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1f),
-            )
-            FilledIconButton(
-                onClick = viewModel::confirmSet,
-                enabled = !ui.saving && target != null,
-                modifier = Modifier.size(56.dp),
-            ) {
-                if (ui.saving) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else {
-                    Icon(Icons.Filled.Check, contentDescription = "确认这一组")
+            item(key = "add") {
+                Column(Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+                    if (items.isEmpty()) {
+                        Text("添加一个动作开始记录。", modifier = Modifier.padding(bottom = 8.dp))
+                    }
+                    Button(
+                        onClick = { viewModel.flushDrafts(); showPicker = true },
+                        enabled = target != null,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = null)
+                        Text("添加动作", modifier = Modifier.padding(start = 4.dp))
+                    }
                 }
             }
         }
+    }
+
+    if (showPicker) {
+        val inWorkout = items.associate { it.workoutExercise.exerciseId to it.workoutExercise.id }
+        ExercisePickerSheet(
+            exercises = pickerList,
+            inWorkout = inWorkout,
+            error = viewModel.pickerError,
+            onPick = { exercise ->
+                showPicker = false
+                viewModel.addExercise(exercise.id)
+            },
+            onCreate = { name, mode -> viewModel.createAndAddExercise(name, mode) { showPicker = false } },
+            onRename = { exercise, name, onDone -> viewModel.renameExercise(exercise.id, name, onDone) },
+            onArchive = { viewModel.archiveExercise(it.id) },
+            onClearError = viewModel::clearPickerError,
+            onDismiss = { showPicker = false; viewModel.clearPickerError() },
+        )
     }
 
     viewModel.editing?.let { state ->
@@ -203,16 +225,60 @@ fun RecordScreen(
 }
 
 @Composable
-private fun ExerciseCard(item: ExerciseItem, onSetClick: (SetEntryEntity) -> Unit) {
+private fun ExerciseCard(item: ExerciseItem, previous: List<SetEntryEntity>, viewModel: RecordViewModel) {
+    val we = item.workoutExercise
+    val mode = we.weightModeSnapshot
+    var menu by remember { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            val suffix = if (item.workoutExercise.weightModeSnapshot == WeightMode.BODYWEIGHT) "（自重）" else ""
-            Text(item.workoutExercise.nameSnapshot + suffix, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            TableRow("组次", "上次", "本次", header = true)
-            HorizontalDivider()
-            item.logged.forEachIndexed { index, set ->
-                TableRow("${index + 1}", "—", set.displayText(), Modifier.clickable { onSetClick(set) })
+        Column(Modifier.padding(start = 16.dp, end = 8.dp, bottom = 16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val suffix = when (mode) {
+                    WeightMode.BODYWEIGHT -> "（自重）"
+                    WeightMode.PER_SIDE -> "（单只）"
+                    WeightMode.TOTAL -> ""
+                }
+                Text(we.nameSnapshot + suffix, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Box {
+                    IconButton(onClick = { menu = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "${we.nameSnapshot} 的更多操作")
+                    }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("移除动作") },
+                            onClick = { menu = false; viewModel.removeExercise(we.id) },
+                        )
+                    }
+                }
+            }
+            val rows = maxOf(item.logged.size, previous.size)
+            if (rows > 0) {
+                TableRow("组次", "上次", "本次", header = true)
+                HorizontalDivider()
+            }
+            for (i in 0 until rows) {
+                val set = item.logged.getOrNull(i)
+                TableRow(
+                    "${i + 1}",
+                    previous.getOrNull(i)?.displayText() ?: "—",
+                    set?.displayText() ?: "",
+                    if (set != null) Modifier.clickable { viewModel.startEditing(set, mode) } else Modifier,
+                )
+            }
+            item.draft?.let { draft ->
+                val input = viewModel.draftInputs[draft.id]
+                if (input != null) {
+                    Spacer(Modifier.height(8.dp))
+                    DraftSetRow(
+                        number = item.logged.size + 1,
+                        input = input,
+                        mode = mode,
+                        expandedField = viewModel.expanded?.takeIf { it.first == draft.id }?.second,
+                        onWeightChange = { viewModel.onDraftWeightChange(draft.id, it) },
+                        onRepsChange = { viewModel.onDraftRepsChange(draft.id, it) },
+                        onFieldFocused = { viewModel.expandSlider(draft.id, it) },
+                        onConfirm = { viewModel.confirm(draft.id) },
+                    )
+                }
             }
         }
     }

@@ -2,7 +2,6 @@ package com.exerciseornot.app.data
 
 import androidx.room.withTransaction
 import com.exerciseornot.app.data.db.AppDatabase
-import com.exerciseornot.app.data.db.ExerciseEntity
 import com.exerciseornot.app.data.db.SetEntryEntity
 import com.exerciseornot.app.data.db.SetStatus
 import com.exerciseornot.app.data.db.WeightMode
@@ -18,6 +17,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.util.UUID
+
+data class AddedExercise(val workoutId: String, val workoutExerciseId: String)
 
 /** Thrown when an [WorkoutTarget.Existing] workout no longer exists (e.g. deleted from history). */
 class WorkoutNotFoundException : IllegalStateException("这次训练已被删除")
@@ -46,37 +47,13 @@ class WorkoutRepository(
     suspend fun latestWorkout(): WorkoutEntity? = dao.latestWorkout()
 
     /**
-     * Records a confirmed set and returns the id of the workout it went into.
-     * [setId] is chosen by the caller and reused on retries, so repeated confirmation of the
-     * same set updates one row instead of inserting another.
+     * Puts [exerciseId] into the target workout (creating the workout for [WorkoutTarget.New]) with
+     * one pending row prefilled from the previous time this exercise was done. Adding an exercise
+     * that is already there returns the existing item.
      */
-    suspend fun logSet(
-        target: WorkoutTarget,
-        setId: String,
-        exerciseName: String,
-        weightGrams: Int?,
-        reps: Int?,
-    ): String = db.withTransaction {
+    suspend fun addExercise(target: WorkoutTarget, exerciseId: String): AddedExercise = db.withTransaction {
         val now = clock.millis()
-
-        dao.getSet(setId)?.let { existing ->
-            val we = dao.getWorkoutExercise(existing.workoutExerciseId)!!
-            validateValues(we.weightModeSnapshot, weightGrams, reps)
-            dao.upsertSet(
-                existing.copy(
-                    weightGrams = weightGrams,
-                    reps = reps,
-                    status = SetStatus.LOGGED,
-                    loggedAt = existing.loggedAt ?: now,
-                    updatedAt = now,
-                )
-            )
-            return@withTransaction we.workoutId
-        }
-
-        val name = exerciseName.trim()
-        require(name.isNotEmpty()) { "请填写动作名称" }
-
+        val exercise = requireNotNull(dao.getExercise(exerciseId)) { "动作不存在" }
         val workout = when (target) {
             is WorkoutTarget.Existing -> dao.getWorkout(target.workoutId) ?: throw WorkoutNotFoundException()
             is WorkoutTarget.New -> {
@@ -92,11 +69,7 @@ class WorkoutRepository(
             }
         }
 
-        val exercise = resolveExercise(name, weightGrams, now)
-        val existingItem = dao.findWorkoutExercise(workout.id, exercise.id)
-        validateValues(existingItem?.weightModeSnapshot ?: exercise.weightMode, weightGrams, reps)
-
-        val workoutExercise = existingItem
+        val item = dao.findWorkoutExercise(workout.id, exercise.id)
             ?: WorkoutExerciseEntity(
                 id = newId(),
                 workoutId = workout.id,
@@ -108,63 +81,81 @@ class WorkoutRepository(
                 updatedAt = now,
             ).also { dao.upsertWorkoutExercise(it) }
 
+        if (dao.draftsOf(item.id).isEmpty()) {
+            val seed = dao.loggedOf(item.id).lastOrNull() ?: previousSetsOf(item, workout).lastOrNull()
+            insertDraft(item.id, seed?.weightGrams, seed?.reps, now)
+        }
+        AddedExercise(workout.id, item.id)
+    }
+
+    /**
+     * Confirms a pending row with the given values and creates the next pending row carrying the
+     * same values, returning its id. Confirming a row that is already logged changes nothing.
+     */
+    suspend fun confirmDraft(setId: String, weightGrams: Int?, reps: Int?): String = db.withTransaction {
+        val set = requireNotNull(dao.getSet(setId)) { "这一组不存在" }
+        if (set.status == SetStatus.LOGGED) {
+            return@withTransaction dao.draftsOf(set.workoutExerciseId).firstOrNull()?.id
+                ?: insertDraft(set.workoutExerciseId, set.weightGrams, set.reps, clock.millis())
+        }
+        val item = dao.getWorkoutExercise(set.workoutExerciseId)!!
+        validateValues(item.weightModeSnapshot, weightGrams, reps)
+        val now = clock.millis()
+        dao.upsertSet(
+            set.copy(weightGrams = weightGrams, reps = reps, status = SetStatus.LOGGED, loggedAt = now, updatedAt = now)
+        )
+        dao.draftsOf(item.id).firstOrNull()?.id ?: insertDraft(item.id, weightGrams, reps, now)
+    }
+
+    /** Logged sets from the last time this item's exercise was done before this workout. */
+    suspend fun previousSets(workoutExerciseId: String): List<SetEntryEntity> {
+        val item = dao.getWorkoutExercise(workoutExerciseId) ?: return emptyList()
+        val workout = dao.getWorkout(item.workoutId) ?: return emptyList()
+        return previousSetsOf(item, workout)
+    }
+
+    /** Removes an exercise and all its sets from a workout. */
+    suspend fun removeExercise(workoutExerciseId: String): DeletedSnapshot = db.withTransaction {
+        val item = dao.getWorkoutExercise(workoutExerciseId) ?: return@withTransaction DeletedSnapshot()
+        val snapshot = DeletedSnapshot(workoutExercises = listOf(item), sets = dao.setsOf(item.id))
+        dao.deleteWorkoutExercise(item)
+        snapshot
+    }
+
+    private suspend fun previousSetsOf(item: WorkoutExerciseEntity, workout: WorkoutEntity) =
+        dao.previousLoggedSets(item.exerciseId, workout.id, workout.trainingDate, workout.performedAt)
+
+    private suspend fun insertDraft(workoutExerciseId: String, weightGrams: Int?, reps: Int?, now: Long): String {
+        val id = newId()
         dao.upsertSet(
             SetEntryEntity(
-                id = setId,
-                workoutExerciseId = workoutExercise.id,
-                position = (dao.maxSetPosition(workoutExercise.id) ?: -1) + 1,
+                id = id,
+                workoutExerciseId = workoutExerciseId,
+                position = (dao.maxSetPosition(workoutExerciseId) ?: -1) + 1,
                 weightGrams = weightGrams,
                 reps = reps,
-                status = SetStatus.LOGGED,
-                loggedAt = now,
+                status = SetStatus.DRAFT,
+                loggedAt = null,
                 createdAt = now,
                 updatedAt = now,
             )
         )
-        workout.id
+        return id
     }
 
     /**
-     * Saves pending input as a draft. Values may be incomplete. A set that is already
-     * logged is left untouched: the draft path must never demote a confirmed set.
+     * Updates a pending row's values; they may be incomplete. Rows that are already logged
+     * (or gone) are left untouched: the draft path must never demote a confirmed set.
      */
-    suspend fun saveDraft(setId: String, workoutExerciseId: String, weightGrams: Int?, reps: Int?) {
+    suspend fun saveDraft(setId: String, weightGrams: Int?, reps: Int?) {
         require(reps == null || reps > 0) { "次数需为正整数" }
         require(weightGrams == null || weightGrams >= 0) { "重量不能为负数" }
         db.withTransaction {
-            val now = clock.millis()
-            val existing = dao.getSet(setId)
-            when {
-                existing?.status == SetStatus.LOGGED -> Unit
-                existing != null -> dao.upsertSet(existing.copy(weightGrams = weightGrams, reps = reps, updatedAt = now))
-                else -> {
-                    requireNotNull(dao.getWorkoutExercise(workoutExerciseId)) { "动作项不存在" }
-                    dao.upsertSet(
-                        SetEntryEntity(
-                            id = setId,
-                            workoutExerciseId = workoutExerciseId,
-                            position = (dao.maxSetPosition(workoutExerciseId) ?: -1) + 1,
-                            weightGrams = weightGrams,
-                            reps = reps,
-                            status = SetStatus.DRAFT,
-                            loggedAt = null,
-                            createdAt = now,
-                            updatedAt = now,
-                        )
-                    )
-                }
-            }
+            val existing = dao.getSet(setId) ?: return@withTransaction
+            if (existing.status == SetStatus.LOGGED) return@withTransaction
+            if (existing.weightGrams == weightGrams && existing.reps == reps) return@withTransaction
+            dao.upsertSet(existing.copy(weightGrams = weightGrams, reps = reps, updatedAt = clock.millis()))
         }
-    }
-
-    /** Turns a draft into a logged set. Idempotent for sets that are already logged. */
-    suspend fun confirmSet(setId: String) = db.withTransaction {
-        val set = requireNotNull(dao.getSet(setId)) { "这一组不存在" }
-        if (set.status == SetStatus.LOGGED) return@withTransaction
-        val we = dao.getWorkoutExercise(set.workoutExerciseId)!!
-        validateValues(we.weightModeSnapshot, set.weightGrams, set.reps)
-        val now = clock.millis()
-        dao.upsertSet(set.copy(status = SetStatus.LOGGED, loggedAt = now, updatedAt = now))
     }
 
     /** Edits a logged set's values; it stays logged and keeps its original [SetEntryEntity.loggedAt]. */
@@ -240,22 +231,6 @@ class WorkoutRepository(
 
     private fun requireNotFuture(date: LocalDate) =
         require(!date.isAfter(today())) { "训练日期不能晚于今天" }
-
-    /** Active exercise with this name, else an archived one (unarchived), else a new one. */
-    private suspend fun resolveExercise(name: String, weightGrams: Int?, now: Long): ExerciseEntity {
-        val found = dao.findExerciseByName(name)
-        return when {
-            found == null -> ExerciseEntity(
-                id = newId(),
-                name = name,
-                weightMode = if (weightGrams == null) WeightMode.BODYWEIGHT else WeightMode.TOTAL,
-                createdAt = now,
-                updatedAt = now,
-            ).also { dao.upsertExercise(it) }
-            found.archived -> found.copy(archived = false, updatedAt = now).also { dao.upsertExercise(it) }
-            else -> found
-        }
-    }
 
     companion object {
         fun validateValues(mode: WeightMode, weightGrams: Int?, reps: Int?) {

@@ -1,41 +1,56 @@
 package com.exerciseornot.app.ui.record
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.exerciseornot.app.data.DeletedSnapshot
+import com.exerciseornot.app.data.ExerciseRepository
 import com.exerciseornot.app.data.WeightFormat
 import com.exerciseornot.app.data.WorkoutNotFoundException
 import com.exerciseornot.app.data.WorkoutRepository
 import com.exerciseornot.app.data.WorkoutTarget
+import com.exerciseornot.app.data.db.ExerciseWithLastUsed
 import com.exerciseornot.app.data.db.SetEntryEntity
 import com.exerciseornot.app.data.db.WeightMode
 import com.exerciseornot.app.data.db.WorkoutEntity
 import com.exerciseornot.app.data.model.WorkoutDetail
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.util.UUID
 
 data class RecordUiState(
-    val saving: Boolean = false,
     val error: String? = null,
+)
+
+/** Text the user is typing into a pending row; kept as text so partial input like "4." survives. */
+data class DraftInput(
+    val weight: String,
+    val reps: String,
+    val error: String? = null,
+    val saving: Boolean = false,
 )
 
 data class EditSetState(
@@ -50,19 +65,20 @@ data class EditSetState(
 @OptIn(ExperimentalCoroutinesApi::class)
 class RecordViewModel(
     private val repository: WorkoutRepository,
+    private val exercises: ExerciseRepository,
     private val savedState: SavedStateHandle,
 ) : ViewModel() {
 
-    // Plain Compose state (not StateFlow) so TextField edits apply synchronously; mirrored to
-    // SavedStateHandle so unsaved input survives process death.
-    var exerciseName by mutableStateOf(savedState[KEY_NAME] ?: "")
-        private set
-    var weightKg by mutableStateOf(savedState[KEY_WEIGHT] ?: "")
-        private set
-    var reps by mutableStateOf(savedState[KEY_REPS] ?: "")
+    /** Keyed by draft set id. Plain Compose state so TextField edits apply synchronously. */
+    val draftInputs = mutableStateMapOf<String, DraftInput>()
+
+    var expanded by mutableStateOf<Pair<String, DraftField>?>(null)
         private set
 
     var editing by mutableStateOf<EditSetState?>(null)
+        private set
+
+    var pickerError by mutableStateOf<String?>(null)
         private set
 
     private val _ui = MutableStateFlow(RecordUiState())
@@ -74,16 +90,32 @@ class RecordViewModel(
 
     val detail: StateFlow<WorkoutDetail?> = _target
         .flatMapLatest { t -> if (t is WorkoutTarget.Existing) repository.observeWorkout(t.workoutId) else flowOf(null) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** workoutExerciseId → logged sets from the previous time that exercise was done. */
+    val previous: StateFlow<Map<String, List<SetEntryEntity>>> = detail
+        .map { d -> d?.let { Triple(it.workout.trainingDate, it.workout.performedAt, it.items.map { i -> i.workoutExercise.id }) } }
+        .distinctUntilChanged()
+        .mapLatest { key -> key?.third.orEmpty().associateWith { repository.previousSets(it) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /** The most recent workout, offered as "continue that one" while a new record is selected. */
     val resumeCandidate: StateFlow<WorkoutEntity?> =
         combine(_target, repository.observeLatestWorkout()) { t, latest -> latest.takeIf { t is WorkoutTarget.New } }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    val pickerList: StateFlow<List<ExerciseWithLastUsed>> = exercises.observePickerList()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private val _deletions = Channel<DeletedSnapshot>(Channel.BUFFERED)
     /** Each emission should offer an undo; the snapshot lives only in memory. */
     val deletions: Flow<DeletedSnapshot> = _deletions.receiveAsFlow()
+
+    private val _scrollTo = Channel<String>(Channel.CONFLATED)
+    /** workoutExerciseId the list should bring into view. */
+    val scrollTo: Flow<String> = _scrollTo.receiveAsFlow()
+
+    private val saveJobs = mutableMapOf<String, Job>()
 
     init {
         if (_target.value == null) {
@@ -104,18 +136,20 @@ class RecordViewModel(
                 }
                 .collect { if (it == null) setTarget(WorkoutTarget.New(repository.today())) }
         }
+        viewModelScope.launch {
+            detail.filterNotNull().collect(::syncDraftInputs)
+        }
     }
 
     fun today(): LocalDate = repository.today()
 
-    fun onExerciseNameChange(value: String) { exerciseName = value; savedState[KEY_NAME] = value }
-    fun onWeightChange(value: String) { weightKg = value; savedState[KEY_WEIGHT] = value }
-    fun onRepsChange(value: String) { reps = value; savedState[KEY_REPS] = value }
+    // ---- target & date ----
 
     fun continueWorkout(workoutId: String) = setTarget(WorkoutTarget.Existing(workoutId))
 
     fun startNewRecord(date: LocalDate) {
         if (date.isAfter(repository.today())) return showError("训练日期不能晚于今天")
+        flushDrafts()
         setTarget(WorkoutTarget.New(date))
     }
 
@@ -130,43 +164,141 @@ class RecordViewModel(
         }
     }
 
-    /** The id of the set currently being entered; survives process death so a retry reuses it. */
-    private fun pendingSetId(): String =
-        savedState.get<String>(KEY_PENDING_SET_ID)
-            ?: UUID.randomUUID().toString().also { savedState[KEY_PENDING_SET_ID] = it }
+    // ---- exercises in this workout ----
 
-    fun confirmSet() {
+    fun addExercise(exerciseId: String) {
         val target = _target.value ?: return
-        if (_ui.value.saving) return
-        val name = exerciseName.trim()
-        val repsValue = reps.trim().toIntOrNull()
-        val weightText = weightKg
-        val grams = WeightFormat.parseKgToGrams(weightText)
-
-        val error = when {
-            name.isEmpty() -> "请填写动作名称"
-            repsValue == null || repsValue <= 0 -> "次数需为正整数"
-            weightText.isNotBlank() && grams == null -> "重量格式不正确"
-            else -> null
-        }
-        if (error != null) return showError(error)
-
-        _ui.update { RecordUiState(saving = true) }
         viewModelScope.launch {
             try {
-                val workoutId = repository.logSet(target, pendingSetId(), name, grams, repsValue)
-                // Keep name and values so the next set needs only one tap; only the set id rotates.
-                savedState.remove<String>(KEY_PENDING_SET_ID)
-                setTarget(WorkoutTarget.Existing(workoutId))
-                _ui.update { RecordUiState() }
+                val added = repository.addExercise(target, exerciseId)
+                setTarget(WorkoutTarget.Existing(added.workoutId))
+                _scrollTo.send(added.workoutExerciseId)
             } catch (e: WorkoutNotFoundException) {
                 setTarget(WorkoutTarget.New(repository.today()))
-                showError("${e.message}，已切换到新记录，请重新确认")
+                showError("${e.message}，已切换到新记录，请重新添加")
             } catch (e: Exception) {
                 showError(e.userMessage())
             }
         }
     }
+
+    fun createAndAddExercise(name: String, mode: WeightMode, onDone: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val created = exercises.create(name, mode)
+                pickerError = null
+                onDone()
+                addExercise(created.id)
+            } catch (e: Exception) {
+                pickerError = e.userMessage()
+            }
+        }
+    }
+
+    fun renameExercise(exerciseId: String, name: String, onDone: () -> Unit) {
+        viewModelScope.launch {
+            runCatching { exercises.rename(exerciseId, name) }
+                .onSuccess { pickerError = null; onDone() }
+                .onFailure { pickerError = it.userMessage() }
+        }
+    }
+
+    fun archiveExercise(exerciseId: String) {
+        viewModelScope.launch {
+            runCatching { exercises.archive(exerciseId) }.onFailure { pickerError = it.userMessage() }
+        }
+    }
+
+    fun clearPickerError() { pickerError = null }
+
+    fun removeExercise(workoutExerciseId: String) {
+        viewModelScope.launch {
+            runCatching { repository.removeExercise(workoutExerciseId) }
+                .onSuccess { _deletions.send(it) }
+                .onFailure { showError(it.userMessage()) }
+        }
+    }
+
+    // ---- pending rows ----
+
+    fun onDraftWeightChange(setId: String, value: String) = updateDraft(setId) { it.copy(weight = value, error = null) }
+    fun onDraftRepsChange(setId: String, value: String) = updateDraft(setId) { it.copy(reps = value, error = null) }
+
+    fun expandSlider(setId: String, field: DraftField) { expanded = setId to field }
+
+    /** Writes every parseable pending value now instead of waiting for the debounce. */
+    fun flushDrafts() {
+        saveJobs.values.forEach { it.cancel() }
+        saveJobs.clear()
+        draftInputs.forEach { (id, input) -> parseDraft(input)?.let { (w, r) -> launchSave(id, w, r) } }
+    }
+
+    fun confirm(setId: String) {
+        val input = draftInputs[setId] ?: return
+        if (input.saving) return
+        val repsValue = input.reps.trim().toIntOrNull()
+        val grams = WeightFormat.parseKgToGrams(input.weight)
+        val error = when {
+            repsValue == null || repsValue <= 0 -> "次数需为正整数"
+            input.weight.isNotBlank() && grams == null -> "重量格式不正确"
+            else -> null
+        }
+        if (error != null) { draftInputs[setId] = input.copy(error = error); return }
+
+        saveJobs.remove(setId)?.cancel()
+        draftInputs[setId] = input.copy(saving = true, error = null)
+        viewModelScope.launch {
+            try {
+                val nextId = repository.confirmDraft(setId, grams, repsValue)
+                // Next row carries the same text, so confirming another identical set is one tap.
+                draftInputs[nextId] = DraftInput(input.weight, input.reps)
+                draftInputs.remove(setId)
+                if (expanded?.first == setId) expanded = nextId to expanded!!.second
+            } catch (e: Exception) {
+                draftInputs[setId]?.let { draftInputs[setId] = it.copy(saving = false, error = e.userMessage()) }
+            }
+        }
+    }
+
+    private fun updateDraft(setId: String, change: (DraftInput) -> DraftInput) {
+        val updated = change(draftInputs[setId] ?: return)
+        draftInputs[setId] = updated
+        saveJobs.remove(setId)?.cancel()
+        val parsed = parseDraft(updated) ?: return
+        saveJobs[setId] = viewModelScope.launch {
+            delay(DRAFT_SAVE_DEBOUNCE_MS)
+            saveJobs.remove(setId)
+            repository.saveDraft(setId, parsed.first, parsed.second)
+        }
+    }
+
+    private fun launchSave(setId: String, weightGrams: Int?, reps: Int?) {
+        viewModelScope.launch { runCatching { repository.saveDraft(setId, weightGrams, reps) } }
+    }
+
+    /** Null if the text can't be stored yet (e.g. "4." or "0" reps); blanks are stored as null. */
+    private fun parseDraft(input: DraftInput): Pair<Int?, Int?>? {
+        val grams = if (input.weight.isBlank()) null else WeightFormat.parseKgToGrams(input.weight) ?: return null
+        val reps = if (input.reps.isBlank()) null else input.reps.trim().toIntOrNull()?.takeIf { it > 0 } ?: return null
+        return grams to reps
+    }
+
+    /** Adds text state for new pending rows; never overwrites a row the user may be typing in. */
+    private fun syncDraftInputs(detail: WorkoutDetail) {
+        val drafts = detail.items.mapNotNull { it.draft }
+        val ids = drafts.map { it.id }.toSet()
+        drafts.forEach { d ->
+            if (d.id !in draftInputs) {
+                draftInputs[d.id] = DraftInput(
+                    weight = d.weightGrams?.let(WeightFormat::gramsToKgText).orEmpty(),
+                    reps = d.reps?.toString().orEmpty(),
+                )
+            }
+        }
+        draftInputs.keys.filter { it !in ids && draftInputs[it]?.saving != true }.forEach { draftInputs.remove(it) }
+    }
+
+    // ---- logged sets ----
 
     fun startEditing(set: SetEntryEntity, weightMode: WeightMode) {
         editing = EditSetState(
@@ -250,12 +382,9 @@ class RecordViewModel(
     }
 
     private companion object {
-        const val KEY_NAME = "record.name"
-        const val KEY_WEIGHT = "record.weight"
-        const val KEY_REPS = "record.reps"
-        const val KEY_PENDING_SET_ID = "record.pendingSetId"
         const val KEY_TARGET_WORKOUT = "record.targetWorkoutId"
         const val KEY_TARGET_DATE = "record.targetNewDate"
+        const val DRAFT_SAVE_DEBOUNCE_MS = 500L
     }
 }
 

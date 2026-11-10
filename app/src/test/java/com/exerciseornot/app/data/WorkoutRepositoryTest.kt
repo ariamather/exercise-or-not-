@@ -13,6 +13,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -31,6 +32,7 @@ class WorkoutRepositoryTest {
 
     private lateinit var db: AppDatabase
     private lateinit var repo: WorkoutRepository
+    private lateinit var exercises: ExerciseRepository
     private val dao get() = db.workoutDao()
 
     private val zone = ZoneId.of("Asia/Shanghai")
@@ -46,101 +48,104 @@ class WorkoutRepositoryTest {
             .allowMainThreadQueries()
             .build()
         repo = WorkoutRepository(db, clock)
+        exercises = ExerciseRepository(db, clock)
     }
 
     @After
     fun tearDown() = db.close()
 
     private suspend fun detail(workoutId: String) = repo.observeWorkout(workoutId).first()!!
+    private suspend fun exercise(name: String, mode: WeightMode = WeightMode.TOTAL) = exercises.create(name, mode).id
+    private suspend fun draftOf(added: AddedExercise) = dao.draftsOf(added.workoutExerciseId).single()
+    private suspend fun log(target: WorkoutTarget, exerciseId: String, vararg sets: Pair<Int?, Int?>) =
+        repo.logSets(db, target, exerciseId, *sets)
+    private fun on(month: Int, day: Int) = WorkoutTarget.New(LocalDate.of(2026, month, day))
 
-    // ---- logging & targets ----
+    // ---- adding exercises & targets ----
 
     @Test
-    fun logSet_newTarget_createsWorkoutExerciseAndLoggedSet() = runTest {
-        val workoutId = repo.logSet(todayTarget, "set-1", "杠铃卧推", 40_000, 10)
+    fun addExercise_newTarget_createsWorkoutItemAndEmptyDraft() = runTest {
+        val bench = exercise("杠铃卧推")
+        val added = repo.addExercise(todayTarget, bench)
 
-        assertEquals(1, dao.countWorkouts())
-        assertEquals(1, dao.countExercises())
-        val set = dao.allSets().single()
-        assertEquals(SetStatus.LOGGED, set.status)
-        assertEquals(40_000, set.weightGrams)
-        assertEquals(10, set.reps)
-        assertNotNull(set.loggedAt)
-
-        val workout = dao.getWorkout(workoutId)!!
+        val workout = dao.getWorkout(added.workoutId)!!
         assertEquals("2026-11-10", workout.trainingDate)
         assertEquals("Asia/Shanghai", workout.zoneId)
+        val item = detail(added.workoutId).items.single()
+        assertEquals(added.workoutExerciseId, item.workoutExercise.id)
+        assertEquals("杠铃卧推", item.workoutExercise.nameSnapshot)
+        assertTrue(item.logged.isEmpty())
+        // Never done before: the pending row starts empty.
+        val draft = item.draft!!
+        assertNull(draft.weightGrams)
+        assertNull(draft.reps)
     }
 
     @Test
-    fun logSet_sameSetIdTwice_keepsSingleRow() = runTest {
-        val id1 = repo.logSet(todayTarget, "set-1", "杠铃卧推", 40_000, 10)
-        // A retry after the target already switched still lands on the same row.
-        val id2 = repo.logSet(WorkoutTarget.Existing(id1), "set-1", "杠铃卧推", 40_000, 10)
+    fun addExercise_sameExerciseTwice_returnsSameItemWithOneDraft() = runTest {
+        val bench = exercise("杠铃卧推")
+        val a = repo.addExercise(todayTarget, bench)
+        val b = repo.addExercise(WorkoutTarget.Existing(a.workoutId), bench)
 
-        assertEquals(id1, id2)
-        assertEquals(1, dao.countWorkouts())
-        assertEquals(0, dao.allSets().single().position)
+        assertEquals(a, b)
+        assertEquals(1, dao.countWorkoutExercises())
+        assertEquals(1, dao.allSets().size)
     }
 
     @Test
-    fun logSet_existingTarget_reusesWorkoutAndExercise() = runTest {
-        val wid = repo.logSet(todayTarget, "set-1", "杠铃卧推", 40_000, 10)
-        repo.logSet(WorkoutTarget.Existing(wid), "set-2", " 杠铃卧推 ", 40_000, 9)
-        repo.logSet(WorkoutTarget.Existing(wid), "set-3", "引体向上", null, 8)
-
-        assertEquals(1, dao.countWorkouts())
-        assertEquals(2, dao.countExercises())
-        val items = detail(wid).items
-        assertEquals(listOf("杠铃卧推", "引体向上"), items.map { it.workoutExercise.nameSnapshot })
-        assertEquals(listOf(0, 1), items[0].logged.map { it.position })
-        assertNull(items[1].logged.single().weightGrams)
+    fun addExercise_secondExercise_goesAfterFirst() = runTest {
+        val a = repo.addExercise(todayTarget, exercise("深蹲"))
+        repo.addExercise(WorkoutTarget.Existing(a.workoutId), exercise("卧推"))
+        assertEquals(listOf("深蹲", "卧推"), detail(a.workoutId).items.map { it.workoutExercise.nameSnapshot })
     }
 
     @Test
-    fun logSet_newTargetTwice_createsTwoWorkoutsSameDay() = runTest {
-        val a = repo.logSet(todayTarget, "s1", "深蹲", 60_000, 5)
-        val b = repo.logSet(todayTarget, "s2", "深蹲", 60_000, 5)
-        assertNotEquals(a, b)
+    fun addExercise_newTargetTwice_createsTwoWorkoutsSameDay() = runTest {
+        val squat = exercise("深蹲")
+        val a = repo.addExercise(todayTarget, squat)
+        val b = repo.addExercise(todayTarget, squat)
+        assertNotEquals(a.workoutId, b.workoutId)
         assertEquals(2, dao.countWorkouts())
     }
 
     @Test
-    fun logSet_pastDate_usesNoonOfThatDay() = runTest {
-        val wid = repo.logSet(WorkoutTarget.New(LocalDate.of(2026, 11, 8)), "s1", "深蹲", 60_000, 5)
-        val w = dao.getWorkout(wid)!!
+    fun addExercise_pastDate_usesNoonOfThatDay() = runTest {
+        val added = repo.addExercise(on(11, 8), exercise("深蹲"))
+        val w = dao.getWorkout(added.workoutId)!!
         assertEquals("2026-11-08", w.trainingDate)
         assertEquals(Instant.parse("2026-11-08T04:00:00Z").toEpochMilli(), w.performedAt)
     }
 
     @Test
-    fun logSet_futureDate_isRejected() = runTest {
-        val e = runCatching {
-            repo.logSet(WorkoutTarget.New(today.plusDays(1)), "s1", "深蹲", 60_000, 5)
-        }.exceptionOrNull()
+    fun addExercise_futureDate_isRejected() = runTest {
+        val squat = exercise("深蹲")
+        val e = runCatching { repo.addExercise(WorkoutTarget.New(today.plusDays(1)), squat) }.exceptionOrNull()
         assertTrue(e is IllegalArgumentException)
         assertEquals(0, dao.countWorkouts())
     }
 
     @Test
-    fun logSet_deletedExistingTarget_throwsNotFoundAndWritesNothing() = runTest {
-        val wid = repo.logSet(todayTarget, "s1", "深蹲", 60_000, 5)
-        repo.deleteWorkout(wid)
-        val e = runCatching { repo.logSet(WorkoutTarget.Existing(wid), "s2", "深蹲", 60_000, 5) }.exceptionOrNull()
+    fun addExercise_deletedExistingTarget_throwsNotFoundAndWritesNothing() = runTest {
+        val squat = exercise("深蹲")
+        val added = repo.addExercise(todayTarget, squat)
+        repo.deleteWorkout(added.workoutId)
+        val e = runCatching { repo.addExercise(WorkoutTarget.Existing(added.workoutId), squat) }.exceptionOrNull()
         assertTrue(e is WorkoutNotFoundException)
+        assertEquals(0, dao.countWorkoutExercises())
         assertEquals(0, dao.allSets().size)
     }
 
     @Test
     fun latestWorkout_followsMostRecentlyAddedSet_notTrainingDate() = runTest {
-        val todayId = repo.logSet(todayTarget, "s1", "深蹲", 60_000, 5)
+        val squat = exercise("深蹲")
+        val todayAdded = log(todayTarget, squat, 60_000 to 5)
         clock.advance(Duration.ofMinutes(5))
-        val backfillId = repo.logSet(WorkoutTarget.New(LocalDate.of(2026, 11, 3)), "s2", "深蹲", 50_000, 5)
-        assertEquals(backfillId, repo.latestWorkout()!!.id)
+        val backfill = log(on(11, 3), squat, 50_000 to 5)
+        assertEquals(backfill.workoutId, repo.latestWorkout()!!.id)
 
         clock.advance(Duration.ofMinutes(5))
-        repo.logSet(WorkoutTarget.Existing(todayId), "s3", "深蹲", 60_000, 5)
-        assertEquals(todayId, repo.latestWorkout()!!.id)
+        repo.confirmDraft(draftOf(todayAdded).id, 60_000, 5)
+        assertEquals(todayAdded.workoutId, repo.latestWorkout()!!.id)
 
         val history = repo.observeHistory().first().map { it.workout.trainingDate }
         assertEquals(listOf("2026-11-10", "2026-11-03"), history)
@@ -148,7 +153,7 @@ class WorkoutRepositoryTest {
 
     @Test
     fun changeWorkoutDate_keepsTimeOfDay() = runTest {
-        val wid = repo.logSet(todayTarget, "s1", "深蹲", 60_000, 5)
+        val wid = log(todayTarget, exercise("深蹲"), 60_000 to 5).workoutId
         repo.changeWorkoutDate(wid, LocalDate.of(2026, 11, 7))
         val w = dao.getWorkout(wid)!!
         assertEquals("2026-11-07", w.trainingDate)
@@ -161,128 +166,169 @@ class WorkoutRepositoryTest {
         }
     }
 
-    // ---- weight rules ----
+    // ---- prefill & "last time" ----
 
     @Test
-    fun weightRules_autoModeFromFirstEntry() = runTest {
-        val wid = repo.logSet(todayTarget, "s1", "引体向上", null, 8)
-        repo.logSet(WorkoutTarget.Existing(wid), "s2", "卧推", 40_000, 8)
-        assertEquals(WeightMode.BODYWEIGHT, dao.findActiveExerciseByName("引体向上")!!.weightMode)
-        assertEquals(WeightMode.TOTAL, dao.findActiveExerciseByName("卧推")!!.weightMode)
+    fun prefill_usesLastSetOfPreviousWorkout() = runTest {
+        val bench = exercise("卧推")
+        log(on(11, 7), bench, 40_000 to 10, 42_500 to 8)
 
-        // Bodyweight exercise accepts added weight.
-        repo.logSet(WorkoutTarget.Existing(wid), "s3", "引体向上", 10_000, 6)
-        // Weighted exercise rejects missing weight.
-        val e = runCatching { repo.logSet(WorkoutTarget.Existing(wid), "s4", "卧推", null, 8) }.exceptionOrNull()
-        assertTrue(e is IllegalArgumentException)
-        assertNull(dao.getSet("s4"))
+        val added = repo.addExercise(todayTarget, bench)
+        val draft = draftOf(added)
+        assertEquals(42_500, draft.weightGrams)
+        assertEquals(8, draft.reps)
+        assertEquals(listOf(40_000, 42_500), repo.previousSets(added.workoutExerciseId).map { it.weightGrams })
     }
 
     @Test
-    fun logSet_missingOrZeroReps_isRejected() = runTest {
-        listOf(null, 0, -1).forEach { reps ->
-            val e = runCatching { repo.logSet(todayTarget, "s-$reps", "深蹲", 60_000, reps) }.exceptionOrNull()
-            assertTrue(e is IllegalArgumentException)
+    fun prefill_ignoresDraftsAndLaterWorkouts_whenBackfilling() = runTest {
+        val bench = exercise("卧推")
+        log(on(11, 3), bench, 30_000 to 10)
+        // 11-08 only has an unconfirmed row: it isn't training done.
+        val draftOnly = repo.addExercise(on(11, 8), bench)
+        repo.saveDraft(draftOf(draftOnly).id, 99_000, 1)
+        log(todayTarget, bench, 50_000 to 5)
+
+        val backfill = repo.addExercise(on(11, 5), bench)
+        assertEquals(30_000, draftOf(backfill).weightGrams)
+        assertEquals(listOf(30_000), repo.previousSets(backfill.workoutExerciseId).map { it.weightGrams })
+
+        val afterDraftOnly = repo.addExercise(on(11, 9), bench)
+        assertEquals(30_000, draftOf(afterDraftOnly).weightGrams)
+    }
+
+    @Test
+    fun previousSets_sameDayTwoWorkouts_usesEarlierOne() = runTest {
+        val squat = exercise("深蹲")
+        val first = log(todayTarget, squat, 60_000 to 5, 65_000 to 3)
+        clock.advance(Duration.ofHours(1))
+        val second = repo.addExercise(todayTarget, squat)
+
+        assertEquals(listOf(60_000, 65_000), repo.previousSets(second.workoutExerciseId).map { it.weightGrams })
+        assertTrue(repo.previousSets(first.workoutExerciseId).isEmpty())
+    }
+
+    @Test
+    fun previousSets_otherExercise_isNotUsed() = runTest {
+        log(on(11, 7), exercise("深蹲"), 60_000 to 5)
+        val bench = repo.addExercise(todayTarget, exercise("卧推"))
+        assertTrue(repo.previousSets(bench.workoutExerciseId).isEmpty())
+        assertNull(draftOf(bench).weightGrams)
+    }
+
+    // ---- confirming pending rows ----
+
+    @Test
+    fun confirmDraft_logsAndCreatesNextRowWithSameValues() = runTest {
+        val added = repo.addExercise(todayTarget, exercise("卧推"))
+        val first = draftOf(added)
+
+        val nextId = repo.confirmDraft(first.id, 40_000, 10)
+        val logged = dao.getSet(first.id)!!
+        assertEquals(SetStatus.LOGGED, logged.status)
+        assertNotNull(logged.loggedAt)
+        val next = dao.getSet(nextId)!!
+        assertEquals(SetStatus.DRAFT, next.status)
+        assertEquals(40_000, next.weightGrams)
+        assertEquals(10, next.reps)
+        assertEquals(1, next.position)
+
+        // A repeated tap on the already-logged row changes nothing.
+        assertEquals(nextId, repo.confirmDraft(first.id, 40_000, 10))
+        assertEquals(logged, dao.getSet(first.id))
+        assertEquals(2, dao.allSets().size)
+
+        // One tap per extra identical set.
+        repo.confirmDraft(nextId, 40_000, 10)
+        val item = detail(added.workoutId).items.single()
+        assertEquals(2, item.logged.size)
+        assertEquals(listOf(0, 1, 2), dao.allSets().sortedBy { it.position }.map { it.position })
+    }
+
+    @Test
+    fun confirmDraft_validatesAgainstWeightMode() = runTest {
+        val bench = repo.addExercise(todayTarget, exercise("卧推"))
+        val pullUp = repo.addExercise(WorkoutTarget.Existing(bench.workoutId), exercise("引体向上", WeightMode.BODYWEIGHT))
+        val benchDraft = draftOf(bench).id
+
+        listOf<Pair<Int?, Int?>>(null to 8, 40_000 to null, 40_000 to 0).forEach { (g, r) ->
+            val e = runCatching { repo.confirmDraft(benchDraft, g, r) }.exceptionOrNull()
+            assertTrue("$g/$r", e is IllegalArgumentException)
         }
-        assertEquals(0, dao.countWorkouts())
+        assertEquals(SetStatus.DRAFT, dao.getSet(benchDraft)!!.status)
+
+        val next = repo.confirmDraft(draftOf(pullUp).id, null, 8)
+        repo.confirmDraft(next, 10_000, 6)
+        assertEquals(2, detail(bench.workoutId).loggedSetCount)
     }
 
     @Test
-    fun logSet_archivedExerciseWithSameName_isUnarchivedAndReused() = runTest {
-        val wid = repo.logSet(todayTarget, "s1", "深蹲", 60_000, 5)
-        val squat = dao.findActiveExerciseByName("深蹲")!!
-        ExerciseRepository(db, clock).archive(squat.id)
-        assertNull(dao.findActiveExerciseByName("深蹲"))
+    fun saveDraft_updatesPendingRowOnly() = runTest {
+        val added = log(todayTarget, exercise("深蹲"), 60_000 to 5)
+        val loggedId = dao.loggedOf(added.workoutExerciseId).single().id
+        val before = dao.getSet(loggedId)
 
-        repo.logSet(WorkoutTarget.Existing(wid), "s2", "深蹲", 60_000, 5)
-        assertEquals(1, dao.countExercises())
-        assertEquals(false, dao.getExercise(squat.id)!!.archived)
-        assertEquals(1, dao.countWorkoutExercises())
-    }
+        repo.saveDraft(loggedId, 10_000, 1)
+        assertEquals(before, dao.getSet(loggedId))
 
-    // ---- drafts ----
+        val draftId = draftOf(added).id
+        repo.saveDraft(draftId, 62_500, null)
+        assertEquals(62_500, dao.getSet(draftId)!!.weightGrams)
+        assertNull(dao.getSet(draftId)!!.reps)
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { repo.saveDraft(draftId, 62_500, 0) } }
 
-    @Test
-    fun drafts_areSeparateFromLoggedSets() = runTest {
-        val wid = repo.logSet(todayTarget, "s1", "深蹲", 60_000, 5)
-        val weId = detail(wid).items.single().workoutExercise.id
-
-        repo.saveDraft("d1", weId, 60_000, null)
-        var item = detail(wid).items.single()
-        assertEquals(listOf("s1"), item.logged.map { it.id })
-        assertEquals(listOf("d1"), item.drafts.map { it.id })
-        assertEquals(1, detail(wid).loggedSetCount)
-
-        // Incomplete draft cannot be confirmed.
-        assertThrows(IllegalArgumentException::class.java) { runBlocking { repo.confirmSet("d1") } }
-        assertEquals(SetStatus.DRAFT, dao.getSet("d1")!!.status)
-
-        repo.saveDraft("d1", weId, 60_000, 5)
-        repo.confirmSet("d1")
-        val confirmed = dao.getSet("d1")!!
-        assertEquals(SetStatus.LOGGED, confirmed.status)
-        assertNotNull(confirmed.loggedAt)
-
-        // Confirming again is a no-op.
-        repo.confirmSet("d1")
-        assertEquals(confirmed, dao.getSet("d1"))
-
-        item = detail(wid).items.single()
-        assertEquals(listOf("s1", "d1"), item.logged.map { it.id })
-        assertTrue(item.drafts.isEmpty())
-    }
-
-    @Test
-    fun saveDraft_neverDemotesLoggedSet() = runTest {
-        val wid = repo.logSet(todayTarget, "s1", "深蹲", 60_000, 5)
-        val weId = detail(wid).items.single().workoutExercise.id
-        val before = dao.getSet("s1")
-
-        repo.saveDraft("s1", weId, 10_000, 1)
-        assertEquals(before, dao.getSet("s1"))
+        // Gone rows are ignored rather than recreated.
+        repo.saveDraft("missing", 1_000, 1)
+        assertNull(dao.getSet("missing"))
     }
 
     @Test
     fun historyCounts_ignoreDrafts() = runTest {
-        val wid = repo.logSet(todayTarget, "s1", "深蹲", 60_000, 5)
-        val weId = detail(wid).items.single().workoutExercise.id
-        repo.saveDraft("d1", weId, 60_000, 5)
-        repo.saveDraft("d2", weId, 60_000, 5)
+        val added = repo.addExercise(todayTarget, exercise("深蹲"))
+        var h = repo.observeHistory().first().single()
+        assertEquals(0, h.loggedSetCount)
+        assertFalse(h.hasLogged)
 
-        val h = repo.observeHistory().first().single()
+        repo.confirmDraft(draftOf(added).id, 60_000, 5)
+        h = repo.observeHistory().first().single()
         assertEquals(1, h.loggedSetCount)
+        assertTrue(h.hasLogged)
     }
 
     // ---- edit ----
 
     @Test
     fun updateLoggedSet_keepsStatusAndLoggedAt() = runTest {
-        repo.logSet(todayTarget, "s1", "深蹲", 60_000, 5)
-        val before = dao.getSet("s1")!!
+        val added = log(todayTarget, exercise("深蹲"), 60_000 to 5)
+        val id = dao.loggedOf(added.workoutExerciseId).single().id
+        val before = dao.getSet(id)!!
         clock.advance(Duration.ofMinutes(10))
 
-        repo.updateLoggedSet("s1", 65_000, 3)
-        val after = dao.getSet("s1")!!
+        repo.updateLoggedSet(id, 65_000, 3)
+        val after = dao.getSet(id)!!
         assertEquals(SetStatus.LOGGED, after.status)
         assertEquals(before.loggedAt, after.loggedAt)
         assertEquals(65_000, after.weightGrams)
         assertEquals(3, after.reps)
         assertTrue(after.updatedAt > before.updatedAt)
 
-        assertThrows(IllegalArgumentException::class.java) { runBlocking { repo.updateLoggedSet("s1", null, 3) } }
-        assertThrows(IllegalArgumentException::class.java) { runBlocking { repo.updateLoggedSet("s1", 65_000, 0) } }
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { repo.updateLoggedSet(id, null, 3) } }
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { repo.updateLoggedSet(id, 65_000, 0) } }
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { repo.updateLoggedSet(draftOf(added).id, 65_000, 3) }
+        }
     }
 
     // ---- delete & undo ----
 
     @Test
     fun deleteSet_thenRestore_isExact() = runTest {
-        val wid = repo.logSet(todayTarget, "s1", "深蹲", 60_000, 5)
-        repo.logSet(WorkoutTarget.Existing(wid), "s2", "深蹲", 60_000, 4)
+        val added = log(todayTarget, exercise("深蹲"), 60_000 to 5, 60_000 to 4)
+        val first = dao.loggedOf(added.workoutExerciseId).first().id
         val before = dao.allSets().sortedBy { it.id }
 
-        val snapshot = repo.deleteSet("s1")
-        assertEquals(listOf("s2"), dao.allSets().map { it.id })
+        val snapshot = repo.deleteSet(first)
+        assertEquals(1, dao.loggedOf(added.workoutExerciseId).size)
         assertTrue(snapshot.workoutExercises.isEmpty())
 
         repo.restore(snapshot)
@@ -290,33 +336,41 @@ class WorkoutRepositoryTest {
     }
 
     @Test
-    fun deleteLastSet_removesEmptyItem_andRestoreBringsItBack() = runTest {
-        val wid = repo.logSet(todayTarget, "s1", "深蹲", 60_000, 5)
-        repo.logSet(WorkoutTarget.Existing(wid), "s2", "卧推", 40_000, 8)
-        val itemsBefore = dao.allWorkoutExercises().sortedBy { it.id }
-        val setsBefore = dao.allSets().sortedBy { it.id }
+    fun deleteOnlyLoggedSet_keepsItemWithItsPendingRow() = runTest {
+        val added = log(todayTarget, exercise("深蹲"), 60_000 to 5)
+        val snapshot = repo.deleteSet(dao.loggedOf(added.workoutExerciseId).single().id)
+        assertTrue(snapshot.workoutExercises.isEmpty())
+        val item = detail(added.workoutId).items.single()
+        assertTrue(item.logged.isEmpty())
+        assertNotNull(item.draft)
+    }
 
-        val snapshot = repo.deleteSet("s2")
-        assertEquals(listOf("深蹲"), detail(wid).items.map { it.workoutExercise.nameSnapshot })
-        assertEquals(1, snapshot.workoutExercises.size)
-        assertEquals(1, dao.countWorkouts())
+    @Test
+    fun removeExercise_thenRestore_isExact() = runTest {
+        val squat = log(todayTarget, exercise("深蹲"), 60_000 to 5, 60_000 to 5)
+        log(WorkoutTarget.Existing(squat.workoutId), exercise("卧推"), 40_000 to 8)
+        val items = dao.allWorkoutExercises().sortedBy { it.id }
+        val sets = dao.allSets().sortedBy { it.id }
+
+        val snapshot = repo.removeExercise(squat.workoutExerciseId)
+        assertEquals(listOf("卧推"), detail(squat.workoutId).items.map { it.workoutExercise.nameSnapshot })
+        assertEquals(3, snapshot.sets.size)
+        assertEquals(2, dao.countExercises())
 
         repo.restore(snapshot)
-        assertEquals(itemsBefore, dao.allWorkoutExercises().sortedBy { it.id })
-        assertEquals(setsBefore, dao.allSets().sortedBy { it.id })
+        assertEquals(items, dao.allWorkoutExercises().sortedBy { it.id })
+        assertEquals(sets, dao.allSets().sortedBy { it.id })
     }
 
     @Test
     fun deleteWorkout_thenRestore_isExact() = runTest {
-        val wid = repo.logSet(todayTarget, "s1", "深蹲", 60_000, 5)
-        repo.logSet(WorkoutTarget.Existing(wid), "s2", "卧推", 40_000, 8)
-        val weId = detail(wid).items.first().workoutExercise.id
-        repo.saveDraft("d1", weId, 60_000, null)
+        val squat = log(todayTarget, exercise("深蹲"), 60_000 to 5)
+        log(WorkoutTarget.Existing(squat.workoutId), exercise("卧推"), 40_000 to 8)
         val w = dao.allWorkouts()
         val items = dao.allWorkoutExercises().sortedBy { it.id }
         val sets = dao.allSets().sortedBy { it.id }
 
-        val snapshot = repo.deleteWorkout(wid)
+        val snapshot = repo.deleteWorkout(squat.workoutId)
         assertEquals(0, dao.countWorkouts())
         assertEquals(0, dao.countWorkoutExercises())
         assertEquals(0, dao.allSets().size)
@@ -330,10 +384,9 @@ class WorkoutRepositoryTest {
 
     @Test
     fun restoreSet_afterWorkoutDeleted_failsCleanly() = runTest {
-        val wid = repo.logSet(todayTarget, "s1", "深蹲", 60_000, 5)
-        repo.logSet(WorkoutTarget.Existing(wid), "s2", "深蹲", 60_000, 5)
-        val setSnapshot = repo.deleteSet("s1")
-        repo.deleteWorkout(wid)
+        val added = log(todayTarget, exercise("深蹲"), 60_000 to 5, 60_000 to 5)
+        val setSnapshot = repo.deleteSet(dao.loggedOf(added.workoutExerciseId).first().id)
+        repo.deleteWorkout(added.workoutId)
 
         assertTrue(runCatching { repo.restore(setSnapshot) }.exceptionOrNull() is IllegalStateException)
         assertEquals(0, dao.allSets().size)
@@ -341,11 +394,11 @@ class WorkoutRepositoryTest {
 
     @Test
     fun deleteExercise_withHistory_isRejectedByForeignKey() = runTest {
-        repo.logSet(todayTarget, "set-1", "杠铃卧推", 40_000, 10)
-        val exercise = dao.findActiveExerciseByName("杠铃卧推")!!
+        val bench = exercise("杠铃卧推")
+        log(todayTarget, bench, 40_000 to 10)
         assertThrows(SQLiteConstraintException::class.java) {
-            runBlocking { dao.deleteExercise(exercise) }
+            runBlocking { dao.deleteExercise(dao.getExercise(bench)!!) }
         }
-        assertEquals(1, dao.allSets().size)
+        assertEquals(2, dao.allSets().size)
     }
 }

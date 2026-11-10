@@ -12,7 +12,10 @@ data class ExerciseItem(
     val workoutExercise: WorkoutExerciseEntity,
     val logged: List<SetEntryEntity>,
     val drafts: List<SetEntryEntity>,
-)
+) {
+    /** The pending row shown under the logged sets; at most one per item. */
+    val draft: SetEntryEntity? get() = drafts.firstOrNull()
+}
 
 data class WorkoutDetail(
     val workout: WorkoutEntity,
@@ -21,6 +24,7 @@ data class WorkoutDetail(
     val trainingDate: LocalDate get() = LocalDate.parse(workout.trainingDate)
     val loggedItems: List<ExerciseItem> get() = items.filter { it.logged.isNotEmpty() }
     val loggedSetCount: Int get() = items.sumOf { it.logged.size }
+    val hasLogged: Boolean get() = loggedSetCount > 0
 }
 
 private val setOrder = compareBy<SetEntryEntity>({ it.position }, { it.createdAt })
