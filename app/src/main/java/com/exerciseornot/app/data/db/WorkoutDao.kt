@@ -136,6 +136,20 @@ interface WorkoutDao {
     )
     suspend fun previousLoggedSets(exerciseId: String, workoutId: String, date: String, performedAt: Long): List<SetEntryEntity>
 
+    /** Logged sets of [exerciseId] from its [limit] most recent workouts (by training date, then time). */
+    @Query(
+        "SELECT w.id AS workoutId, w.trainingDate, w.performedAt, s.id AS setId, s.weightGrams, s.reps " +
+            "FROM set_entry s JOIN workout_exercise we ON s.workoutExerciseId = we.id " +
+            "JOIN workout w ON w.id = we.workoutId " +
+            "WHERE we.exerciseId = :exerciseId AND s.status = 'LOGGED' AND w.id IN (" +
+            "SELECT w2.id FROM workout w2 JOIN workout_exercise we2 ON we2.workoutId = w2.id " +
+            "WHERE we2.exerciseId = :exerciseId " +
+            "AND EXISTS (SELECT 1 FROM set_entry x WHERE x.workoutExerciseId = we2.id AND x.status = 'LOGGED') " +
+            "ORDER BY w2.trainingDate DESC, w2.performedAt DESC LIMIT :limit" +
+            ") ORDER BY w.trainingDate DESC, w.performedAt DESC, w.id, s.position, s.createdAt"
+    )
+    fun observeExerciseHistory(exerciseId: String, limit: Int): Flow<List<ExerciseHistoryRow>>
+
     // ---- test / diagnostics ----
 
     @Query("SELECT COUNT(*) FROM workout") suspend fun countWorkouts(): Int

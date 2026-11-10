@@ -9,10 +9,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.exerciseornot.app.data.DeletedSnapshot
 import com.exerciseornot.app.data.ExerciseRepository
+import com.exerciseornot.app.data.ExerciseSession
 import com.exerciseornot.app.data.WeightFormat
 import com.exerciseornot.app.data.WorkoutNotFoundException
 import com.exerciseornot.app.data.WorkoutRepository
 import com.exerciseornot.app.data.WorkoutTarget
+import com.exerciseornot.app.ui.RecordRequests
 import com.exerciseornot.app.data.db.ExerciseWithLastUsed
 import com.exerciseornot.app.data.db.SetEntryEntity
 import com.exerciseornot.app.data.db.WeightMode
@@ -66,6 +68,7 @@ data class EditSetState(
 class RecordViewModel(
     private val repository: WorkoutRepository,
     private val exercises: ExerciseRepository,
+    private val requests: RecordRequests,
     private val savedState: SavedStateHandle,
 ) : ViewModel() {
 
@@ -115,17 +118,32 @@ class RecordViewModel(
     /** workoutExerciseId the list should bring into view. */
     val scrollTo: Flow<String> = _scrollTo.receiveAsFlow()
 
+    private val _notices = Channel<String>(Channel.BUFFERED)
+    /** One-off messages to show in a snackbar. */
+    val notices: Flow<String> = _notices.receiveAsFlow()
+
+    private val _historyExerciseId = MutableStateFlow<String?>(null)
+    /** Exercise whose history sheet is open. */
+    val historyExerciseId: StateFlow<String?> = _historyExerciseId.asStateFlow()
+
+    val exerciseHistory: StateFlow<List<ExerciseSession>> = _historyExerciseId
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.observeExerciseHistory(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private val saveJobs = mutableMapOf<String, Job>()
 
     init {
-        if (_target.value == null) {
-            viewModelScope.launch {
-                val latest = repository.latestWorkout()
-                val today = repository.today()
-                setTarget(
-                    if (latest != null && latest.trainingDate == today.toString()) WorkoutTarget.Existing(latest.id)
-                    else WorkoutTarget.New(today)
-                )
+        val initialChoice = if (_target.value == null) {
+            viewModelScope.launch { setTarget(repository.defaultTarget()) }
+        } else null
+        viewModelScope.launch {
+            // Wait for the initial choice so it can't overwrite a request from history.
+            initialChoice?.join()
+            requests.pending.filterNotNull().collect { request ->
+                flushDrafts()
+                setTarget(WorkoutTarget.Existing(request.workoutId))
+                request.notice?.let { _notices.send(it) }
+                requests.consume(request)
             }
         }
         viewModelScope.launch {
@@ -146,6 +164,15 @@ class RecordViewModel(
     // ---- target & date ----
 
     fun continueWorkout(workoutId: String) = setTarget(WorkoutTarget.Existing(workoutId))
+
+    /** Leaves an older workout opened from history for today's record. */
+    fun backToToday() {
+        flushDrafts()
+        viewModelScope.launch { setTarget(repository.defaultTarget()) }
+    }
+
+    fun showHistory(exerciseId: String) { _historyExerciseId.value = exerciseId }
+    fun hideHistory() { _historyExerciseId.value = null }
 
     fun startNewRecord(date: LocalDate) {
         if (date.isAfter(repository.today())) return showError("训练日期不能晚于今天")

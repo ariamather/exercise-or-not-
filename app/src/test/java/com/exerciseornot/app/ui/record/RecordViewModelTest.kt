@@ -14,6 +14,7 @@ import com.exerciseornot.app.data.db.AppDatabase
 import com.exerciseornot.app.data.db.SetStatus
 import com.exerciseornot.app.data.db.WeightMode
 import com.exerciseornot.app.data.logSets
+import com.exerciseornot.app.ui.RecordRequests
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -49,6 +50,7 @@ class RecordViewModelTest {
     private val today = LocalDate.of(2026, 11, 10)
     private val yesterday = today.minusDays(1)
     private val collectors = CoroutineScope(Dispatchers.Unconfined)
+    private val requests = RecordRequests()
 
     @Before
     fun setUp() {
@@ -75,7 +77,7 @@ class RecordViewModelTest {
     }
 
     private fun newViewModel(state: SavedStateHandle = SavedStateHandle()): RecordViewModel =
-        RecordViewModel(repo, exercises, state).also { vm ->
+        RecordViewModel(repo, exercises, requests, state).also { vm ->
             collectors.launch { vm.resumeCandidate.collect {} }
             collectors.launch { vm.detail.collect {} }
             collectors.launch { vm.previous.collect {} }
@@ -329,5 +331,59 @@ class RecordViewModelTest {
 
         vm.createAndAddExercise("引体向上", WeightMode.TOTAL) { error("should not close") }
         awaitUntil("duplicate error") { vm.pickerError != null }
+    }
+
+    @Test
+    fun recordRequest_switchesToWorkout_flushesDraftsAndIsConsumed() {
+        val old = runBlocking { repo.logSets(db, WorkoutTarget.New(yesterday), exercise("深蹲"), 60_000 to 5) }
+        val vm = newViewModel()
+        val draft = vm.addAndAwaitDraft(exercise("卧推"))
+        vm.onDraftWeightChange(draft, "42.5")
+        vm.onDraftRepsChange(draft, "8")
+
+        var notice: String? = null
+        collectors.launch { notice = vm.notices.first() }
+        requests.open(old.workoutId, "hello")
+
+        awaitUntil("switched") { vm.target.value == WorkoutTarget.Existing(old.workoutId) }
+        awaitUntil("notice") { notice == "hello" }
+        assertNull(requests.pending.value)
+        awaitUntil("draft flushed") { runBlocking { dao.getSet(draft) }?.weightGrams == 42_500 }
+    }
+
+    @Test
+    fun recordRequest_beforeViewModelExists_isApplied() {
+        val old = runBlocking { repo.logSets(db, WorkoutTarget.New(yesterday), exercise("深蹲"), 60_000 to 5) }
+        requests.open(old.workoutId)
+        val vm = newViewModel()
+        awaitUntil("switched") { vm.target.value == WorkoutTarget.Existing(old.workoutId) }
+        Thread.sleep(100)
+        assertEquals(WorkoutTarget.Existing(old.workoutId), vm.target.value)
+    }
+
+    @Test
+    fun backToToday_fromOldWorkout() {
+        val old = runBlocking { repo.logSets(db, WorkoutTarget.New(yesterday), exercise("深蹲"), 60_000 to 5) }
+        val vm = newViewModel()
+        requests.open(old.workoutId)
+        awaitUntil("switched") { vm.target.value == WorkoutTarget.Existing(old.workoutId) }
+
+        vm.backToToday()
+        awaitUntil("back") { vm.target.value == WorkoutTarget.New(today) }
+    }
+
+    @Test
+    fun showHistory_loadsLoggedSessions() {
+        val squat = exercise("深蹲")
+        runBlocking { repo.logSets(db, WorkoutTarget.New(yesterday), squat, 60_000 to 5, 62_500 to 5) }
+        val vm = newViewModel()
+        collectors.launch { vm.exerciseHistory.collect {} }
+
+        vm.showHistory(squat)
+        awaitUntil("history") { vm.exerciseHistory.value.size == 1 }
+        assertEquals(listOf(60_000, 62_500), vm.exerciseHistory.value.single().sets.map { it.weightGrams })
+
+        vm.hideHistory()
+        awaitUntil("cleared") { vm.exerciseHistory.value.isEmpty() }
     }
 }

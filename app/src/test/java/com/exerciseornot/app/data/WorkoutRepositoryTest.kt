@@ -401,4 +401,145 @@ class WorkoutRepositoryTest {
         }
         assertEquals(2, dao.allSets().size)
     }
+
+    // ---- default target ----
+
+    @Test
+    fun defaultTarget_noWorkouts_isNewToday() = runTest {
+        assertEquals(todayTarget, repo.defaultTarget())
+    }
+
+    @Test
+    fun defaultTarget_todayExists_continuesIt() = runTest {
+        val wid = log(todayTarget, exercise("深蹲"), 60_000 to 5).workoutId
+        assertEquals(WorkoutTarget.Existing(wid), repo.defaultTarget())
+    }
+
+    @Test
+    fun defaultTarget_latestIsBackfill_isNewToday() = runTest {
+        val squat = exercise("深蹲")
+        log(on(11, 9), squat, 60_000 to 5)
+        clock.advance(Duration.ofMinutes(5))
+        log(on(11, 3), squat, 50_000 to 5)
+        assertEquals(todayTarget, repo.defaultTarget())
+    }
+
+    // ---- reuse ----
+
+    @Test
+    fun reuseWorkout_copiesOrderAsPendingRowsOnly() = runTest {
+        val squat = exercise("深蹲")
+        val bench = exercise("卧推")
+        val row = exercise("划船")
+        val src = log(on(11, 8), squat, 60_000 to 5, 60_000 to 5)
+        val srcTarget = WorkoutTarget.Existing(src.workoutId)
+        log(srcTarget, bench, 40_000 to 10)
+        repo.addExercise(srcTarget, row) // only a pending row: not reused
+        val before = dao.allSets().sortedBy { it.id }
+
+        val result = repo.reuseWorkout(src.workoutId, todayTarget)
+
+        assertEquals(ReuseResult(result.workoutId, 2, 0, 0), result)
+        val d = detail(result.workoutId!!)
+        assertEquals("2026-11-10", d.workout.trainingDate)
+        assertEquals(listOf("深蹲", "卧推"), d.items.map { it.workoutExercise.nameSnapshot })
+        assertEquals(0, d.loggedSetCount)
+        assertTrue(d.items.all { it.drafts.size == 1 })
+        assertEquals(listOf(60_000 to 5, 40_000 to 10), d.items.map { it.draft!!.weightGrams to it.draft!!.reps })
+        // Source untouched.
+        assertEquals(before, dao.allSets().filter { s -> d.items.none { it.workoutExercise.id == s.workoutExerciseId } }.sortedBy { it.id })
+    }
+
+    @Test
+    fun reuseWorkout_prefillsFromMostRecentTime_notSource() = runTest {
+        val bench = exercise("卧推")
+        val src = log(on(10, 27), bench, 40_000 to 10)
+        log(on(11, 5), bench, 45_000 to 8)
+
+        val result = repo.reuseWorkout(src.workoutId, todayTarget)
+
+        val draft = detail(result.workoutId!!).items.single().draft!!
+        assertEquals(45_000 to 8, draft.weightGrams to draft.reps)
+    }
+
+    @Test
+    fun reuseWorkout_intoExisting_skipsExercisesAlreadyThere() = runTest {
+        val squat = exercise("深蹲")
+        val bench = exercise("卧推")
+        val src = log(on(11, 8), squat, 60_000 to 5)
+        log(WorkoutTarget.Existing(src.workoutId), bench, 40_000 to 10)
+        val today = log(todayTarget, squat, 65_000 to 5)
+
+        val result = repo.reuseWorkout(src.workoutId, WorkoutTarget.Existing(today.workoutId))
+
+        assertEquals(ReuseResult(today.workoutId, 1, 1, 0), result)
+        val d = detail(today.workoutId)
+        assertEquals(listOf("深蹲", "卧推"), d.items.map { it.workoutExercise.nameSnapshot })
+        assertEquals(1, d.loggedSetCount)
+        assertTrue(d.items.all { it.drafts.size == 1 })
+    }
+
+    @Test
+    fun reuseWorkout_skipsArchived() = runTest {
+        val squat = exercise("深蹲")
+        val bench = exercise("卧推")
+        val src = log(on(11, 8), squat, 60_000 to 5)
+        log(WorkoutTarget.Existing(src.workoutId), bench, 40_000 to 10)
+        exercises.archive(bench)
+
+        val result = repo.reuseWorkout(src.workoutId, todayTarget)
+
+        assertEquals(1, result.added)
+        assertEquals(1, result.skippedArchived)
+        assertEquals(listOf("深蹲"), detail(result.workoutId!!).items.map { it.workoutExercise.nameSnapshot })
+    }
+
+    @Test
+    fun reuseWorkout_nothingToAdd_doesNotCreateWorkout() = runTest {
+        val bench = exercise("卧推")
+        val src = log(on(11, 8), bench, 40_000 to 10)
+        exercises.archive(bench)
+
+        val result = repo.reuseWorkout(src.workoutId, todayTarget)
+
+        assertEquals(ReuseResult(null, 0, 0, 1), result)
+        assertEquals(1, dao.countWorkouts())
+    }
+
+    @Test
+    fun reuseWorkout_deletedSource_throwsNotFound() = runTest {
+        val src = log(on(11, 8), exercise("卧推"), 40_000 to 10)
+        repo.deleteWorkout(src.workoutId)
+        assertTrue(runCatching { repo.reuseWorkout(src.workoutId, todayTarget) }.exceptionOrNull() is WorkoutNotFoundException)
+        assertEquals(0, dao.countWorkouts())
+    }
+
+    // ---- exercise history ----
+
+    @Test
+    fun exerciseHistory_byTrainingDate_loggedOnly_thisExerciseOnly() = runTest {
+        val bench = exercise("卧推")
+        val squat = exercise("深蹲")
+        val a = log(on(11, 9), bench, 40_000 to 10, 40_000 to 9)
+        log(WorkoutTarget.Existing(a.workoutId), squat, 60_000 to 5)
+        clock.advance(Duration.ofMinutes(5))
+        val b = log(on(11, 2), bench, 37_500 to 10) // backfilled later, older date
+        repo.addExercise(todayTarget, bench) // today: pending row only
+
+        val history = repo.observeExerciseHistory(bench).first()
+
+        assertEquals(listOf(a.workoutId, b.workoutId), history.map { it.workoutId })
+        assertEquals(listOf(LocalDate.of(2026, 11, 9), LocalDate.of(2026, 11, 2)), history.map { it.trainingDate })
+        assertEquals(listOf(40_000 to 10, 40_000 to 9), history[0].sets.map { it.weightGrams to it.reps })
+        assertEquals(listOf(37_500 to 10), history[1].sets.map { it.weightGrams to it.reps })
+    }
+
+    @Test
+    fun exerciseHistory_limitsWorkouts() = runTest {
+        val bench = exercise("卧推")
+        for (day in 1..5) log(on(11, day), bench, 40_000 to 10, 40_000 to 8)
+        val history = repo.observeExerciseHistory(bench, limit = 3).first()
+        assertEquals(listOf("2026-11-05", "2026-11-04", "2026-11-03"), history.map { it.trainingDate.toString() })
+        assertTrue(history.all { it.sets.size == 2 })
+    }
 }

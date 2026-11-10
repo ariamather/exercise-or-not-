@@ -64,6 +64,7 @@ private enum class DateDialog { ChangeDate, NewRecord }
 fun RecordScreen(
     viewModel: RecordViewModel,
     snackbarHostState: SnackbarHostState,
+    onOpenHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val target by viewModel.target.collectAsStateWithLifecycle()
@@ -71,6 +72,7 @@ fun RecordScreen(
     val previous by viewModel.previous.collectAsStateWithLifecycle()
     val resume by viewModel.resumeCandidate.collectAsStateWithLifecycle()
     val pickerList by viewModel.pickerList.collectAsStateWithLifecycle()
+    val exerciseHistory by viewModel.exerciseHistory.collectAsStateWithLifecycle()
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var dateDialog by rememberSaveable { mutableStateOf<DateDialog?>(null) }
     var showPicker by rememberSaveable { mutableStateOf(false) }
@@ -83,6 +85,9 @@ fun RecordScreen(
             val result = snackbarHostState.showSnackbar("已删除", actionLabel = "撤销", duration = SnackbarDuration.Long)
             if (result == SnackbarResult.ActionPerformed) viewModel.undo(snapshot)
         }
+    }
+    LaunchedEffect(viewModel) {
+        viewModel.notices.collect { snackbarHostState.showSnackbar(it) }
     }
 
     val items = detail?.items.orEmpty()
@@ -113,18 +118,18 @@ fun RecordScreen(
         }
 
         resume?.let { w ->
-            Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(start = 16.dp, end = 8.dp),
-                ) {
-                    Text(
-                        "上次训练 ${LocalDate.parse(w.trainingDate).format(shortDate)}",
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(onClick = { viewModel.continueWorkout(w.id) }) { Text("继续那次") }
-                }
-            }
+            BannerCard(
+                text = "上次训练 ${LocalDate.parse(w.trainingDate).format(shortDate)}",
+                action = "继续那次",
+                onAction = { viewModel.continueWorkout(w.id) },
+            )
+        }
+        if (target is WorkoutTarget.Existing && trainingDate != null && trainingDate != viewModel.today()) {
+            BannerCard(
+                text = "正在编辑 ${trainingDate.format(shortDate)} 的训练",
+                action = "回到今天",
+                onAction = viewModel::backToToday,
+            )
         }
 
         Row(
@@ -175,9 +180,25 @@ fun RecordScreen(
                         Icon(Icons.Filled.Add, contentDescription = null)
                         Text("添加动作", modifier = Modifier.padding(start = 4.dp))
                     }
+                    if (items.isEmpty()) {
+                        TextButton(onClick = onOpenHistory, modifier = Modifier.fillMaxWidth()) {
+                            Text("从历史复用一次训练")
+                        }
+                    }
                 }
             }
         }
+    }
+
+    viewModel.historyExerciseId.collectAsStateWithLifecycle().value?.let { exerciseId ->
+        val name = items.firstOrNull { it.workoutExercise.exerciseId == exerciseId }?.workoutExercise?.nameSnapshot.orEmpty()
+        ExerciseHistorySheet(
+            title = name,
+            sessions = exerciseHistory,
+            currentWorkoutId = detail?.workout?.id,
+            today = viewModel.today(),
+            onDismiss = viewModel::hideHistory,
+        )
     }
 
     if (showPicker) {
@@ -237,7 +258,14 @@ private fun ExerciseCard(item: ExerciseItem, previous: List<SetEntryEntity>, vie
                     WeightMode.PER_SIDE -> "（单只）"
                     WeightMode.TOTAL -> ""
                 }
-                Text(we.nameSnapshot + suffix, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Text(
+                    we.nameSnapshot + suffix,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClickLabel = "查看 ${we.nameSnapshot} 的历史") { viewModel.showHistory(we.exerciseId) }
+                        .padding(vertical = 12.dp),
+                )
                 Box {
                     IconButton(onClick = { menu = true }) {
                         Icon(Icons.Filled.MoreVert, contentDescription = "${we.nameSnapshot} 的更多操作")
@@ -280,6 +308,19 @@ private fun ExerciseCard(item: ExerciseItem, previous: List<SetEntryEntity>, vie
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun BannerCard(text: String, action: String, onAction: () -> Unit) {
+    Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 16.dp, end = 8.dp),
+        ) {
+            Text(text, modifier = Modifier.weight(1f))
+            TextButton(onClick = onAction) { Text(action) }
         }
     }
 }

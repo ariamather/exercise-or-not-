@@ -38,6 +38,13 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val navigateToTab: (Tab) -> Unit = { tab ->
+        navController.navigate(tab.route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -46,13 +53,7 @@ fun AppNavigation() {
                 Tab.entries.forEach { tab ->
                     NavigationBarItem(
                         selected = backStack?.destination?.hierarchy?.any { it.route == tab.route } == true,
-                        onClick = {
-                            navController.navigate(tab.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = { navigateToTab(tab) },
                         icon = { Icon(tab.icon, contentDescription = null) },
                         label = { Text(tab.label) },
                     )
@@ -67,10 +68,18 @@ fun AppNavigation() {
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
         ) {
             composable(Tab.Record.route) {
-                RecordScreen(viewModel(factory = AppViewModelFactory.Factory), snackbarHostState)
+                RecordScreen(
+                    viewModel(factory = AppViewModelFactory.Factory),
+                    snackbarHostState,
+                    onOpenHistory = { navigateToTab(Tab.History) },
+                )
             }
             composable(Tab.History.route) {
-                HistoryScreen(viewModel(factory = AppViewModelFactory.Factory), snackbarHostState)
+                HistoryScreen(
+                    viewModel(factory = AppViewModelFactory.Factory),
+                    snackbarHostState,
+                    onOpenRecord = { navigateToTab(Tab.Record) },
+                )
             }
         }
     }

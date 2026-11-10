@@ -2,6 +2,8 @@ package com.exerciseornot.app.data
 
 import androidx.room.withTransaction
 import com.exerciseornot.app.data.db.AppDatabase
+import com.exerciseornot.app.data.db.ExerciseEntity
+import com.exerciseornot.app.data.db.ExerciseHistoryRow
 import com.exerciseornot.app.data.db.SetEntryEntity
 import com.exerciseornot.app.data.db.SetStatus
 import com.exerciseornot.app.data.db.WeightMode
@@ -19,6 +21,18 @@ import java.time.ZoneId
 import java.util.UUID
 
 data class AddedExercise(val workoutId: String, val workoutExerciseId: String)
+
+/** [workoutId] is null when nothing was added to a new record, so no workout was created. */
+data class ReuseResult(
+    val workoutId: String?,
+    val added: Int,
+    val skippedExisting: Int,
+    val skippedArchived: Int,
+)
+
+data class ExerciseSession(val workoutId: String, val trainingDate: LocalDate, val sets: List<ExerciseHistoryRow>)
+
+const val EXERCISE_HISTORY_LIMIT = 20
 
 /** Thrown when an [WorkoutTarget.Existing] workout no longer exists (e.g. deleted from history). */
 class WorkoutNotFoundException : IllegalStateException("这次训练已被删除")
@@ -54,21 +68,74 @@ class WorkoutRepository(
     suspend fun addExercise(target: WorkoutTarget, exerciseId: String): AddedExercise = db.withTransaction {
         val now = clock.millis()
         val exercise = requireNotNull(dao.getExercise(exerciseId)) { "动作不存在" }
-        val workout = when (target) {
-            is WorkoutTarget.Existing -> dao.getWorkout(target.workoutId) ?: throw WorkoutNotFoundException()
-            is WorkoutTarget.New -> {
-                requireNotFuture(target.date)
-                WorkoutEntity(
-                    id = newId(),
-                    performedAt = performedAtFor(target.date, now),
-                    trainingDate = target.date.toString(),
-                    zoneId = clock.zone.id,
-                    createdAt = now,
-                    updatedAt = now,
-                ).also { dao.upsertWorkout(it) }
+        val workout = resolveWorkout(target, now)
+        AddedExercise(workout.id, addItem(workout, exercise, now).id)
+    }
+
+    /** Continue today's latest workout if there is one, otherwise a new record for today. */
+    suspend fun defaultTarget(): WorkoutTarget {
+        val latest = dao.latestWorkout()
+        val today = today()
+        return if (latest != null && latest.trainingDate == today.toString()) WorkoutTarget.Existing(latest.id)
+        else WorkoutTarget.New(today)
+    }
+
+    /**
+     * Adds the exercises of [sourceWorkoutId] that have logged sets to [target], in their order, each
+     * with only a pending row (prefilled like [addExercise]). Archived exercises and ones already in the
+     * target are skipped; if nothing is left, a [WorkoutTarget.New] target is not created.
+     */
+    suspend fun reuseWorkout(sourceWorkoutId: String, target: WorkoutTarget): ReuseResult = db.withTransaction {
+        dao.getWorkout(sourceWorkoutId) ?: throw WorkoutNotFoundException()
+        val now = clock.millis()
+        val exerciseIds = dao.workoutExercisesOf(sourceWorkoutId)
+            .filter { dao.loggedOf(it.id).isNotEmpty() }
+            .sortedWith(compareBy({ it.position }, { it.createdAt }))
+            .map { it.exerciseId }
+            .distinct()
+        val sourceExercises = exerciseIds.mapNotNull { dao.getExercise(it) }
+        val active = sourceExercises.filterNot { it.archived }
+        val skippedArchived = sourceExercises.size - active.size
+
+        val existing = (target as? WorkoutTarget.Existing)
+            ?.let { t -> (dao.getWorkout(t.workoutId) ?: throw WorkoutNotFoundException()) }
+        val toAdd = if (existing == null) active
+        else active.filter { dao.findWorkoutExercise(existing.id, it.id) == null }
+        val skippedExisting = active.size - toAdd.size
+
+        if (toAdd.isEmpty()) {
+            return@withTransaction ReuseResult(existing?.id, 0, skippedExisting, skippedArchived)
+        }
+        val workout = existing ?: resolveWorkout(target, now)
+        toAdd.forEach { addItem(workout, it, now) }
+        ReuseResult(workout.id, toAdd.size, skippedExisting, skippedArchived)
+    }
+
+    /** Logged sets of [exerciseId] in its most recent [limit] workouts, newest training date first. */
+    fun observeExerciseHistory(exerciseId: String, limit: Int = EXERCISE_HISTORY_LIMIT): Flow<List<ExerciseSession>> =
+        dao.observeExerciseHistory(exerciseId, limit).map { rows ->
+            rows.groupBy { it.workoutId }.map { (workoutId, sets) ->
+                ExerciseSession(workoutId, LocalDate.parse(sets.first().trainingDate), sets)
             }
         }
 
+    private suspend fun resolveWorkout(target: WorkoutTarget, now: Long): WorkoutEntity = when (target) {
+        is WorkoutTarget.Existing -> dao.getWorkout(target.workoutId) ?: throw WorkoutNotFoundException()
+        is WorkoutTarget.New -> {
+            requireNotFuture(target.date)
+            WorkoutEntity(
+                id = newId(),
+                performedAt = performedAtFor(target.date, now),
+                trainingDate = target.date.toString(),
+                zoneId = clock.zone.id,
+                createdAt = now,
+                updatedAt = now,
+            ).also { dao.upsertWorkout(it) }
+        }
+    }
+
+    /** Finds or creates the item for [exercise] in [workout] and makes sure it has a pending row. */
+    private suspend fun addItem(workout: WorkoutEntity, exercise: ExerciseEntity, now: Long): WorkoutExerciseEntity {
         val item = dao.findWorkoutExercise(workout.id, exercise.id)
             ?: WorkoutExerciseEntity(
                 id = newId(),
@@ -85,7 +152,7 @@ class WorkoutRepository(
             val seed = dao.loggedOf(item.id).lastOrNull() ?: previousSetsOf(item, workout).lastOrNull()
             insertDraft(item.id, seed?.weightGrams, seed?.reps, now)
         }
-        AddedExercise(workout.id, item.id)
+        return item
     }
 
     /**

@@ -19,6 +19,16 @@ data class WorkoutWithExercises(
     val exercises: List<WorkoutExerciseWithSets>,
 )
 
+/** One logged set of an exercise, with the workout it belongs to. */
+data class ExerciseHistoryRow(
+    val workoutId: String,
+    val trainingDate: String,
+    val performedAt: Long,
+    val setId: String,
+    val weightGrams: Int?,
+    val reps: Int?,
+)
+
 data class ExerciseWithLastUsed(
     @Embedded val exercise: ExerciseEntity,
     /** When a set of this exercise was last confirmed; null if never. */
