@@ -1,5 +1,6 @@
 package com.exerciseornot.app.ui.record
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,27 +22,62 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.exerciseornot.app.data.db.SetStatus
-import com.exerciseornot.app.data.db.WorkoutExerciseWithSets
+import kotlinx.coroutines.flow.collectLatest
+import com.exerciseornot.app.data.WorkoutTarget
+import com.exerciseornot.app.data.db.SetEntryEntity
+import com.exerciseornot.app.data.db.WeightMode
+import com.exerciseornot.app.data.model.ExerciseItem
 import com.exerciseornot.app.ui.displayText
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
+private val shortDate = DateTimeFormatter.ofPattern("MM-dd")
+
+private enum class DateDialog { ChangeDate, NewRecord }
 
 @Composable
-fun RecordScreen(viewModel: RecordViewModel, modifier: Modifier = Modifier) {
-    val workout by viewModel.todayWorkout.collectAsStateWithLifecycle()
-    val name = viewModel.exerciseName
-    val weight = viewModel.weightKg
-    val reps = viewModel.reps
+fun RecordScreen(
+    viewModel: RecordViewModel,
+    snackbarHostState: SnackbarHostState,
+    modifier: Modifier = Modifier,
+) {
+    val target by viewModel.target.collectAsStateWithLifecycle()
+    val detail by viewModel.detail.collectAsStateWithLifecycle()
+    val resume by viewModel.resumeCandidate.collectAsStateWithLifecycle()
     val ui by viewModel.ui.collectAsStateWithLifecycle()
+    var dateDialog by rememberSaveable { mutableStateOf<DateDialog?>(null) }
+
+    LaunchedEffect(viewModel) {
+        viewModel.deletions.collectLatest { snapshot ->
+            val result = snackbarHostState.showSnackbar("已删除", actionLabel = "撤销", duration = SnackbarDuration.Long)
+            if (result == SnackbarResult.ActionPerformed) viewModel.undo(snapshot)
+        }
+    }
+
+    val trainingDate: LocalDate? = when (val t = target) {
+        is WorkoutTarget.New -> t.date
+        is WorkoutTarget.Existing -> detail?.trainingDate
+        null -> null
+    }
 
     Column(modifier.fillMaxSize().imePadding().padding(16.dp)) {
         OutlinedCard(Modifier.fillMaxWidth()) {
@@ -51,19 +87,47 @@ fun RecordScreen(viewModel: RecordViewModel, modifier: Modifier = Modifier) {
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-        Text("训练日期：${viewModel.today}", style = MaterialTheme.typography.titleSmall)
+        resume?.let { w ->
+            Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 16.dp, end = 8.dp),
+                ) {
+                    Text(
+                        "上次训练 ${LocalDate.parse(w.trainingDate).format(shortDate)}",
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { viewModel.continueWorkout(w.id) }) { Text("继续那次") }
+                }
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        ) {
+            Text(
+                "训练日期：${trainingDate ?: ""}" + if (target is WorkoutTarget.New) "（新记录）" else "",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f).clickable(enabled = trainingDate != null) {
+                    dateDialog = DateDialog.ChangeDate
+                },
+            )
+            OutlinedButton(onClick = { dateDialog = DateDialog.NewRecord }) { Text("新建记录") }
+        }
         Spacer(Modifier.height(8.dp))
 
-        val exercises = workout?.exercises.orEmpty().sortedBy { it.workoutExercise.position }
+        val items = detail?.loggedItems.orEmpty()
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (exercises.isEmpty()) {
-                item { Text("今天还没有记录。填写下方动作、重量和次数，点 ✓ 记录一组。") }
+            if (items.isEmpty()) {
+                item { Text("这次还没有记录。填写下方动作、重量和次数，点 ✓ 记录一组。") }
             }
-            items(exercises, key = { it.workoutExercise.id }) { ExerciseCard(it) }
+            items(items, key = { it.workoutExercise.id }) { item ->
+                ExerciseCard(item, onSetClick = { viewModel.startEditing(it, item.workoutExercise.weightModeSnapshot) })
+            }
         }
 
         ui.error?.let {
@@ -71,7 +135,7 @@ fun RecordScreen(viewModel: RecordViewModel, modifier: Modifier = Modifier) {
         }
 
         OutlinedTextField(
-            value = name,
+            value = viewModel.exerciseName,
             onValueChange = viewModel::onExerciseNameChange,
             label = { Text("动作") },
             singleLine = true,
@@ -83,7 +147,7 @@ fun RecordScreen(viewModel: RecordViewModel, modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
         ) {
             OutlinedTextField(
-                value = weight,
+                value = viewModel.weightKg,
                 onValueChange = viewModel::onWeightChange,
                 label = { Text("重量 kg") },
                 singleLine = true,
@@ -91,7 +155,7 @@ fun RecordScreen(viewModel: RecordViewModel, modifier: Modifier = Modifier) {
                 modifier = Modifier.weight(1f),
             )
             OutlinedTextField(
-                value = reps,
+                value = viewModel.reps,
                 onValueChange = viewModel::onRepsChange,
                 label = { Text("次数") },
                 singleLine = true,
@@ -100,7 +164,7 @@ fun RecordScreen(viewModel: RecordViewModel, modifier: Modifier = Modifier) {
             )
             FilledIconButton(
                 onClick = viewModel::confirmSet,
-                enabled = !ui.saving,
+                enabled = !ui.saving && target != null,
                 modifier = Modifier.size(56.dp),
             ) {
                 if (ui.saving) {
@@ -111,28 +175,53 @@ fun RecordScreen(viewModel: RecordViewModel, modifier: Modifier = Modifier) {
             }
         }
     }
+
+    viewModel.editing?.let { state ->
+        EditSetDialog(
+            state = state,
+            onWeightChange = viewModel::onEditWeightChange,
+            onRepsChange = viewModel::onEditRepsChange,
+            onSave = viewModel::saveEditing,
+            onDelete = viewModel::deleteEditing,
+            onDismiss = viewModel::dismissEditing,
+        )
+    }
+
+    dateDialog?.let { kind ->
+        val today = viewModel.today()
+        TrainingDatePickerDialog(
+            initial = if (kind == DateDialog.ChangeDate) trainingDate ?: today else today,
+            today = today,
+            confirmText = if (kind == DateDialog.ChangeDate) "修改日期" else "新建",
+            onConfirm = { date ->
+                if (kind == DateDialog.ChangeDate) viewModel.changeDate(date) else viewModel.startNewRecord(date)
+                dateDialog = null
+            },
+            onDismiss = { dateDialog = null },
+        )
+    }
 }
 
 @Composable
-private fun ExerciseCard(item: WorkoutExerciseWithSets) {
-    val sets = item.sets.filter { it.status == SetStatus.LOGGED }.sortedBy { it.position }
+private fun ExerciseCard(item: ExerciseItem, onSetClick: (SetEntryEntity) -> Unit) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
-            Text(item.workoutExercise.nameSnapshot, style = MaterialTheme.typography.titleMedium)
+            val suffix = if (item.workoutExercise.weightModeSnapshot == WeightMode.BODYWEIGHT) "（自重）" else ""
+            Text(item.workoutExercise.nameSnapshot + suffix, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
             TableRow("组次", "上次", "本次", header = true)
             HorizontalDivider()
-            sets.forEachIndexed { index, set ->
-                TableRow("${index + 1}", "—", set.displayText())
+            item.logged.forEachIndexed { index, set ->
+                TableRow("${index + 1}", "—", set.displayText(), Modifier.clickable { onSetClick(set) })
             }
         }
     }
 }
 
 @Composable
-private fun TableRow(a: String, b: String, c: String, header: Boolean = false) {
+private fun TableRow(a: String, b: String, c: String, modifier: Modifier = Modifier, header: Boolean = false) {
     val style = if (header) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyMedium
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+    Row(modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Text(a, style = style, modifier = Modifier.weight(0.6f))
         Text(b, style = style, modifier = Modifier.weight(1.5f))
         Text(c, style = style, modifier = Modifier.weight(1.5f))

@@ -9,9 +9,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -34,8 +37,10 @@ private enum class Tab(val route: String, val label: String, val icon: ImageVect
 fun AppNavigation() {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             NavigationBar {
                 Tab.entries.forEach { tab ->
@@ -62,10 +67,10 @@ fun AppNavigation() {
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
         ) {
             composable(Tab.Record.route) {
-                RecordScreen(viewModel(factory = AppViewModelFactory.Factory))
+                RecordScreen(viewModel(factory = AppViewModelFactory.Factory), snackbarHostState)
             }
             composable(Tab.History.route) {
-                HistoryScreen(viewModel(factory = AppViewModelFactory.Factory))
+                HistoryScreen(viewModel(factory = AppViewModelFactory.Factory), snackbarHostState)
             }
         }
     }
