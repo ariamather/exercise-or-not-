@@ -70,6 +70,7 @@ fun AppNavigation() {
             composable(Tab.Record.route) {
                 RecordScreen(
                     viewModel(factory = AppViewModelFactory.Factory),
+                    viewModel(factory = AppViewModelFactory.Factory),
                     snackbarHostState,
                     onOpenHistory = { navigateToTab(Tab.History) },
                 )

@@ -26,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -49,6 +48,8 @@ import com.exerciseornot.app.data.WorkoutTarget
 import com.exerciseornot.app.data.db.SetEntryEntity
 import com.exerciseornot.app.data.db.WeightMode
 import com.exerciseornot.app.data.model.ExerciseItem
+import com.exerciseornot.app.ui.dice.DiceCard
+import com.exerciseornot.app.ui.dice.DiceViewModel
 import com.exerciseornot.app.ui.displayText
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -63,6 +64,7 @@ private enum class DateDialog { ChangeDate, NewRecord }
 @Composable
 fun RecordScreen(
     viewModel: RecordViewModel,
+    diceViewModel: DiceViewModel,
     snackbarHostState: SnackbarHostState,
     onOpenHistory: () -> Unit,
     modifier: Modifier = Modifier,
@@ -110,12 +112,7 @@ fun RecordScreen(
     }
 
     Column(modifier.fillMaxSize().imePadding().padding(horizontal = 16.dp)) {
-        OutlinedCard(Modifier.fillMaxWidth().padding(top = 16.dp)) {
-            Column(Modifier.padding(16.dp)) {
-                Text("今天练不练？", style = MaterialTheme.typography.titleMedium)
-                Text("骰子功能将在后续阶段提供", style = MaterialTheme.typography.bodySmall)
-            }
-        }
+        DiceCard(diceViewModel, Modifier.padding(top = 16.dp))
 
         resume?.let { w ->
             BannerCard(

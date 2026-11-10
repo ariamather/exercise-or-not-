@@ -5,6 +5,7 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.exerciseornot.app.ExerciseOrNotApp
+import com.exerciseornot.app.ui.dice.DiceViewModel
 import com.exerciseornot.app.ui.history.HistoryViewModel
 import com.exerciseornot.app.ui.record.RecordViewModel
 
@@ -22,6 +23,10 @@ object AppViewModelFactory {
         initializer {
             val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ExerciseOrNotApp
             HistoryViewModel(app.container.workoutRepository, app.container.recordRequests)
+        }
+        initializer {
+            val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ExerciseOrNotApp
+            DiceViewModel(app.container.dicePreferences, app.container.clock)
         }
     }
 }
