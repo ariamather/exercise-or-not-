@@ -5,19 +5,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
@@ -29,7 +24,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -38,6 +32,9 @@ import com.exerciseornot.app.BuildConfig
 import com.exerciseornot.app.backup.BACKUP_FORMAT_VERSION
 import com.exerciseornot.app.backup.BackupSummary
 import com.exerciseornot.app.data.db.DB_SCHEMA_VERSION
+import com.exerciseornot.app.ui.common.HintText
+import com.exerciseornot.app.ui.common.ScreenHeader
+import com.exerciseornot.app.ui.common.SectionTitle
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -57,6 +54,7 @@ fun SettingsScreen(
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val pending by viewModel.pending.collectAsStateWithLifecycle()
     var confirmUndo by rememberSaveable { mutableStateOf(false) }
+    var showPrivacy by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
@@ -70,20 +68,14 @@ fun SettingsScreen(
     }
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 4.dp, top = 4.dp)) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回") }
-            Text("设置", style = MaterialTheme.typography.titleLarge)
-        }
-        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("备份与恢复", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+        ScreenHeader("设置", onBack = onBack)
+        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            SectionTitle("备份与恢复")
             Text(
                 "训练数据只保存在这台手机上，没有云同步。换机或重装前，请先导出备份，存到网盘或发给自己。",
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Text(
-                "上次导出：" + (lastExport?.let(::timeText) ?: "从未导出"),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            HintText("上次导出：" + (lastExport?.let(::timeText) ?: "从未导出"))
             Button(
                 onClick = { exportLauncher.launch("exerciseornot-backup-${LocalDate.now()}.json") },
                 enabled = !busy,
@@ -98,13 +90,16 @@ fun SettingsScreen(
                 OutlinedButton(onClick = { confirmUndo = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                     Text("撤销上次恢复")
                 }
-                Text("恢复前的数据已于 ${timeText(at)} 自动保留", style = MaterialTheme.typography.bodySmall)
+                HintText("恢复前的数据已于 ${timeText(at)} 自动保留")
             }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            Text(
+            SectionTitle("隐私")
+            Text("不联网，数据只在这台手机上。", style = MaterialTheme.typography.bodyMedium)
+            OutlinedButton(onClick = { showPrivacy = true }, modifier = Modifier.fillMaxWidth()) { Text("查看隐私说明") }
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            HintText(
                 "版本 ${BuildConfig.VERSION_NAME} · 数据库 v$DB_SCHEMA_VERSION · 备份格式 v$BACKUP_FORMAT_VERSION",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(bottom = 16.dp),
+                Modifier.padding(bottom = 16.dp),
             )
         }
     }
@@ -118,6 +113,14 @@ fun SettingsScreen(
             dismissButton = { TextButton(onClick = viewModel::cancelRestore) { Text("取消") } },
         )
     }
+    if (showPrivacy) {
+        AlertDialog(
+            onDismissRequest = { showPrivacy = false },
+            title = { Text("隐私说明") },
+            text = { Text(PRIVACY_TEXT) },
+            confirmButton = { TextButton(onClick = { showPrivacy = false }) { Text("知道了") } },
+        )
+    }
     if (confirmUndo) {
         AlertDialog(
             onDismissRequest = { confirmUndo = false },
@@ -128,6 +131,9 @@ fun SettingsScreen(
         )
     }
 }
+
+private const val PRIVACY_TEXT =
+    "不联网（应用没有网络权限），不收集、不上传任何信息，没有广告和统计。训练记录和骰子设置只保存在这台手机上；导出的备份文件保存在你自己选择的位置。"
 
 private val timeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 

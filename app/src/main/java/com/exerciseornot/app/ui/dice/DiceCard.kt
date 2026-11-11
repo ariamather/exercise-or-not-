@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,13 +36,18 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.exerciseornot.app.dice.DICE_FACES
 import com.exerciseornot.app.dice.trainProbabilityText
+import com.exerciseornot.app.ui.common.ErrorText
+import com.exerciseornot.app.ui.common.HintText
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -78,19 +84,23 @@ fun DiceCard(viewModel: DiceViewModel, modifier: Modifier = Modifier) {
                         Icon(Icons.Filled.Settings, contentDescription = "设置骰子点数")
                     }
                 }
-                Text(facesSummary(faces), style = MaterialTheme.typography.bodySmall)
+                HintText(facesSummary(faces))
                 val r = result
                 when {
-                    rolling -> Text("…", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+                    rolling -> Text(
+                        "…",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(top = 8.dp).semantics { contentDescription = "正在掷骰子" },
+                    )
                     r != null -> Text(
                         "掷出 ${r.face} · ${if (r.train) "练" else "休息"}",
                         style = MaterialTheme.typography.titleMedium,
                         color = if (r.train) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(top = 8.dp),
+                        modifier = Modifier.padding(top = 8.dp).semantics { liveRegion = LiveRegionMode.Polite },
                     )
                 }
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-                Spacer(Modifier.padding(top = 8.dp))
+                error?.let { ErrorText(it) }
+                Spacer(Modifier.height(8.dp))
                 if (result == null && !rolling) {
                     Button(onClick = viewModel::roll) { Text("掷骰子") }
                 } else {
@@ -100,7 +110,8 @@ fun DiceCard(viewModel: DiceViewModel, modifier: Modifier = Modifier) {
             Spacer(Modifier.width(12.dp))
             DieFace(
                 face = face,
-                size = 72.dp,
+                size = if (LocalConfiguration.current.screenWidthDp < 360) 56.dp else 72.dp,
+                rolling = rolling,
                 modifier = Modifier
                     .padding(end = 12.dp, top = 12.dp)
                     .graphicsLayer {
@@ -125,13 +136,25 @@ internal fun facesSummary(faces: Set<Int>): String {
 
 /** Pips drawn on a rounded square; face 0 draws an empty die (not rolled yet). */
 @Composable
-fun DieFace(face: Int, size: Dp, modifier: Modifier = Modifier, pipColor: Color = MaterialTheme.colorScheme.onSurface) {
+fun DieFace(
+    face: Int,
+    size: Dp,
+    modifier: Modifier = Modifier,
+    pipColor: Color = MaterialTheme.colorScheme.onSurface,
+    rolling: Boolean = false,
+) {
     val border = MaterialTheme.colorScheme.outline
     val fill = MaterialTheme.colorScheme.surfaceVariant
     Canvas(
         modifier
             .size(size)
-            .semantics { contentDescription = if (face in DICE_FACES) "骰子 $face 点" else "骰子" },
+            .semantics {
+                contentDescription = when {
+                    rolling -> "正在掷骰子"
+                    face in DICE_FACES -> "骰子 $face 点"
+                    else -> "骰子"
+                }
+            },
     ) {
         val corner = CornerRadius(this.size.minDimension * 0.18f)
         drawRoundRect(fill, cornerRadius = corner)

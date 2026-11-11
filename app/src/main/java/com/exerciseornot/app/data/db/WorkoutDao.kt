@@ -151,6 +151,13 @@ interface WorkoutDao {
     )
     fun observeExerciseHistory(exerciseId: String, limit: Int): Flow<List<ExerciseHistoryRow>>
 
+    // ---- first-use hints ----
+
+    @Query("SELECT EXISTS(SELECT 1 FROM set_entry WHERE status = 'LOGGED')")
+    fun observeHasLoggedSet(): Flow<Boolean>
+
+    @Query("SELECT COUNT(*) FROM workout") fun observeWorkoutCount(): Flow<Int>
+
     // ---- backup ----
 
     @Query("SELECT * FROM exercise") suspend fun allExercises(): List<ExerciseEntity>

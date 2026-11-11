@@ -81,12 +81,14 @@ fun AppNavigation() {
                 RecordScreen(
                     viewModel(factory = AppViewModelFactory.Factory),
                     viewModel(factory = AppViewModelFactory.Factory),
+                    viewModel(factory = AppViewModelFactory.Factory),
                     snackbarHostState,
                     onOpenHistory = { navigateToTab(Tab.History) },
                 )
             }
             composable(Tab.History.route) {
                 HistoryScreen(
+                    viewModel(factory = AppViewModelFactory.Factory),
                     viewModel(factory = AppViewModelFactory.Factory),
                     snackbarHostState,
                     onOpenRecord = { navigateToTab(Tab.Record) },

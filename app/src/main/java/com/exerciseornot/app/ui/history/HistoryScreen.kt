@@ -7,7 +7,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -34,7 +37,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.exerciseornot.app.data.model.WorkoutDetail
+import com.exerciseornot.app.ui.common.HintText
+import com.exerciseornot.app.ui.common.ScreenHeader
 import com.exerciseornot.app.ui.compactSetText
+import com.exerciseornot.app.ui.hints.Hint
+import com.exerciseornot.app.ui.hints.HintCard
+import com.exerciseornot.app.ui.hints.HintsViewModel
 import com.exerciseornot.app.ui.dayLabel
 import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalDate
@@ -42,12 +50,14 @@ import java.time.LocalDate
 @Composable
 fun HistoryScreen(
     viewModel: HistoryViewModel,
+    hintsViewModel: HintsViewModel,
     snackbarHostState: SnackbarHostState,
     onOpenRecord: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val workouts by viewModel.workouts.collectAsStateWithLifecycle()
+    val showBackupHint by hintsViewModel.showBackup.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel) {
         viewModel.deletions.collectLatest { snapshot ->
@@ -63,28 +73,32 @@ fun HistoryScreen(
     }
 
     // The header (and its settings entry) also shows with no history, so a fresh install can restore a backup.
-    val header: @Composable () -> Unit = {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-            Text("历史", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+    val today = viewModel.today
+    Column(modifier.fillMaxSize()) {
+        ScreenHeader("历史") {
             IconButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, contentDescription = "设置与备份") }
         }
-    }
-
-    if (workouts.isEmpty()) {
-        Column(modifier.padding(horizontal = 16.dp)) {
-            header()
-            Text("还没有训练记录", modifier = Modifier.padding(top = 8.dp))
-            Text("换了手机？可以在右上角设置里从备份恢复。", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+        if (workouts.isEmpty()) {
+            Column(Modifier.padding(horizontal = 16.dp).verticalScroll(rememberScrollState())) {
+                Text("还没有训练记录", style = MaterialTheme.typography.bodyLarge)
+                HintText("换了手机？可以在右上角设置里从备份恢复。", Modifier.padding(top = 4.dp))
+            }
+            return@Column
         }
-        return
-    }
-    val today = viewModel.today
-    LazyColumn(
-        modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item { header() }
-        item { Text("点一次训练可继续记录或修改", style = MaterialTheme.typography.bodySmall) }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+        if (showBackupHint) {
+            item(key = "hint.backup") {
+                HintCard(
+                    "记录只保存在这台手机上，建议到右上角设置里导出一份备份。",
+                    onDismiss = { hintsViewModel.dismiss(Hint.Backup) },
+                )
+            }
+        }
+        item(key = "hint.open") { HintText("点一次训练可继续记录或修改") }
         items(workouts, key = { it.workout.id }) { w ->
             WorkoutCard(
                 item = w,
@@ -93,6 +107,7 @@ fun HistoryScreen(
                 onReuse = { viewModel.reuse(w.workout.id) },
                 onDelete = { viewModel.deleteWorkout(w.workout.id) },
             )
+        }
         }
     }
 }
@@ -109,17 +124,17 @@ private fun WorkoutCard(
     val dateLabel = item.trainingDate.dayLabel(today)
 
     Card(Modifier.fillMaxWidth().clickable(onClickLabel = "打开 $dateLabel 的训练", onClick = onOpen)) {
-        Column(Modifier.padding(start = 16.dp, end = 4.dp, bottom = 16.dp)) {
+        Column(Modifier.padding(start = 16.dp, end = 8.dp, bottom = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f).padding(top = 12.dp)) {
                     Text(dateLabel, style = MaterialTheme.typography.titleMedium)
                     if (item.hasLogged) {
-                        Text("${item.loggedItems.size} 个动作 · ${item.loggedSetCount} 组", style = MaterialTheme.typography.bodySmall)
+                        HintText("${item.loggedItems.size} 个动作 · ${item.loggedSetCount} 组")
                     } else {
                         Text(
                             "未确认 · 只有待确认的组",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
+                            color = MaterialTheme.colorScheme.tertiary,
                         )
                     }
                 }

@@ -1,5 +1,6 @@
 package com.exerciseornot.app.ui.record
 
+import com.exerciseornot.app.ui.common.ErrorText
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,7 +42,8 @@ fun EditSetDialog(
                     OutlinedTextField(
                         value = state.weight,
                         onValueChange = onWeightChange,
-                        label = { Text(if (state.weightMode == WeightMode.BODYWEIGHT) "附加重量 kg" else "重量 kg") },
+                        label = { Text(if (state.weightMode == WeightMode.BODYWEIGHT) "附加重量" else "重量") },
+                        suffix = { Text("kg") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.weight(1f),
@@ -55,7 +57,7 @@ fun EditSetDialog(
                         modifier = Modifier.weight(1f),
                     )
                 }
-                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                state.error?.let { ErrorText(it) }
             }
         },
         confirmButton = {

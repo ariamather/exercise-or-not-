@@ -1,5 +1,7 @@
 package com.exerciseornot.app.ui.record
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,7 +35,7 @@ fun ExerciseHistorySheet(
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.padding(horizontal = 16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
+            Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
             Text(
                 if (sessions.isEmpty()) "还没有已记录的组" else "最近 ${sessions.size} 次（最多 $EXERCISE_HISTORY_LIMIT 次）",
                 style = MaterialTheme.typography.bodySmall,

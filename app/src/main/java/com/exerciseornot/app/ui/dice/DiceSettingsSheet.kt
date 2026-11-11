@@ -1,5 +1,7 @@
 package com.exerciseornot.app.ui.dice
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,7 +24,7 @@ import com.exerciseornot.app.dice.trainProbabilityText
 fun DiceSettingsSheet(faces: Set<Int>, onToggle: (Int) -> Unit, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 32.dp)) {
-            Text("骰子点数", style = MaterialTheme.typography.titleLarge)
+            Text("骰子点数", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
             Text("选择掷出哪些点数时去练", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 12.dp))
             DICE_FACES.chunked(3).forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

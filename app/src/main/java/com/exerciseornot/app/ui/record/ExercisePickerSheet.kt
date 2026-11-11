@@ -1,5 +1,8 @@
 package com.exerciseornot.app.ui.record
 
+import com.exerciseornot.app.ui.common.SectionTitle
+import com.exerciseornot.app.ui.common.HintText
+import com.exerciseornot.app.ui.common.ErrorText
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,7 +79,7 @@ fun ExercisePickerSheet(
                 modifier = Modifier.fillMaxWidth(),
             )
             if (error != null && creating == null && renaming == null) {
-                Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 4.dp))
+                ErrorText(error, Modifier.padding(top = 4.dp))
             }
             LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp)) {
                 if (exercises.isEmpty() && q.isEmpty()) {
@@ -124,12 +127,7 @@ fun ExercisePickerSheet(
 
 @Composable
 private fun SectionLabel(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
-    )
+    SectionTitle(text, Modifier.padding(top = 12.dp, bottom = 4.dp))
 }
 
 @Composable
@@ -172,7 +170,7 @@ private fun CreateExerciseDialog(name: String, error: String?, onConfirm: (Weigh
         title = { Text("新建「$name」") },
         text = {
             Column {
-                Text("重量怎么记？之后有记录就不能再改。", style = MaterialTheme.typography.bodySmall)
+                HintText("重量怎么记？之后有记录就不能再改。")
                 WeightMode.entries.forEach { m ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -183,7 +181,7 @@ private fun CreateExerciseDialog(name: String, error: String?, onConfirm: (Weigh
                         Text(modeDescription(m), modifier = Modifier.padding(start = 8.dp, top = 12.dp, bottom = 12.dp))
                     }
                 }
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                error?.let { ErrorText(it) }
             }
         },
         confirmButton = { TextButton(onClick = { onConfirm(mode) }) { Text("新建") } },
@@ -200,8 +198,8 @@ private fun RenameDialog(exercise: ExerciseEntity, error: String?, onConfirm: (S
         text = {
             Column {
                 OutlinedTextField(value = name, onValueChange = { name = it }, singleLine = true, label = { Text("动作名称") })
-                Text("历史记录里保留原来的名称。", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                HintText("历史记录里保留原来的名称。", Modifier.padding(top = 4.dp))
+                error?.let { ErrorText(it) }
             }
         },
         confirmButton = { TextButton(onClick = { onConfirm(name) }) { Text("保存") } },

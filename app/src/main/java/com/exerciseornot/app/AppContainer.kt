@@ -8,6 +8,7 @@ import com.exerciseornot.app.data.WorkoutRepository
 import com.exerciseornot.app.data.db.AppDatabase
 import com.exerciseornot.app.dice.DicePreferences
 import com.exerciseornot.app.ui.RecordRequests
+import com.exerciseornot.app.ui.hints.HintPreferences
 import java.io.File
 import java.time.Clock
 
@@ -21,6 +22,7 @@ class AppContainer(context: Context) {
     val exerciseRepository = ExerciseRepository(database, clock)
     val recordRequests = RecordRequests()
     val dicePreferences = DicePreferences(settingsStore)
+    val hintPreferences = HintPreferences(settingsStore)
     val backupService = BackupService(
         database,
         dicePreferences,

@@ -57,6 +57,8 @@ class WorkoutRepository(
         dao.observeWorkout(id).map { it?.toDetail() }
 
     fun observeLatestWorkout(): Flow<WorkoutEntity?> = dao.observeLatestWorkout()
+    fun observeHasLoggedSet(): Flow<Boolean> = dao.observeHasLoggedSet()
+    fun observeWorkoutCount(): Flow<Int> = dao.observeWorkoutCount()
 
     suspend fun latestWorkout(): WorkoutEntity? = dao.latestWorkout()
 

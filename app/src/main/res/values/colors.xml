@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Must match background in ui/theme/Color.kt -->
+    <color name="window_background">#F6FBF5</color>
+    <color name="brand">#2F6A4F</color>
+    <color name="icon_pip">#2F6A4F</color>
+</resources>

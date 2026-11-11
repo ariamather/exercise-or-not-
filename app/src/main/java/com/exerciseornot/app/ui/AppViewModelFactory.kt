@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.exerciseornot.app.ExerciseOrNotApp
 import com.exerciseornot.app.ui.dice.DiceViewModel
 import com.exerciseornot.app.ui.history.HistoryViewModel
+import com.exerciseornot.app.ui.hints.HintsViewModel
 import com.exerciseornot.app.ui.record.RecordViewModel
 import com.exerciseornot.app.ui.settings.SettingsViewModel
 
@@ -32,6 +33,15 @@ object AppViewModelFactory {
         initializer {
             val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ExerciseOrNotApp
             SettingsViewModel(app.container.backupService)
+        }
+        initializer {
+            val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ExerciseOrNotApp
+            HintsViewModel(
+                app.container.hintPreferences,
+                app.container.workoutRepository,
+                app.container.dicePreferences,
+                app.container.backupService.lastExportAt,
+            )
         }
     }
 }
