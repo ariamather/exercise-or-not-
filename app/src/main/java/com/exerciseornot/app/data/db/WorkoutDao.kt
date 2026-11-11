@@ -15,6 +15,7 @@ interface WorkoutDao {
     @Upsert suspend fun upsertWorkoutExercise(workoutExercise: WorkoutExerciseEntity)
     @Upsert suspend fun upsertSet(set: SetEntryEntity)
 
+    @Upsert suspend fun upsertExercises(exercises: List<ExerciseEntity>)
     @Upsert suspend fun upsertWorkouts(workouts: List<WorkoutEntity>)
     @Upsert suspend fun upsertWorkoutExercises(workoutExercises: List<WorkoutExerciseEntity>)
     @Upsert suspend fun upsertSets(sets: List<SetEntryEntity>)
@@ -149,6 +150,14 @@ interface WorkoutDao {
             ") ORDER BY w.trainingDate DESC, w.performedAt DESC, w.id, s.position, s.createdAt"
     )
     fun observeExerciseHistory(exerciseId: String, limit: Int): Flow<List<ExerciseHistoryRow>>
+
+    // ---- backup ----
+
+    @Query("SELECT * FROM exercise") suspend fun allExercises(): List<ExerciseEntity>
+    @Query("DELETE FROM set_entry") suspend fun deleteAllSets()
+    @Query("DELETE FROM workout_exercise") suspend fun deleteAllWorkoutExercises()
+    @Query("DELETE FROM workout") suspend fun deleteAllWorkouts()
+    @Query("DELETE FROM exercise") suspend fun deleteAllExercises()
 
     // ---- test / diagnostics ----
 

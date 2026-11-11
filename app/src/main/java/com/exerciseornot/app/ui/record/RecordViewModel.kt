@@ -21,6 +21,7 @@ import com.exerciseornot.app.data.db.WeightMode
 import com.exerciseornot.app.data.db.WorkoutEntity
 import com.exerciseornot.app.data.model.WorkoutDetail
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -31,8 +32,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -156,6 +159,23 @@ class RecordViewModel(
         }
         viewModelScope.launch {
             detail.filterNotNull().collect(::syncDraftInputs)
+        }
+        viewModelScope.launch {
+            // After a backup restore every id on screen may be gone: drop in-memory edits and start over.
+            requests.dataReplaced.drop(1).collect {
+                saveJobs.values.forEach(Job::cancel)
+                saveJobs.clear()
+                draftInputs.clear()
+                expanded = null
+                editing = null
+                _historyExerciseId.value = null
+                val target = repository.defaultTarget()
+                setTarget(target)
+                // detail won't re-emit if the restored workout equals what was shown, so resync from the db.
+                if (target is WorkoutTarget.Existing) {
+                    repository.observeWorkout(target.workoutId).first()?.let(::syncDraftInputs)
+                }
+            }
         }
     }
 
@@ -295,12 +315,23 @@ class RecordViewModel(
         saveJobs[setId] = viewModelScope.launch {
             delay(DRAFT_SAVE_DEBOUNCE_MS)
             saveJobs.remove(setId)
-            repository.saveDraft(setId, parsed.first, parsed.second)
+            saveDraft(setId, parsed.first, parsed.second)
         }
     }
 
     private fun launchSave(setId: String, weightGrams: Int?, reps: Int?) {
-        viewModelScope.launch { runCatching { repository.saveDraft(setId, weightGrams, reps) } }
+        viewModelScope.launch { saveDraft(setId, weightGrams, reps) }
+    }
+
+    /** A failed write keeps the typed text and marks the row; the next edit, flush or ✓ retries. */
+    private suspend fun saveDraft(setId: String, weightGrams: Int?, reps: Int?) {
+        try {
+            repository.saveDraft(setId, weightGrams, reps)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            draftInputs[setId]?.let { draftInputs[setId] = it.copy(error = DRAFT_SAVE_FAILED) }
+        }
     }
 
     /** Null if the text can't be stored yet (e.g. "4." or "0" reps); blanks are stored as null. */
@@ -412,10 +443,12 @@ class RecordViewModel(
         const val KEY_TARGET_WORKOUT = "record.targetWorkoutId"
         const val KEY_TARGET_DATE = "record.targetNewDate"
         const val DRAFT_SAVE_DEBOUNCE_MS = 500L
+        const val DRAFT_SAVE_FAILED = "未能保存，修改或点 ✓ 重试"
     }
 }
 
+/** Only our own validation messages (IllegalArgumentException) are shown verbatim; storage errors are not. */
 internal fun Throwable.userMessage(): String = when (this) {
-    is IllegalArgumentException, is IllegalStateException -> message ?: "操作失败"
-    else -> "保存失败，请重试（${message ?: javaClass.simpleName}）"
+    is IllegalArgumentException -> message ?: "操作失败"
+    else -> "保存失败，请重试"
 }

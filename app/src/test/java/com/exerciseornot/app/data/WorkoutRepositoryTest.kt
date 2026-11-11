@@ -388,7 +388,7 @@ class WorkoutRepositoryTest {
         val setSnapshot = repo.deleteSet(dao.loggedOf(added.workoutExerciseId).first().id)
         repo.deleteWorkout(added.workoutId)
 
-        assertTrue(runCatching { repo.restore(setSnapshot) }.exceptionOrNull() is IllegalStateException)
+        assertTrue(runCatching { repo.restore(setSnapshot) }.exceptionOrNull() is IllegalArgumentException)
         assertEquals(0, dao.allSets().size)
     }
 

@@ -386,4 +386,54 @@ class RecordViewModelTest {
         vm.hideHistory()
         awaitUntil("cleared") { vm.exerciseHistory.value.isEmpty() }
     }
+
+    @Test
+    fun draftSaveFailure_keepsInputAndMarksRow_thenRetrySucceeds() {
+        val vm = newViewModel()
+        val draft = vm.addAndAwaitDraft(exercise("卧推"))
+        val sql = db.openHelper.writableDatabase
+        sql.execSQL("CREATE TRIGGER fail_set_update BEFORE UPDATE ON set_entry BEGIN SELECT RAISE(ABORT, 'disk full'); END")
+
+        vm.onDraftWeightChange(draft, "42.5")
+        awaitUntil("save error") { vm.draftInputs[draft]?.error != null }
+        assertEquals("42.5", vm.draftInputs[draft]!!.weight)
+        assertNull(runBlocking { dao.getSet(draft) }!!.weightGrams)
+
+        sql.execSQL("DROP TRIGGER fail_set_update")
+        vm.flushDrafts()
+        awaitUntil("retried") { runBlocking { dao.getSet(draft) }!!.weightGrams == 42_500 }
+    }
+
+    @Test
+    fun confirmFailure_showsGenericMessage_notStorageDetails() {
+        val vm = newViewModel()
+        val draft = vm.addAndAwaitDraft(exercise("卧推"))
+        db.openHelper.writableDatabase
+            .execSQL("CREATE TRIGGER fail_set_update BEFORE UPDATE ON set_entry BEGIN SELECT RAISE(ABORT, 'disk full'); END")
+        vm.onDraftWeightChange(draft, "40")
+        vm.onDraftRepsChange(draft, "10")
+
+        vm.confirm(draft)
+        awaitUntil("confirm error") { vm.draftInputs[draft]?.let { !it.saving && it.error != null } == true }
+        assertEquals("保存失败，请重试", vm.draftInputs[draft]!!.error)
+        assertEquals(0, logged().size)
+    }
+
+    @Test
+    fun dataReplaced_dropsInMemoryStateAndGoesToToday() {
+        val old = runBlocking { repo.logSets(db, WorkoutTarget.New(yesterday), exercise("深蹲"), 60_000 to 5) }
+        val vm = newViewModel()
+        requests.open(old.workoutId)
+        awaitUntil("switched") { vm.target.value == WorkoutTarget.Existing(old.workoutId) && vm.draftInputs.isNotEmpty() }
+        vm.onDraftWeightChange(vm.draftInputs.keys.single(), "99")
+
+        // Simulate a restore that wiped everything.
+        runBlocking { dao.run { deleteAllSets(); deleteAllWorkoutExercises(); deleteAllWorkouts() } }
+        requests.notifyDataReplaced()
+
+        awaitUntil("reset") { vm.target.value == WorkoutTarget.New(today) && vm.draftInputs.isEmpty() }
+        assertNull(vm.editing)
+        Thread.sleep(700)
+        assertEquals(0, runBlocking { dao.countWorkouts() })
+    }
 }

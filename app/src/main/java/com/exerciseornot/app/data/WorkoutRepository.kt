@@ -35,7 +35,7 @@ data class ExerciseSession(val workoutId: String, val trainingDate: LocalDate, v
 const val EXERCISE_HISTORY_LIMIT = 20
 
 /** Thrown when an [WorkoutTarget.Existing] workout no longer exists (e.g. deleted from history). */
-class WorkoutNotFoundException : IllegalStateException("这次训练已被删除")
+class WorkoutNotFoundException : IllegalArgumentException("这次训练已被删除")
 
 /**
  * All rules about workouts and sets live here. Validation failures throw
@@ -263,13 +263,11 @@ class WorkoutRepository(
         val restoredWorkouts = snapshot.workouts.map { it.id }.toSet()
         val restoredItems = snapshot.workoutExercises.map { it.id }.toSet()
         snapshot.workoutExercises.forEach {
-            if (it.workoutId !in restoredWorkouts && dao.getWorkout(it.workoutId) == null) {
-                throw IllegalStateException("无法撤销：所属训练已被删除")
-            }
+            require(it.workoutId in restoredWorkouts || dao.getWorkout(it.workoutId) != null) { "无法撤销：所属训练已被删除" }
         }
         snapshot.sets.forEach {
-            if (it.workoutExerciseId !in restoredItems && dao.getWorkoutExercise(it.workoutExerciseId) == null) {
-                throw IllegalStateException("无法撤销：所属训练已被删除")
+            require(it.workoutExerciseId in restoredItems || dao.getWorkoutExercise(it.workoutExerciseId) != null) {
+                "无法撤销：所属训练已被删除"
             }
         }
         dao.upsertWorkouts(snapshot.workouts)

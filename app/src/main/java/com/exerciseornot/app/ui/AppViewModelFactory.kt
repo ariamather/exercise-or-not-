@@ -8,6 +8,7 @@ import com.exerciseornot.app.ExerciseOrNotApp
 import com.exerciseornot.app.ui.dice.DiceViewModel
 import com.exerciseornot.app.ui.history.HistoryViewModel
 import com.exerciseornot.app.ui.record.RecordViewModel
+import com.exerciseornot.app.ui.settings.SettingsViewModel
 
 object AppViewModelFactory {
     val Factory: ViewModelProvider.Factory = viewModelFactory {
@@ -27,6 +28,10 @@ object AppViewModelFactory {
         initializer {
             val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ExerciseOrNotApp
             DiceViewModel(app.container.dicePreferences, app.container.clock)
+        }
+        initializer {
+            val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ExerciseOrNotApp
+            SettingsViewModel(app.container.backupService)
         }
     }
 }

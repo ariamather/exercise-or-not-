@@ -27,6 +27,9 @@ import androidx.navigation.compose.rememberNavController
 import com.exerciseornot.app.ui.AppViewModelFactory
 import com.exerciseornot.app.ui.history.HistoryScreen
 import com.exerciseornot.app.ui.record.RecordScreen
+import com.exerciseornot.app.ui.settings.SettingsScreen
+
+private const val SETTINGS_ROUTE = "settings"
 
 private enum class Tab(val route: String, val label: String, val icon: ImageVector) {
     Record("record", "记录", Icons.Filled.Edit),
@@ -38,11 +41,18 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val currentRoute = backStack?.destination?.hierarchy?.firstOrNull()?.route
+    // Settings is opened from history, so the history tab stays selected while it is shown.
+    val selectedTab = if (currentRoute == SETTINGS_ROUTE) Tab.History else Tab.entries.firstOrNull { it.route == currentRoute }
     val navigateToTab: (Tab) -> Unit = { tab ->
-        navController.navigate(tab.route) {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
+        // Close settings first so the saved History stack doesn't bring it back later.
+        if (currentRoute == SETTINGS_ROUTE) navController.popBackStack()
+        if (tab != Tab.History || currentRoute != SETTINGS_ROUTE) {
+            navController.navigate(tab.route) {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
         }
     }
 
@@ -52,7 +62,7 @@ fun AppNavigation() {
             NavigationBar {
                 Tab.entries.forEach { tab ->
                     NavigationBarItem(
-                        selected = backStack?.destination?.hierarchy?.any { it.route == tab.route } == true,
+                        selected = tab == selectedTab,
                         onClick = { navigateToTab(tab) },
                         icon = { Icon(tab.icon, contentDescription = null) },
                         label = { Text(tab.label) },
@@ -80,6 +90,14 @@ fun AppNavigation() {
                     viewModel(factory = AppViewModelFactory.Factory),
                     snackbarHostState,
                     onOpenRecord = { navigateToTab(Tab.Record) },
+                    onOpenSettings = { navController.navigate(SETTINGS_ROUTE) { launchSingleTop = true } },
+                )
+            }
+            composable(SETTINGS_ROUTE) {
+                SettingsScreen(
+                    viewModel(factory = AppViewModelFactory.Factory),
+                    snackbarHostState,
+                    onBack = { navController.popBackStack() },
                 )
             }
         }

@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
 }
@@ -17,10 +18,30 @@ android {
         versionName = "0.1.0"
     }
 
+    // Release signing comes from ~/.gradle/gradle.properties only; without it release builds are unsigned.
+    val releaseStoreFile = providers.gradleProperty("EON_RELEASE_STORE_FILE").orNull
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = providers.gradleProperty("EON_RELEASE_STORE_PASSWORD").get()
+                keyAlias = providers.gradleProperty("EON_RELEASE_KEY_ALIAS").get()
+                keyPassword = providers.gradleProperty("EON_RELEASE_KEY_PASSWORD").get()
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (releaseStoreFile != null) signingConfig = signingConfigs.getByName("release")
         }
+    }
+
+    sourceSets {
+        // MigrationTestHelper reads exported schemas from assets; Robolectric only sees the app's
+        // own merged assets, so they go into debug (never into release builds).
+        getByName("debug").assets.directories.add("$projectDir/schemas")
     }
 
     compileOptions {
@@ -30,6 +51,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {
@@ -67,6 +89,7 @@ dependencies {
     ksp(libs.room.compiler)
 
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

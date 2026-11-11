@@ -3,6 +3,7 @@ plugins {
     // Not applied (AGP 9 has built-in Kotlin); declared to raise KGP above AGP's bundled 2.2.10.
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.room) apply false
 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -43,6 +44,7 @@ fun HistoryScreen(
     viewModel: HistoryViewModel,
     snackbarHostState: SnackbarHostState,
     onOpenRecord: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val workouts by viewModel.workouts.collectAsStateWithLifecycle()
@@ -60,8 +62,20 @@ fun HistoryScreen(
         viewModel.openRecord.collect { onOpenRecord() }
     }
 
+    // The header (and its settings entry) also shows with no history, so a fresh install can restore a backup.
+    val header: @Composable () -> Unit = {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+            Text("历史", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            IconButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, contentDescription = "设置与备份") }
+        }
+    }
+
     if (workouts.isEmpty()) {
-        Text("还没有训练记录", modifier = modifier.padding(16.dp))
+        Column(modifier.padding(horizontal = 16.dp)) {
+            header()
+            Text("还没有训练记录", modifier = Modifier.padding(top = 8.dp))
+            Text("换了手机？可以在右上角设置里从备份恢复。", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+        }
         return
     }
     val today = viewModel.today
@@ -69,7 +83,8 @@ fun HistoryScreen(
         modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { Text("点一次训练可继续记录或修改", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp)) }
+        item { header() }
+        item { Text("点一次训练可继续记录或修改", style = MaterialTheme.typography.bodySmall) }
         items(workouts, key = { it.workout.id }) { w ->
             WorkoutCard(
                 item = w,
