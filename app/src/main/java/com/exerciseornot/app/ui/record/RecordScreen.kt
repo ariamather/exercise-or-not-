@@ -1,31 +1,34 @@
 package com.exerciseornot.app.ui.record
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -36,19 +39,29 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,28 +69,24 @@ import com.exerciseornot.app.data.WorkoutTarget
 import com.exerciseornot.app.data.db.SetEntryEntity
 import com.exerciseornot.app.data.db.WeightMode
 import com.exerciseornot.app.data.model.ExerciseItem
-import com.exerciseornot.app.ui.dice.DiceCard
-import com.exerciseornot.app.ui.dice.DiceViewModel
+import com.exerciseornot.app.ui.common.BrandHeader
 import com.exerciseornot.app.ui.common.ErrorText
 import com.exerciseornot.app.ui.displayText
-import com.exerciseornot.app.ui.hints.Hint
-import com.exerciseornot.app.ui.hints.HintCard
-import com.exerciseornot.app.ui.hints.HintsViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private val shortDate = DateTimeFormatter.ofPattern("MM-dd")
-
+private val recordDate = DateTimeFormatter.ofPattern("M 月 d 日 · E", Locale.CHINA)
 private enum class DateDialog { ChangeDate, NewRecord }
 
 @Composable
 fun RecordScreen(
     viewModel: RecordViewModel,
-    diceViewModel: DiceViewModel,
-    hintsViewModel: HintsViewModel,
     snackbarHostState: SnackbarHostState,
     onOpenHistory: () -> Unit,
     modifier: Modifier = Modifier,
@@ -89,14 +98,17 @@ fun RecordScreen(
     val pickerList by viewModel.pickerList.collectAsStateWithLifecycle()
     val exerciseHistory by viewModel.exerciseHistory.collectAsStateWithLifecycle()
     val ui by viewModel.ui.collectAsStateWithLifecycle()
-    val showDiceHint by hintsViewModel.showDice.collectAsStateWithLifecycle()
-    val showRecordHint by hintsViewModel.showRecord.collectAsStateWithLifecycle()
     var dateDialog by rememberSaveable { mutableStateOf<DateDialog?>(null) }
     var showPicker by rememberSaveable { mutableStateOf(false) }
-    val listState = rememberLazyListState()
+    var sliderActive by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+    val items = detail?.items.orEmpty()
+    val currentItems by rememberUpdatedState(items)
+    val pager = rememberPagerState(pageCount = { items.size })
+    val scope = rememberCoroutineScope()
 
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.flushDrafts() }
-
+    DisposableEffect(viewModel) { onDispose { viewModel.flushDrafts() } }
     LaunchedEffect(viewModel) {
         viewModel.deletions.collectLatest { snapshot ->
             val result = snackbarHostState.showSnackbar("已删除", actionLabel = "撤销", duration = SnackbarDuration.Long)
@@ -106,8 +118,24 @@ fun RecordScreen(
     LaunchedEffect(viewModel) {
         viewModel.notices.collect { snackbarHostState.showSnackbar(it) }
     }
-
-    val items = detail?.items.orEmpty()
+    LaunchedEffect(viewModel) {
+        viewModel.scrollTo.collect { weId ->
+            // Wait for the Room result to reach Compose before selecting the added/existing card.
+            val index = withTimeoutOrNull(2_000) {
+                snapshotFlow { currentItems.indexOfFirst { it.workoutExercise.id == weId } }.first { it >= 0 }
+            } ?: return@collect
+            pager.scrollToPage(index)
+            scrollState.animateScrollTo(0)
+        }
+    }
+    val workoutId = detail?.workout?.id
+    var shownWorkoutId by rememberSaveable { mutableStateOf(workoutId) }
+    LaunchedEffect(workoutId) {
+        if (workoutId != null) {
+            if (shownWorkoutId != null && shownWorkoutId != workoutId && items.isNotEmpty()) pager.scrollToPage(0)
+            shownWorkoutId = workoutId
+        }
+    }
 
     val trainingDate: LocalDate? = when (val t = target) {
         is WorkoutTarget.New -> t.date
@@ -115,101 +143,83 @@ fun RecordScreen(
         null -> null
     }
     val editingPast = target is WorkoutTarget.Existing && trainingDate != null && trainingDate != viewModel.today()
-    // Must match the header items emitted above the exercise cards below.
-    val headerCount = listOf(true, showDiceHint, resume != null, editingPast, true, ui.error != null, showRecordHint).count { it }
-    val currentHeaderCount by rememberUpdatedState(headerCount)
 
-    LaunchedEffect(viewModel) {
-        viewModel.scrollTo.collect { weId ->
-            // The event can beat the Room flow; wait until the card is actually in the list.
-            val d = withTimeoutOrNull(2_000) {
-                viewModel.detail.first { d -> d?.items?.any { it.workoutExercise.id == weId } == true }
+    Column(modifier.fillMaxSize().imePadding()) {
+        BrandHeader()
+        Column(
+            Modifier.weight(1f).verticalScroll(scrollState).padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (editingPast) "这次的记录." else "今天的记录.",
+                    fontSize = 28.sp, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                )
+                TextButton(onClick = onOpenHistory) { Text("历史 ↗", fontSize = 12.sp) }
             }
-            val index = d?.items?.indexOfFirst { it.workoutExercise.id == weId } ?: return@collect
-            listState.animateScrollToItem(currentHeaderCount + index)
-        }
-    }
-
-
-    LazyColumn(
-        state = listState,
-        modifier = modifier.fillMaxSize().imePadding(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-            item(key = KEY_DICE) { DiceCard(diceViewModel) }
-            if (showDiceHint) {
-                item(key = KEY_DICE_HINT) {
-                    HintCard(
-                        "点齿轮选哪些点数算“练”，概率完全按你的设置。只是帮你拿主意，想练随时可以直接记录。",
-                        onDismiss = { hintsViewModel.dismiss(Hint.Dice) },
-                    )
-                }
-            }
+            DateRow(
+                trainingDate = trainingDate,
+                setCount = detail?.loggedSetCount ?: 0,
+                onChangeDate = { dateDialog = DateDialog.ChangeDate },
+                onNewRecord = { dateDialog = DateDialog.NewRecord },
+            )
             resume?.let { w ->
-                item(key = KEY_RESUME) {
-                    BannerCard(
-                        text = "上次训练 ${LocalDate.parse(w.trainingDate).format(shortDate)}",
-                        action = "继续那次",
-                        onAction = { viewModel.continueWorkout(w.id) },
-                    )
-                }
-            }
-            if (editingPast && trainingDate != null) {
-                item(key = KEY_EDITING_PAST) {
-                    BannerCard(
-                        text = "正在编辑 ${trainingDate.format(shortDate)} 的训练",
-                        action = "回到今天",
-                        onAction = viewModel::backToToday,
-                    )
-                }
-            }
-            item(key = KEY_DATE) {
-                DateRow(
-                    trainingDate = trainingDate,
-                    isNew = target is WorkoutTarget.New,
-                    onChangeDate = { dateDialog = DateDialog.ChangeDate },
-                    onNewRecord = { dateDialog = DateDialog.NewRecord },
+                BannerCard(
+                    text = "上次训练 ${LocalDate.parse(w.trainingDate).format(shortDate)}",
+                    action = "继续那次", onAction = { viewModel.continueWorkout(w.id) },
                 )
             }
-            ui.error?.let { message ->
-                item(key = KEY_ERROR) { ErrorBanner(message, onDismiss = viewModel::dismissError) }
+            if (editingPast) {
+                BannerCard("${trainingDate.format(shortDate)} 的训练", "回到今天", viewModel::backToToday)
             }
-            if (showRecordHint) {
-                item(key = KEY_RECORD_HINT) {
-                    HintCard(
-                        "每组填好重量和次数，点 ✓ 才算完成；没点 ✓ 的是待确认，不算进训练。下次做同一个动作时，这里会显示上次的成绩。",
-                        onDismiss = { hintsViewModel.dismiss(Hint.Record) },
+            ui.error?.let { ErrorBanner(it, onDismiss = viewModel::dismissError) }
+            if (items.isNotEmpty()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } },
+                        enabled = pager.currentPage > 0 && !pager.isScrollInProgress,
+                    ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "上一个动作", Modifier.size(20.dp)) }
+                    Text(
+                        "${pager.currentPage + 1} / ${items.size}",
+                        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite },
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                    IconButton(
+                        onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } },
+                        enabled = pager.currentPage < items.lastIndex && !pager.isScrollInProgress,
+                    ) { Icon(Icons.AutoMirrored.Filled.ArrowForward, "下一个动作", Modifier.size(20.dp)) }
+                }
+                HorizontalPager(
+                    state = pager,
+                    key = { items[it].workoutExercise.id },
+                    pageSpacing = 16.dp,
+                    verticalAlignment = Alignment.Top,
+                    userScrollEnabled = !sliderActive,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { index ->
+                    val item = items[index]
+                    ExerciseCard(
+                        item, previous[item.workoutExercise.id].orEmpty(), viewModel,
+                        onSliderInteraction = { sliderActive = it },
                     )
                 }
             }
-            items(items, key = { it.workoutExercise.id }) { item ->
-                ExerciseCard(
-                    item = item,
-                    previous = previous[item.workoutExercise.id].orEmpty(),
-                    viewModel = viewModel,
-                )
+            OutlinedButton(
+                onClick = { viewModel.flushDrafts(); showPicker = true },
+                enabled = target != null,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            ) {
+                Icon(Icons.Filled.Add, null, Modifier.size(20.dp))
+                Text("添加动作", modifier = Modifier.padding(start = 8.dp))
             }
-            item(key = "add") {
-                Column(Modifier.fillMaxWidth()) {
-                    if (items.isEmpty()) {
-                        Text("添加一个动作开始记录。", modifier = Modifier.padding(bottom = 8.dp))
-                    }
-                    Button(
-                        onClick = { viewModel.flushDrafts(); showPicker = true },
-                        enabled = target != null,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Icon(Icons.Filled.Add, contentDescription = null)
-                        Text("添加动作", modifier = Modifier.padding(start = 4.dp))
-                    }
-                    if (items.isEmpty()) {
-                        TextButton(onClick = onOpenHistory, modifier = Modifier.fillMaxWidth()) {
-                            Text("从历史复用一次训练")
-                        }
-                    }
-                }
+            if (items.isEmpty()) {
+                TextButton(onClick = onOpenHistory, modifier = Modifier.fillMaxWidth()) { Text("从历史复用", fontSize = 12.sp) }
             }
+        }
     }
 
     viewModel.historyExerciseId.collectAsStateWithLifecycle().value?.let { exerciseId ->
@@ -268,67 +278,69 @@ fun RecordScreen(
 }
 
 @Composable
-private fun ExerciseCard(item: ExerciseItem, previous: List<SetEntryEntity>, viewModel: RecordViewModel) {
+private fun ExerciseCard(
+    item: ExerciseItem,
+    previous: List<SetEntryEntity>,
+    viewModel: RecordViewModel,
+    onSliderInteraction: (Boolean) -> Unit,
+) {
     val we = item.workoutExercise
     val mode = we.weightModeSnapshot
     var menu by remember { mutableStateOf(false) }
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(start = 16.dp, end = 8.dp, bottom = 12.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(21.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val suffix = when (mode) {
-                    WeightMode.BODYWEIGHT -> "（自重）"
-                    WeightMode.PER_SIDE -> "（单只）"
-                    WeightMode.TOTAL -> ""
-                }
                 Text(
-                    we.nameSnapshot + suffix,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier
-                        .weight(1f)
+                    we.nameSnapshot,
+                    fontSize = 17.sp, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f)
                         .clickable(onClickLabel = "查看 ${we.nameSnapshot} 的历史") { viewModel.showHistory(we.exerciseId) }
                         .padding(vertical = 12.dp),
                 )
+                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(7.dp)) {
+                    Text(
+                        when (mode) { WeightMode.TOTAL -> "总重"; WeightMode.PER_SIDE -> "单只"; WeightMode.BODYWEIGHT -> "自重" },
+                        fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                    )
+                }
                 Box {
-                    IconButton(onClick = { menu = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "${we.nameSnapshot} 的更多操作")
+                    IconButton(onClick = { menu = true }, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Filled.MoreVert, "${we.nameSnapshot} 的更多操作", Modifier.size(20.dp))
                     }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                        DropdownMenuItem(
-                            text = { Text("移除动作") },
-                            onClick = { menu = false; viewModel.removeExercise(we.id) },
-                        )
+                        DropdownMenuItem(text = { Text("动作历史") }, onClick = { menu = false; viewModel.showHistory(we.exerciseId) })
+                        DropdownMenuItem(text = { Text("移除动作") }, onClick = { menu = false; viewModel.removeExercise(we.id) })
                     }
                 }
             }
-            val rows = maxOf(item.logged.size, previous.size)
-            if (rows > 0) {
-                TableRow("组次", "上次", "本次", header = true)
-                HorizontalDivider()
-            }
-            for (i in 0 until rows) {
-                val set = item.logged.getOrNull(i)
-                TableRow(
-                    "${i + 1}",
-                    previous.getOrNull(i)?.displayText() ?: "—",
-                    set?.displayText() ?: "",
-                    if (set != null) {
-                        Modifier.heightIn(min = 48.dp).clickable(onClickLabel = "修改第 ${i + 1} 组") { viewModel.startEditing(set, mode) }
-                    } else Modifier,
-                )
+            if (item.logged.isNotEmpty()) {
+                TableRow("组", "上次", "本次", header = true)
+                item.logged.forEachIndexed { index, set ->
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    TableRow(
+                        "${index + 1}", previous.getOrNull(index)?.displayText() ?: "—", set.displayText(),
+                        Modifier.heightIn(min = 44.dp).clickable(onClickLabel = "修改第 ${index + 1} 组") { viewModel.startEditing(set, mode) },
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
             }
             item.draft?.let { draft ->
-                val input = viewModel.draftInputs[draft.id]
-                if (input != null) {
-                    Spacer(Modifier.height(8.dp))
+                viewModel.draftInputs[draft.id]?.let { input ->
                     DraftSetRow(
                         number = item.logged.size + 1,
                         input = input,
                         mode = mode,
-                        expandedField = viewModel.expanded?.takeIf { it.first == draft.id }?.second,
+                        previous = (previous.getOrNull(item.logged.size) ?: previous.lastOrNull())?.displayText(),
                         onWeightChange = { viewModel.onDraftWeightChange(draft.id, it) },
                         onRepsChange = { viewModel.onDraftRepsChange(draft.id, it) },
-                        onFieldFocused = { viewModel.expandSlider(draft.id, it) },
                         onConfirm = { viewModel.confirm(draft.id) },
+                        onSliderInteraction = onSliderInteraction,
                     )
                 }
             }
@@ -338,45 +350,33 @@ private fun ExerciseCard(item: ExerciseItem, previous: List<SetEntryEntity>, vie
 
 @Composable
 private fun BannerCard(text: String, action: String, onAction: () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
-        FlowRow(
-            verticalArrangement = Arrangement.Center,
-            itemVerticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
-        ) {
-            Text(text, modifier = Modifier.weight(1f).padding(vertical = 8.dp))
-            TextButton(onClick = onAction) { Text(action) }
+    Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(14.dp)) {
+        Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(text, fontSize = 12.sp, modifier = Modifier.weight(1f))
+            TextButton(onClick = onAction) { Text(action, fontSize = 12.sp) }
         }
     }
 }
 
 @Composable
-private fun DateRow(trainingDate: LocalDate?, isNew: Boolean, onChangeDate: () -> Unit, onNewRecord: () -> Unit) {
-    FlowRow(
-        itemVerticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+private fun DateRow(trainingDate: LocalDate?, setCount: Int, onChangeDate: () -> Unit, onNewRecord: () -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .weight(1f)
-                .heightIn(min = 48.dp)
+            Modifier.weight(1f).heightIn(min = 48.dp)
                 .clickable(enabled = trainingDate != null, onClickLabel = "修改训练日期", onClick = onChangeDate),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                "训练日期：${trainingDate ?: ""}" + if (isNew) "（新记录）" else "",
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            Icon(
-                Icons.Filled.DateRange,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 6.dp).size(18.dp),
-            )
+            Text(trainingDate?.format(recordDate) ?: "", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Filled.DateRange, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 6.dp).size(15.dp))
         }
-        OutlinedButton(onClick = onNewRecord) { Text("新建记录") }
+        Text("$setCount 组完成", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+        Box {
+            IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "记录选项", Modifier.size(20.dp)) }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(text = { Text("新建记录") }, onClick = { menu = false; onNewRecord() })
+            }
+        }
     }
 }
 
@@ -387,29 +387,18 @@ private fun ErrorBanner(message: String, onDismiss: () -> Unit) {
         modifier = Modifier.fillMaxWidth().clickable(onClickLabel = "关闭提示", onClick = onDismiss),
     ) {
         ErrorText(message, Modifier.weight(1f).padding(vertical = 8.dp))
-        Icon(
-            Icons.Filled.Close,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.error,
-            modifier = Modifier.padding(12.dp).size(20.dp),
-        )
+        Icon(Icons.Filled.Close, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.padding(12.dp).size(20.dp))
     }
 }
 
-private const val KEY_DICE = "header.dice"
-private const val KEY_DICE_HINT = "header.diceHint"
-private const val KEY_RESUME = "header.resume"
-private const val KEY_EDITING_PAST = "header.editingPast"
-private const val KEY_DATE = "header.date"
-private const val KEY_ERROR = "header.error"
-private const val KEY_RECORD_HINT = "header.recordHint"
-
 @Composable
 private fun TableRow(a: String, b: String, c: String, modifier: Modifier = Modifier, header: Boolean = false) {
-    val style = if (header) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyMedium
-    Row(modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(a, style = style, modifier = Modifier.weight(0.6f))
-        Text(b, style = style, modifier = Modifier.weight(1.5f))
-        Text(c, style = style, modifier = Modifier.weight(1.5f))
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(a, fontSize = 11.sp, color = color, modifier = Modifier.weight(.35f))
+        Text(b, fontSize = 11.sp, color = color, modifier = Modifier.weight(1f))
+        Text(c, fontSize = if (header) 11.sp else 13.sp, modifier = Modifier.weight(1f))
+        if (header) Spacer(Modifier.size(18.dp))
+        else Icon(Icons.Filled.Check, "已完成", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -29,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +44,16 @@ import androidx.compose.ui.unit.dp
 import com.exerciseornot.app.data.db.ExerciseEntity
 import com.exerciseornot.app.data.db.ExerciseWithLastUsed
 import com.exerciseornot.app.data.db.WeightMode
+
+// Choices only: definitions are created after a tap, never seeded into training history.
+private val commonExercises = listOf(
+    "杠铃卧推" to WeightMode.TOTAL,
+    "深蹲" to WeightMode.TOTAL,
+    "硬拉" to WeightMode.TOTAL,
+    "哑铃肩推" to WeightMode.PER_SIDE,
+    "俯卧撑" to WeightMode.BODYWEIGHT,
+    "引体向上" to WeightMode.BODYWEIGHT,
+)
 
 /**
  * Pick an exercise for this workout, create one, or rename/archive existing ones.
@@ -62,29 +75,41 @@ fun ExercisePickerSheet(
     var query by rememberSaveable { mutableStateOf("") }
     var creating by rememberSaveable { mutableStateOf<String?>(null) }
     var renaming by remember { mutableStateOf<ExerciseEntity?>(null) }
+    var showSearch by rememberSaveable { mutableStateOf(false) }
+    var adding by remember { mutableStateOf(false) }
+    LaunchedEffect(error) { if (error != null) adding = false }
 
     val q = query.trim()
     val filtered = exercises.filter { q.isEmpty() || it.exercise.name.contains(q, ignoreCase = true) }
     val recent = filtered.filter { it.lastUsedAt != null }
     val others = filtered.filter { it.lastUsedAt == null }
     val exactMatch = exercises.any { it.exercise.name.equals(q, ignoreCase = true) }
+    val suggestions = commonExercises.filter { (name, _) ->
+        (q.isEmpty() || name.contains(q, ignoreCase = true)) &&
+            exercises.none { it.exercise.name.equals(name, ignoreCase = true) }
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.padding(horizontal = 16.dp).imePadding()) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it; onClearError() },
-                label = { Text("搜索或新建动作") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("添加动作", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                IconButton(onClick = { showSearch = !showSearch; query = ""; onClearError() }) {
+                    Icon(Icons.Filled.Search, "搜索或自定义动作")
+                }
+            }
+            if (showSearch) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it; onClearError() },
+                    label = { Text("搜索或新建动作") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             if (error != null && creating == null && renaming == null) {
                 ErrorText(error, Modifier.padding(top = 4.dp))
             }
             LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp)) {
-                if (exercises.isEmpty() && q.isEmpty()) {
-                    item { Text("还没有动作，输入名称新建", modifier = Modifier.padding(vertical = 12.dp)) }
-                }
                 if (recent.isNotEmpty()) {
                     item { SectionLabel("最近使用") }
                     items(recent, key = { it.exercise.id }) { e ->
@@ -96,6 +121,23 @@ fun ExercisePickerSheet(
                     items(others, key = { it.exercise.id }) { e ->
                         PickerRow(e.exercise, e.exercise.id in inWorkout, onPick, { renaming = it }, onArchive)
                     }
+                }
+                if (suggestions.isNotEmpty()) {
+                    if (filtered.isNotEmpty()) item { SectionLabel("常用动作") }
+                    items(suggestions, key = { "suggestion.${it.first}" }) { (name, mode) ->
+                        Row(
+                            Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                                .clickable(enabled = !adding) { adding = true; onClearError(); onCreate(name, mode) }
+                                .padding(horizontal = 4.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                            Text("${modeLabel(mode)} ＋", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                if (!showSearch) {
+                    item { TextButton(onClick = { showSearch = true }) { Text("自定义动作") } }
                 }
                 if (q.isNotEmpty() && !exactMatch) {
                     item {

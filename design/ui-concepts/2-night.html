@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>方案 2 · 夜训</title>
+<style>
+  :root{--bg:#0D0F0C;--panel:#171A16;--panel2:#20241F;--ink:#F2F5EE;--sub:#868C83;--line:#2A2F28;--acc:#C8F43C;--rest:#7FA7FF}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);color:var(--ink);width:390px;height:844px;overflow:hidden;position:relative}
+  .scroll{height:100%;overflow-y:auto;padding:50px 18px 100px}
+  .scroll::-webkit-scrollbar{display:none}
+  .n{font-family:"DIN Alternate","DIN Condensed","Bahnschrift","Roboto Condensed",sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+  body{--a:var(--acc)} body.rest{--a:var(--rest)}
+
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  header .t{font-size:13px;color:var(--sub);letter-spacing:3px}
+  header .d{font-size:13px;color:var(--sub)}
+
+  .hero{background:var(--panel);border-radius:24px;padding:20px;position:relative;overflow:hidden;border:1px solid var(--line)}
+  .hero .glow{position:absolute;right:-40px;top:-40px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,var(--a) 0%,transparent 65%);opacity:.18;transition:.4s}
+  .hero .q{font-size:15px;color:var(--sub)}
+  .hero .big{display:flex;align-items:flex-end;justify-content:space-between;margin:6px 0 16px}
+  .hero .v{font-size:76px;font-weight:900;line-height:1;color:var(--a);transition:color .4s}
+  .hero .v small{display:block;font-size:14px;font-weight:500;color:var(--sub);margin-top:8px}
+  .die{width:78px;height:78px;border-radius:18px;border:2px solid var(--a);padding:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;transition:border-color .4s}
+  .die span{border-radius:50%}
+  .die .pip{background:var(--a);box-shadow:0 0 8px var(--a)}
+  .die.rolling{animation:sh .16s linear infinite}
+  @keyframes sh{0%{transform:rotate(-12deg)}50%{transform:rotate(12deg)}100%{transform:rotate(-12deg)}}
+  .odds{display:flex;gap:6px;margin-bottom:16px}
+  .odds span{flex:1;height:30px;border-radius:8px;background:var(--panel2);display:grid;place-items:center;font-size:14px;color:var(--sub)}
+  .odds span.on{background:color-mix(in srgb,var(--acc) 18%,transparent);color:var(--acc);font-weight:700}
+  .acts{display:flex;gap:10px}
+  .b{flex:1;border:0;border-radius:14px;padding:14px;font:inherit;font-size:15px;font-weight:700;cursor:pointer}
+  .b.o{background:transparent;border:1px solid var(--line);color:var(--ink)}
+  .b.f{background:var(--a);color:#0D0F0C;transition:background .4s}
+
+  .sec{display:flex;justify-content:space-between;align-items:baseline;margin:26px 2px 10px}
+  .sec h3{font-size:20px}
+  .sec span{font-size:13px;color:var(--sub)}
+
+  .ex{background:var(--panel);border-radius:20px;padding:16px;margin-bottom:12px;border:1px solid var(--line)}
+  .ex .h{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .ex .h b{font-size:18px}
+  .ex .h em{font-style:normal;font-size:12px;color:var(--sub);margin-left:8px}
+  .vol{font-size:12px;color:var(--sub)} .vol b{color:var(--acc);font-size:14px}
+  .g{display:grid;grid-template-columns:30px 1fr 1fr 34px;align-items:center;gap:6px}
+  .g.hd{font-size:11px;color:var(--sub);letter-spacing:1px;padding-bottom:6px}
+  .g.r{padding:10px 0;border-top:1px solid var(--line)}
+  .g.r .i{color:var(--sub);font-size:18px}
+  .g.r .l{color:var(--sub);font-size:18px}
+  .g.r .c{font-size:22px;font-weight:700}
+  .g.r .c sub{font-size:11px;color:var(--sub);vertical-align:baseline;margin-left:2px;font-weight:400}
+  .tick{width:26px;height:26px;border-radius:8px;background:color-mix(in srgb,var(--acc) 18%,transparent);color:var(--acc);display:grid;place-items:center;font-weight:900;font-size:13px}
+  .pend{margin-top:8px;background:var(--panel2);border-radius:16px;padding:12px;display:grid;grid-template-columns:30px 1fr 1fr 52px;gap:8px;align-items:center}
+  .pend .i{color:var(--acc);font-size:18px}
+  .inp{border-bottom:2px solid var(--acc);padding:2px 0 4px}
+  .inp b{font-size:28px}
+  .inp small{font-size:11px;color:var(--sub);margin-left:4px}
+  .go{width:52px;height:52px;border-radius:16px;background:var(--acc);color:#0D0F0C;display:grid;place-items:center;font-size:24px;font-weight:900}
+  .steps{display:flex;gap:6px;margin-top:10px}
+  .steps span{flex:1;text-align:center;font-size:13px;padding:7px 0;border-radius:10px;background:var(--panel2);color:var(--sub)}
+
+  .add{width:100%;border:1px dashed #3A4037;background:transparent;color:var(--sub);border-radius:16px;padding:16px;font:inherit;font-size:15px}
+  nav{position:absolute;left:0;right:0;bottom:0;height:78px;background:linear-gradient(transparent,var(--bg) 35%);display:flex;justify-content:center;gap:12px;align-items:center;padding-top:14px}
+  nav a{padding:12px 26px;border-radius:999px;font-size:14px;color:var(--sub);background:var(--panel);border:1px solid var(--line)}
+  nav a.on{background:var(--ink);color:var(--bg);font-weight:700}
+</style>
+<script src="dice.js"></script>
+</head>
+<body>
+<div class="scroll">
+  <header><span class="t">EXERCISE · OR · NOT</span><span class="d n">SAT 11.14</span></header>
+
+  <section class="hero">
+    <div class="glow"></div>
+    <p class="q">今天练不练？</p>
+    <div class="big">
+      <div class="v"><span data-verdict data-go="练！" data-rest="歇。">练！</span><small>掷出 <span class="n" data-num>5</span> · 概率 50%</small></div>
+      <div class="die" data-die></div>
+    </div>
+    <div class="odds n"><span>1</span><span>2</span><span>3</span><span class="on">4</span><span class="on">5</span><span class="on">6</span></div>
+    <div class="acts"><button class="b o" data-roll>再掷一次</button><button class="b f">开始训练</button></div>
+  </section>
+
+  <div class="sec"><h3>今日训练</h3><span>2 组 · <span class="n">800</span> kg</span></div>
+
+  <article class="ex">
+    <div class="h"><div><b>卧推</b><em>总重 · kg</em></div><span class="vol">比上次 <b class="n">+125</b> kg</span></div>
+    <div class="g hd"><span>#</span><span>上次</span><span>本次</span><span></span></div>
+    <div class="g r n"><span class="i">1</span><span class="l">37.5×10</span><span class="c">40<sub>×</sub>10</span><span class="tick">✓</span></div>
+    <div class="g r n"><span class="i">2</span><span class="l">37.5×8</span><span class="c">40<sub>×</sub>10</span><span class="tick">✓</span></div>
+    <div class="pend n"><span class="i">3</span>
+      <div class="inp"><b>40</b><small>kg</small></div>
+      <div class="inp"><b>10</b><small>次</small></div>
+      <span class="go">✓</span></div>
+    <div class="steps n"><span>−2.5</span><span>+2.5</span><span>−1 次</span><span>+1 次</span></div>
+  </article>
+
+  <article class="ex">
+    <div class="h"><div><b>深蹲</b><em>总重 · kg</em></div><span class="vol">上次 11-11</span></div>
+    <div class="pend n"><span class="i">1</span>
+      <div class="inp"><b>60</b><small>kg</small></div>
+      <div class="inp"><b>8</b><small>次</small></div>
+      <span class="go">✓</span></div>
+  </article>
+
+  <button class="add">＋ 添加动作</button>
+</div>
+<nav><a class="on">记录</a><a>历史</a></nav>
+</body>
+</html>

@@ -75,7 +75,7 @@ fun HistoryScreen(
     // The header (and its settings entry) also shows with no history, so a fresh install can restore a backup.
     val today = viewModel.today
     Column(modifier.fillMaxSize()) {
-        ScreenHeader("历史") {
+        ScreenHeader("历史记录", onBack = onOpenRecord) {
             IconButton(onClick = onOpenSettings) { Icon(Icons.Filled.Settings, contentDescription = "设置与备份") }
         }
         if (workouts.isEmpty()) {

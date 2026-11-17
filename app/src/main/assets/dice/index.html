@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <title>练不练 · 掷骰子</title>
+  <link rel="stylesheet" href="scene.css">
+</head>
+<body>
+  <div class="page">
+    <header><div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
+      <button id="settings" class="icon-button" aria-label="设置训练概率"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg></button>
+    </header>
+    <main>
+      <h1>今天，<br>练不练<span>？</span></h1>
+      <button class="dice-stage" id="stage" aria-label="点击立体骰子，掷一下" disabled>
+        <canvas id="shadow" aria-hidden="true"></canvas><canvas id="die" aria-hidden="true"></canvas>
+      </button>
+      <div class="result" id="result" role="status" aria-live="polite">让骰子先开个头。</div>
+      <div class="actions">
+        <p class="error" id="error" role="alert" hidden></p>
+        <button class="primary" id="roll" disabled><span id="roll-label">掷一下</span><span aria-hidden="true">→</span></button>
+        <button class="shortcut" id="record">已经决定了，直接记录 ↗</button>
+      </div>
+    </main>
+  </div>
+  <script src="dice-physics.js"></script>
+  <script src="dice-3d.js"></script>
+  <script src="scene.js"></script>
+</body>
+</html>

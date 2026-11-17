@@ -1,0 +1,160 @@
+<div id="eon-stats-candidates" class="viz-carousel viz-dotted-background" aria-label="统计页候选方案" data-previous-label="上一个方案" data-next-label="下一个方案">
+  <section data-variant="轻量总览" aria-label="轻量总览方案">
+    <div class="eon-stage">
+      <div class="eon-phone" data-design="overview" aria-label="轻量总览外观">
+        <header class="eon-brand"><span><i data-lucide="dice-3" aria-hidden="true"></i> 练不练.</span><small>示例数据</small></header>
+        <main>
+          <div class="eon-heading"><h2>统计<span>.</span></h2><span class="eon-muted">练了多少</span></div>
+          <div class="eon-segment" aria-label="统计范围"><button type="button" data-period="weeks" aria-pressed="true">近 4 周</button><button type="button" data-period="month" aria-pressed="false">本月</button></div>
+          <div class="eon-metrics" aria-live="polite"><div><strong data-metric="days">10<span> 天</span></strong><small>训练天数</small></div><div><strong data-metric="sets">69<span> 组</span></strong><small>完成组数</small></div><div><strong data-metric="exercises">4<span> 个</span></strong><small>练过的动作</small></div></div>
+          <section class="eon-chart-section" data-viz-composition>
+            <div class="eon-section-heading"><h3>训练节奏</h3><small data-period-label>10/26—11/17</small></div>
+            <div id="eon-frequency-container" data-viz-container class="eon-chart-slot" aria-label="每周训练天数"></div>
+            <script type="application/json" data-viz-chart id="eon-frequency-config">{"id":"eon-frequency","title":"每周训练天数","showHeader":false,"height":190,"spec":{"type":"bar","x":"周起始日","y":"训练天数","xLabel":"周起始日","yLabel":"天 / 周","yDomain":[0,7],"showValues":true,"showLegend":false,"colors":{"训练天数":"#365b43"}},"columns":["周起始日","训练天数"],"rows":[["10/26",3],["11/2",3],["11/9",3],["11/16",1]]}</script>
+          </section>
+          <section class="eon-history"><h3>最近记录</h3><div data-history="overview"></div></section>
+        </main>
+        <nav class="eon-bottom" aria-label="主导航"><span><i data-lucide="dice-3" aria-hidden="true"></i>掷骰子</span><span><i data-lucide="notebook-pen" aria-hidden="true"></i>记录</span><span aria-current="page"><i data-lucide="chart-no-axes-column" aria-hidden="true"></i>统计</span></nav>
+      </div>
+    </div>
+  </section>
+  <section data-variant="动作进步" aria-label="动作进步方案" hidden>
+    <div class="eon-stage">
+      <div class="eon-phone" data-design="progress" aria-label="动作进步外观">
+        <header class="eon-brand"><span><i data-lucide="dice-3" aria-hidden="true"></i>练不练.</span><small>示例数据</small></header>
+        <main>
+          <div class="eon-heading"><h2>统计<span>.</span></h2><span class="eon-muted">有没有进步</span></div>
+          <label class="eon-select-label" for="eon-exercise-select">动作<select id="eon-exercise-select"><option value="bench">杠铃卧推 · 总重</option><option value="squat">深蹲 · 总重</option><option value="pullup">引体向上 · 自重</option></select></label>
+          <div class="eon-best" aria-live="polite"><small>最近一次 · <span data-recent-date>11/16</span></small><strong data-recent-set>40 <span>kg ×</span> 10 <span>次</span></strong><div class="eon-compare" data-recent-change>上次 37.5 kg × 10 次</div></div>
+          <section class="eon-chart-section" data-viz-composition>
+            <div class="eon-section-heading"><h3 data-trend-title>最高重量变化</h3><small>近 4 次</small></div>
+            <div id="eon-progress-container" data-viz-container class="eon-chart-slot" aria-label="动作表现变化"></div>
+            <script type="application/json" data-viz-chart data-exercise-config="bench">{"id":"eon-progress-bench","title":"杠铃卧推每次最高重量","showHeader":false,"height":190,"spec":{"type":"line","x":"日期","y":"重量","xLabel":"训练日期","yLabel":"kg","yDomain":[0,50],"showValues":true,"showLegend":false,"tooltipFields":[{"field":"次数","label":"对应次数"}],"colors":{"重量":"#365b43"}},"columns":["日期","重量","次数"],"rows":[["2026-11-05",35,8],["2026-11-08",35,10],["2026-11-12",37.5,10],["2026-11-16",40,10]]}</script>
+            <script type="application/json" data-viz-chart data-exercise-config="squat">{"id":"eon-progress-squat","title":"深蹲每次最高重量","showHeader":false,"height":190,"spec":{"type":"line","x":"日期","y":"重量","xLabel":"训练日期","yLabel":"kg","yDomain":[0,80],"showValues":true,"showLegend":false,"tooltipFields":[{"field":"次数","label":"对应次数"}],"colors":{"重量":"#365b43"}},"columns":["日期","重量","次数"],"rows":[["2026-11-03",50,10],["2026-11-08",55,8],["2026-11-12",60,8],["2026-11-16",65,6]]}</script>
+            <script type="application/json" data-viz-chart data-exercise-config="pullup">{"id":"eon-progress-pullup","title":"自重引体向上每次最高次数","showHeader":false,"height":190,"spec":{"type":"line","x":"日期","y":"次数","xLabel":"训练日期","yLabel":"次 / 组","yDomain":[0,10],"showValues":true,"showLegend":false,"colors":{"次数":"#365b43"}},"columns":["日期","次数"],"rows":[["2026-10-29",4],["2026-11-03",5],["2026-11-10",5],["2026-11-14",6]]}</script>
+          </section>
+          <section class="eon-history"><h3>这个动作的记录</h3><div data-history="progress"></div></section>
+        </main>
+        <nav class="eon-bottom" aria-label="主导航"><span><i data-lucide="dice-3" aria-hidden="true"></i>掷骰子</span><span><i data-lucide="notebook-pen" aria-hidden="true"></i>记录</span><span aria-current="page"><i data-lucide="chart-no-axes-column" aria-hidden="true"></i>统计</span></nav>
+      </div>
+    </div>
+  </section>
+  <section data-variant="训练日历" aria-label="训练日历方案" hidden>
+    <div class="eon-stage">
+      <div class="eon-phone" data-design="calendar" aria-label="训练日历外观">
+        <header class="eon-brand"><span><i data-lucide="dice-3" aria-hidden="true"></i>练不练.</span><small>示例数据</small></header>
+        <main>
+          <div class="eon-heading"><h2>统计<span>.</span></h2><span class="eon-muted">哪天练过</span></div>
+          <div class="eon-month-heading"><button type="button" id="eon-month-prev" aria-label="上个月"><i data-lucide="chevron-left" aria-hidden="true"></i></button><h3 id="eon-month-label">2026 年 11 月</h3><button type="button" id="eon-month-next" aria-label="下个月" disabled><i data-lucide="chevron-right" aria-hidden="true"></i></button></div>
+          <div class="eon-calendar" role="group" aria-labelledby="eon-month-label"><div class="eon-weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div><div class="eon-days" id="eon-calendar-days"></div></div>
+          <div class="eon-calendar-summary"><span class="eon-calendar-key"><b aria-hidden="true"></b>有训练记录</span><span data-month-total>7 天 · 51 组</span></div>
+          <section class="eon-history eon-selected-history" aria-live="polite"><div class="eon-section-heading"><h3 data-selected-day>11 月 16 日</h3><small data-selected-total>9 组</small></div><div data-history="calendar"></div></section>
+        </main>
+        <nav class="eon-bottom" aria-label="主导航"><span><i data-lucide="dice-3" aria-hidden="true"></i>掷骰子</span><span><i data-lucide="notebook-pen" aria-hidden="true"></i>记录</span><span aria-current="page"><i data-lucide="chart-no-axes-column" aria-hidden="true"></i>统计</span></nav>
+      </div>
+    </div>
+  </section>
+</div>
+<style>
+#eon-stats-candidates .eon-stage{min-height:906px;padding:18px 8px 24px;box-sizing:border-box;display:flex;justify-content:center;align-items:flex-start}
+#eon-stats-candidates .eon-phone{--paper:light-dark(#f6f5f0,#18211b);--ink:light-dark(#28392f,#e2e9dd);--green:light-dark(#365b43,#afc6a6);--muted:light-dark(#747d71,#a5afa0);--line:light-dark(#e3e5dc,#3b483c);--soft:light-dark(#e9eddf,#2c3b2d);--panel:light-dark(#fbfcf7,#202c22);--radius:18px;--gap:20px;box-sizing:border-box;width:min(100%,390px);min-height:860px;display:flex;flex-direction:column;padding:22px 23px 12px;border:1px solid var(--line);border-radius:28px;background:var(--paper);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+#eon-stats-candidates .eon-phone *{box-sizing:border-box}
+#eon-stats-candidates .eon-phone h2,#eon-stats-candidates .eon-phone h3,#eon-stats-candidates .eon-phone p{margin:0}
+#eon-stats-candidates .eon-phone h2{font-size:29px;font-weight:500;letter-spacing:-1px}#eon-stats-candidates .eon-phone h2>span{color:var(--muted)}
+#eon-stats-candidates .eon-phone h3{font-size:14px;font-weight:500}#eon-stats-candidates .eon-phone small{font-size:11px;color:var(--muted)}
+#eon-stats-candidates .eon-phone button,#eon-stats-candidates .eon-phone select{font:inherit;color:inherit;cursor:inherit}
+#eon-stats-candidates .eon-phone button{border:0;background:transparent;min-height:44px}
+#eon-stats-candidates .eon-phone button:disabled{opacity:.3}
+#eon-stats-candidates .eon-brand{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+#eon-stats-candidates .eon-brand>span{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:500}
+#eon-stats-candidates .eon-brand svg{color:var(--green)}
+#eon-stats-candidates .eon-phone main{display:flex;flex-direction:column;gap:var(--gap);flex:1}
+#eon-stats-candidates .eon-heading,#eon-stats-candidates .eon-section-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#eon-stats-candidates .eon-muted{color:var(--muted);font-size:12px}
+#eon-stats-candidates .eon-segment{display:flex;gap:4px;align-self:flex-start;background:var(--soft);border-radius:12px;padding:3px}
+#eon-stats-candidates .eon-segment button{padding:7px 18px;min-height:38px;border-radius:9px;font-size:12px}
+#eon-stats-candidates .eon-segment button[aria-pressed="true"]{background:var(--panel);color:var(--green)}
+#eon-stats-candidates .eon-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:16px 0;border-bottom:1px solid var(--line)}
+#eon-stats-candidates .eon-metrics strong{display:block;font-size:27px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+#eon-stats-candidates .eon-metrics strong>span{font-size:11px;color:var(--muted);font-weight:400}
+#eon-stats-candidates .eon-metrics small{display:block;margin-top:4px}
+#eon-stats-candidates .eon-chart-slot{min-height:190px;margin:8px -8px 0}
+#eon-stats-candidates .eon-history>h3{margin-bottom:10px}
+#eon-stats-candidates .eon-session{padding:13px 0;border-bottom:1px solid var(--line)}
+#eon-stats-candidates .eon-session summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:32px}
+#eon-stats-candidates .eon-session summary::-webkit-details-marker{display:none}
+#eon-stats-candidates .eon-session summary>span:last-child{font-size:11px;color:var(--muted)}
+#eon-stats-candidates .eon-session-body{display:grid;gap:8px;padding-top:12px}
+#eon-stats-candidates .eon-session-body>div{display:flex;justify-content:space-between;gap:12px;font-size:12px}
+#eon-stats-candidates .eon-session-body span{color:var(--muted)}
+#eon-stats-candidates .eon-bottom{display:flex;justify-content:space-between;gap:5px;border-top:1px solid var(--line);margin-top:26px;padding-top:12px}
+#eon-stats-candidates .eon-bottom>span{display:flex;align-items:center;justify-content:center;gap:7px;padding:8px;border-radius:11px;font-size:12px;color:var(--muted);white-space:nowrap}
+#eon-stats-candidates .eon-bottom>span[aria-current]{background:var(--soft);color:var(--green)}
+#eon-stats-candidates .eon-select-label{display:flex;align-items:center;gap:14px;font-size:12px;color:var(--muted)}
+#eon-stats-candidates .eon-select-label select{min-width:0;flex:1;border:1px solid var(--line);background:var(--panel);border-radius:10px;min-height:44px;padding:8px 10px;color:var(--ink)}
+#eon-stats-candidates .eon-best{background:var(--soft);border-radius:var(--radius);padding:17px 18px}
+#eon-stats-candidates .eon-best>strong{display:block;color:var(--green);font-size:29px;font-weight:500;margin:8px 0;font-variant-numeric:tabular-nums}
+#eon-stats-candidates .eon-best>strong>span{font-size:12px;font-weight:400;color:var(--muted)}
+#eon-stats-candidates .eon-compare{font-size:12px;color:var(--muted)}
+#eon-stats-candidates .eon-progress-row{padding:12px 0;display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+#eon-stats-candidates .eon-progress-row>span:first-child{color:var(--muted)}
+#eon-stats-candidates .eon-month-heading{display:flex;align-items:center;justify-content:space-between}
+#eon-stats-candidates .eon-month-heading button{width:44px;display:grid;place-items:center;color:var(--green)}
+#eon-stats-candidates .eon-calendar{font-variant-numeric:tabular-nums}
+#eon-stats-candidates .eon-weekdays,#eon-stats-candidates .eon-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}
+#eon-stats-candidates .eon-weekdays{color:var(--muted);text-align:center;font-size:11px;margin-bottom:10px}
+#eon-stats-candidates .eon-day{position:relative;min-width:0;height:44px;padding:4px 0 10px;border-radius:11px;font-variant-numeric:tabular-nums}
+#eon-stats-candidates .eon-day[data-trained="true"]{background:var(--soft)}
+#eon-stats-candidates .eon-day[data-trained="true"]:after{content:"";position:absolute;width:4px;height:4px;border-radius:50%;bottom:5px;left:calc(50% - 2px);background:var(--green)}
+#eon-stats-candidates .eon-day[aria-pressed="true"]{background:var(--green);color:var(--paper)}
+#eon-stats-candidates .eon-day[aria-pressed="true"]:after{background:var(--paper)}
+#eon-stats-candidates .eon-calendar-summary{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-top:-8px}
+#eon-stats-candidates .eon-calendar-key{display:flex;align-items:center;gap:6px}
+#eon-stats-candidates .eon-calendar-key b{width:5px;height:5px;border-radius:50%;background:var(--green)}
+#eon-stats-candidates .eon-selected-history{border-top:1px solid var(--line);padding-top:18px}
+#eon-stats-candidates .eon-selected-exercise{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+#eon-stats-candidates .eon-empty{padding:24px 0;color:var(--muted);font-size:12px}
+@media(max-width:420px){#eon-stats-candidates .eon-stage{min-height:906px;padding:12px 0 24px}#eon-stats-candidates .eon-phone{padding:20px 16px 12px;border-radius:22px;min-height:860px}#eon-stats-candidates .eon-bottom>span{padding:8px 6px;gap:5px}}
+@media(pointer:coarse){#eon-stats-candidates .eon-segment button{min-height:44px}#eon-stats-candidates .eon-select-label select{font-size:16px}#eon-stats-candidates .eon-session summary{min-height:44px}}
+</style>
+<script>
+(() => {
+  const root=document.getElementById('eon-stats-candidates');
+  const $=s=>root.querySelector(s);
+  const workouts=[
+    ['2026-10-27',['杠铃卧推','深蹲']],['2026-10-29',['哑铃肩推','引体向上']],['2026-10-31',['杠铃卧推','深蹲']],
+    ['2026-11-03',['深蹲','引体向上']],['2026-11-05',['杠铃卧推','深蹲','哑铃肩推']],['2026-11-08',['杠铃卧推','深蹲']],
+    ['2026-11-10',['哑铃肩推','引体向上']],['2026-11-12',['杠铃卧推','深蹲','哑铃肩推']],['2026-11-14',['引体向上','哑铃肩推']],['2026-11-16',['杠铃卧推','深蹲','哑铃肩推']],
+  ].map(([date,exercises])=>({date,exercises,sets:exercises.length*3}));
+  const state={period:'weeks',exercise:'bench',month:11,day:'2026-11-16'};
+  const configs=Object.fromEntries([...root.querySelectorAll('[data-exercise-config]')].map(el=>[el.dataset.exerciseConfig,JSON.parse(el.textContent)]));
+  const baseFrequency=JSON.parse($('#eon-frequency-config').textContent);
+  const shortDate=d=>d.slice(5).split('-').map(Number).join('/');
+  const friendlyDate=d=>`${Number(d.slice(5,7))} 月 ${Number(d.slice(8))} 日`;
+  function save(){const api=window.openai;if(api?.setWidgetState)api.setWidgetState({modelContent:{period:state.period,exercise:state.exercise,selectedDate:state.day},privateContent:{...state}}).catch(()=>{});}
+  function apply(saved){if(!saved||typeof saved!=='object')return;if(['weeks','month'].includes(saved.period))state.period=saved.period;if(configs[saved.exercise])state.exercise=saved.exercise;if([10,11].includes(saved.month))state.month=saved.month;if(typeof saved.day==='string'&&/^2026-(10|11)-\d{2}$/.test(saved.day)&&saved.day<='2026-11-17')state.day=saved.day;}
+  function renderHistory(target,entries){target.replaceChildren();for(const w of entries){const item=document.createElement('details');item.className='eon-session';item.innerHTML=`<summary class="cursor-interaction"><span>${friendlyDate(w.date)}</span><span>${w.exercises.length} 个动作 · ${w.sets} 组 ＋</span></summary><div class="eon-session-body">${w.exercises.map(name=>`<div>${name}<span>3 组</span></div>`).join('')}</div>`;target.append(item);}}
+  function frequencyConfig(){return {...baseFrequency,rows:state.period==='month'?baseFrequency.rows.slice(1):baseFrequency.rows};}
+  function renderOverview(){const shown=workouts.filter(w=>state.period==='weeks'||w.date>='2026-11-01');$('[data-metric="days"]').innerHTML=`${shown.length}<span> 天</span>`;$('[data-metric="sets"]').innerHTML=`${shown.reduce((sum,w)=>sum+w.sets,0)}<span> 组</span>`;$('[data-metric="exercises"]').innerHTML=`${new Set(shown.flatMap(w=>w.exercises)).size}<span> 个</span>`;$('[data-period-label]').textContent=state.period==='weeks'?'10/26—11/17':'11/1—11/17';root.querySelectorAll('[data-period]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.period===state.period)));renderHistory($('[data-history="overview"]'),shown.slice(-2).reverse());}
+  function renderProgress(){const config=configs[state.exercise],rows=config.rows,last=rows.at(-1),previous=rows.at(-2),bodyweight=state.exercise==='pullup';$('#eon-exercise-select').value=state.exercise;$('[data-recent-date]').textContent=shortDate(last[0]);$('[data-recent-set]').innerHTML=bodyweight?`${last[1]} <span>次 · 自重</span>`:`${last[1]} <span>kg ×</span> ${last[2]} <span>次</span>`;$('[data-recent-change]').textContent=bodyweight?`上次 ${previous[1]} 次`:`上次 ${previous[1]} kg × ${previous[2]} 次`;$('[data-trend-title]').textContent=bodyweight?'单组最高次数变化':'最高重量变化';$('[data-history="progress"]').innerHTML=rows.slice(-2).reverse().map(row=>`<div class="eon-progress-row"><span>${shortDate(row[0])}</span><span>${bodyweight?row[1]+' 次 · 自重':row[1]+' kg × '+row[2]+' 次'}</span></div>`).join('');}
+  function renderCalendar(){const month=String(state.month).padStart(2,'0'),prefix='2026-'+month;$('#eon-month-label').textContent=`2026 年 ${state.month} 月`;$('#eon-month-prev').disabled=state.month===10;$('#eon-month-next').disabled=state.month===11;const inMonth=workouts.filter(w=>w.date.startsWith(prefix));$('[data-month-total]').textContent=`${inMonth.length} 天 · ${inMonth.reduce((sum,w)=>sum+w.sets,0)} 组`;const days=$('#eon-calendar-days');days.replaceChildren();const first=(new Date(Date.UTC(2026,state.month-1,1)).getUTCDay()+6)%7,count=new Date(Date.UTC(2026,state.month,0)).getUTCDate();for(let i=0;i<first;i++){const blank=document.createElement('span');blank.setAttribute('aria-hidden','true');days.append(blank);}for(let d=1;d<=count;d++){const date=prefix+'-'+String(d).padStart(2,'0'),workout=workouts.find(w=>w.date===date),button=document.createElement('button');button.type='button';button.className='eon-day cursor-interaction';button.textContent=d;button.dataset.trained=String(!!workout);button.setAttribute('aria-pressed',String(state.day===date));button.setAttribute('aria-label',friendlyDate(date)+(workout?`，训练 ${workout.sets} 组`:'，无训练记录'));button.disabled=date>'2026-11-17';button.onclick=()=>{state.day=date;renderCalendar();save();};days.append(button);}const selected=workouts.find(w=>w.date===state.day);$('[data-selected-day]').textContent=friendlyDate(state.day);$('[data-selected-total]').textContent=selected?`${selected.sets} 组`:'';$('[data-history="calendar"]').innerHTML=selected?selected.exercises.map(name=>`<div class="eon-selected-exercise"><span>${name}</span><small>3 组</small></div>`).join(''):'<p class="eon-empty">这天没有训练记录</p>';}
+  function render(){renderOverview();renderProgress();renderCalendar();root.dispatchEvent(new CustomEvent('eon-config-change'));}
+  apply(window.openai?.widgetState?.privateContent);
+  render();
+  root.querySelectorAll('[data-period]').forEach(button=>{button.classList.add('cursor-interaction');button.onclick=()=>{state.period=button.dataset.period;renderOverview();root.dispatchEvent(new CustomEvent('eon-config-change'));save();};});
+  $('#eon-exercise-select').onchange=event=>{state.exercise=event.target.value;renderProgress();root.dispatchEvent(new CustomEvent('eon-config-change'));save();};
+  for(const [id,delta] of [['eon-month-prev',-1],['eon-month-next',1]]){const button=$('#'+id);button.classList.add('cursor-interaction');button.onclick=()=>{state.month+=delta;state.day=state.month===10?'2026-10-31':'2026-11-16';renderCalendar();save();};}
+  root.eonChartConfigs=()=>({frequency:frequencyConfig(),progress:configs[state.exercise]});
+  window.addEventListener('openai:set_globals',event=>{const saved=event.detail?.globals?.widgetState?.privateContent;if(saved){apply(saved);render();}});
+  if(globalThis.Tweak){for(const phone of root.querySelectorAll('.eon-phone')){const design={spacing:20,rounding:18};const tweak=new Tweak({container:phone,onChange:()=>{phone.style.setProperty('--gap',design.spacing+'px');phone.style.setProperty('--radius',design.rounding+'px');}});tweak.addSlider(design,'spacing',{label:'内容间距',min:12,max:24,step:2,unit:'px'});if(phone.dataset.design==='progress')tweak.addSlider(design,'rounding',{label:'成绩卡圆角',min:10,max:24,step:2,unit:'px'});}}
+})();
+</script>
+<script type="module">
+import {mountChart} from 'https://persistent.oaistatic.com/plugins/visualize/charts/1.6.5/element.js';
+const root=document.getElementById('eon-stats-candidates');
+const charts={};
+const slots={frequency:root.querySelector('#eon-frequency-container'),progress:root.querySelector('#eon-progress-container')};
+function refresh(){const configs=root.eonChartConfigs();for(const key of Object.keys(slots)){if(slots[key].closest('[data-variant]').hidden)continue;if(charts[key])charts[key].config=configs[key];else charts[key]=mountChart(slots[key],configs[key]);}}
+refresh();root.addEventListener('eon-config-change',refresh);
+const observer=new MutationObserver(refresh);for(const variant of root.querySelectorAll(':scope > [data-variant]'))observer.observe(variant,{attributes:true,attributeFilter:['hidden']});
+</script>

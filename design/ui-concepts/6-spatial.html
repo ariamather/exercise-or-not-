@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>练不练 · 一点随机</title>
+  <link rel="stylesheet" href="spatial.css">
+  <script src="dice-physics.js" defer></script>
+  <script src="dice-3d.js" defer></script>
+  <script src="spatial.js" defer></script>
+</head>
+<body>
+  <aside class="preview-caption"><span>练不练 / 交互设计 06</span><span>一点随机，轻松开始。</span></aside>
+  <div class="app">
+    <header class="app-header">
+      <a class="brand" href="#dice" aria-label="练不练，回到掷骰子"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></a>
+      <button class="icon-button" id="settings-open" aria-label="设置训练概率">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg>
+      </button>
+    </header>
+
+    <main>
+      <section id="dice-page" class="page dice-page" aria-label="掷骰子">
+        <div class="intro"><h1>今天，<br>练不练<span>？</span></h1></div>
+        <button class="dice-stage" id="dice-stage" aria-label="点击立体骰子，掷一下" disabled>
+          <span class="floor-glow" aria-hidden="true"></span>
+          <canvas id="dice-shadow" aria-hidden="true"></canvas>
+          <canvas id="dice-canvas" aria-hidden="true"></canvas>
+        </button>
+        <div class="result" id="result" aria-live="polite" aria-atomic="true"><h2 id="result-title">让骰子先开个头。</h2></div>
+        <div class="dice-actions">
+          <button class="primary-button" id="roll-button" disabled><span id="roll-label">掷一下</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></button>
+          <button class="text-button" id="record-shortcut">已经决定了，直接记录 <span aria-hidden="true">↗</span></button>
+        </div>
+      </section>
+
+      <section id="record-page" class="page record-page" aria-label="训练记录" hidden>
+        <div class="record-title"><h1>今天的记录<span>.</span></h1></div>
+        <div class="date-line record-meta"><span id="today-label"></span><span><strong id="set-count">2</strong> 组完成</span></div>
+        <div class="exercise-pager" aria-label="切换训练动作">
+          <button type="button" id="exercise-prev" class="pager-button" aria-label="上一个动作" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>
+          <span id="exercise-position" aria-live="polite" aria-atomic="true">1 / 1</span>
+          <button type="button" id="exercise-next" class="pager-button" aria-label="下一个动作" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg></button>
+        </div>
+        <div id="exercise-list" class="exercise-carousel" role="region" aria-roledescription="轮播" aria-label="训练动作"></div>
+        <button class="add-exercise" id="add-exercise"><span>＋</span> 添加动作</button>
+        <p class="sr-only" id="record-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="stats-page" class="page record-page" aria-label="统计" hidden>
+        <div class="record-title"><h1>统计<span>.</span></h1></div>
+        <section aria-label="历史记录">
+          <article class="exercise-card history-card"><p>11 月 11 日 · 周三</p><h2>杠铃卧推</h2><p>37.5 × 10 · 37.5 × 8 · 37.5 × 8</p></article><article class="exercise-card history-card"><p>11 月 8 日 · 周日</p><h2>杠铃卧推</h2><p>35 × 10 · 35 × 10 · 35 × 8</p></article>
+        </section>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="主导航">
+      <button class="nav-item active" id="nav-dice" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="8" cy="8" r=".85" fill="currentColor"/><circle cx="12" cy="12" r=".85" fill="currentColor"/><circle cx="16" cy="16" r=".85" fill="currentColor"/></svg><span>掷骰子</span></button>
+      <button class="nav-item" id="nav-record"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="3"/><path d="M9 3v3m6-3v3M9 11h6m-6 5h4"/></svg><span>记录</span></button>
+      <button class="nav-item" id="nav-stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="13" width="3" height="7" rx="1"/><rect x="10.5" y="8" width="3" height="12" rx="1"/><rect x="17" y="4" width="3" height="16" rx="1"/></svg><span>统计</span></button>
+    </nav>
+
+    <dialog id="probability-dialog" aria-labelledby="settings-title">
+      <div class="sheet-handle" aria-hidden="true"></div><div class="sheet-heading"><h2 id="settings-title">把一点偏爱，交给概率。</h2><button class="icon-button" id="settings-close" aria-label="关闭概率设置">×</button></div><p class="sheet-copy">选中的点数代表「练」，随时可以改变。</p><div class="face-options" id="face-options" aria-label="代表训练的骰子点数"></div><div class="probability-total"><span>这一次，训练的概率</span><strong id="settings-percent">50%</strong></div><p class="sheet-footnote">结果只是一个小建议，决定权一直在你。</p><button class="primary-button" id="settings-done">就这样</button>
+    </dialog>
+    <dialog id="exercise-dialog" aria-labelledby="exercise-dialog-title"><div class="sheet-handle" aria-hidden="true"></div><div class="sheet-heading"><h2 id="exercise-dialog-title">添加动作</h2><button class="icon-button" id="exercise-close" aria-label="关闭动作选择">×</button></div><button class="exercise-choice" data-exercise="深蹲">深蹲 <span>总重 ＋</span></button><button class="exercise-choice" data-exercise="哑铃肩推">哑铃肩推 <span>单只 ＋</span></button></dialog>
+  </div>
+  <template id="exercise-card-template">
+    <article class="exercise-card workout-card">
+      <div class="exercise-title"><h2 data-name></h2><span class="weight-mode" data-mode></span></div>
+      <div class="set-table"><div class="set-head"><span>组</span><span>上次</span><span>本次</span><span></span></div><div data-logged></div></div>
+      <section class="set-editor" aria-label="待完成的一组">
+        <div class="editor-heading"><h3 data-draft-label></h3><span data-previous></span></div>
+        <div class="metric-control">
+          <div class="metric-heading"><label data-weight-label>重量</label><select data-weight-step aria-label="重量加减幅度"><option value="0.5">± 0.5 kg</option><option value="1">± 1 kg</option><option value="2.5" selected>± 2.5 kg</option><option value="5">± 5 kg</option></select></div>
+          <div class="metric-stepper"><button type="button" class="step-button" data-weight-delta="-1" aria-label="减少重量">−</button><div class="metric-number"><output data-weight-value>40</output><span>kg</span></div><button type="button" class="step-button" data-weight-delta="1" aria-label="增加重量">＋</button></div>
+          <input class="value-range" data-weight-slider type="range" min="20" max="60" step="0.5" value="40" aria-label="本组重量">
+          <div class="range-ends" aria-hidden="true"><span data-weight-min>20</span><span data-weight-max>60</span></div>
+        </div>
+        <div class="metric-control">
+          <div class="metric-heading"><label data-reps-label>次数</label></div>
+          <div class="metric-stepper"><button type="button" class="step-button" data-reps-delta="-1" aria-label="减少次数">−</button><div class="metric-number"><output data-reps-value>10</output><span>次</span></div><button type="button" class="step-button" data-reps-delta="1" aria-label="增加次数">＋</button></div>
+          <input class="value-range" data-reps-slider type="range" min="1" max="30" step="1" value="10" aria-label="本组次数">
+          <div class="range-ends" aria-hidden="true"><span>1</span><span data-reps-max>30</span></div>
+        </div>
+        <button type="button" class="log-set" data-confirm><span aria-hidden="true">✓</span> 完成这一组</button>
+      </section>
+    </article>
+  </template>
+</body>
+</html>

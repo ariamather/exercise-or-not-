@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>练不练 · UI 风格方案</title>
+<style>
+  body{margin:0;font-family:-apple-system,"PingFang SC",sans-serif;background:#E9E9E6;color:#222}
+  header{padding:28px 36px 8px}
+  header h1{margin:0 0 6px;font-size:24px}
+  header p{margin:0;color:#666;font-size:14px;line-height:1.6}
+  .wall{display:flex;gap:36px;padding:24px 36px 48px;overflow-x:auto}
+  figure{margin:0;flex:none;width:390px}
+  .phone{width:390px;height:844px;border-radius:46px;overflow:hidden;background:#000;box-shadow:0 0 0 10px #1b1b1b,0 30px 60px -20px rgba(0,0,0,.45)}
+  iframe{width:390px;height:844px;border:0;display:block}
+  figcaption{margin-top:26px}
+  figcaption b{font-size:17px}
+  figcaption p{margin:6px 0 0;font-size:13px;color:#555;line-height:1.65}
+  figcaption a{font-size:13px;color:#2F6A4F}
+</style>
+</head>
+<body>
+<header>
+  <h1>练不练 · 界面探索</h1>
+  <p style="margin:16px 0;padding:18px 20px;background:#f6f5f0;border-radius:16px"><a href="6-spatial.html" style="font-size:18px;color:#365b43;font-weight:600;text-decoration:none">新方向 06 · 一点随机 →</a><br>独立掷骰首页 + 三维骰子，点击抛出、翻转、落地；记录放在另一个页面。可离线打开，点链接体验。</p>
+  <h2 style="font-size:16px;margin:24px 0 8px">此前的 5 套同屏方案</h2>
+  <p>同一屏内容：骰子结果 + 今天的卧推（已记 2 组、待确认第 3 组）+ 深蹲（待确认第 1 组）。点各方案里的“再掷一次”可以看掷骰动画和“休息”状态的配色。<br>
+     横向滚动查看全部；单独打开某个文件可在浏览器里放大看细节。</p>
+</header>
+<div class="wall">
+  <figure><div class="phone"><iframe src="1-fresh.html"></iframe></div>
+    <figcaption><b>1 · 清新卡片</b><p>沿用现有绿色，改成渐变主卡 + 白色卡片 + 浮动底栏。最稳妥，改动最小，Material 3 直接能做。休息时主卡变灰蓝。</p><a href="1-fresh.html" target="_blank">单独打开 ↗</a></figcaption></figure>
+  <figure><div class="phone"><iframe src="2-night.html"></iframe></div>
+    <figcaption><b>2 · 夜训</b><p>深色底 + 荧光绿，健身房氛围。大号数字，显示“比上次 +125 kg”，加减档按钮替代滑动条。休息时整体换成冷蓝色。</p><a href="2-night.html" target="_blank">单独打开 ↗</a></figcaption></figure>
+  <figure><div class="phone"><iframe src="3-notebook.html"></iframe></div>
+    <figcaption><b>3 · 训练手账</b><p>米色纸张 + 宋体 / 楷体 + 蓝墨水，结果像盖了一枚“练 / 休”印章。最贴合“平静、不施压”的产品调性，辨识度高。</p><a href="3-notebook.html" target="_blank">单独打开 ↗</a></figcaption></figure>
+  <figure><div class="phone"><iframe src="4-swiss.html"></iframe></div>
+    <figcaption><b>4 · 大字极简</b><p>黑白 + 一个强调色，超大“练。”，粗分割线、表格对齐。信息密度高、干脆利落；休息时强调色从橙变蓝。</p><a href="4-swiss.html" target="_blank">单独打开 ↗</a></figcaption></figure>
+  <figure><div class="phone"><iframe src="5-playful.html"></iframe></div>
+    <figcaption><b>5 · 圆润活泼</b><p>奶油底 + 粗描边 + 硬阴影，糖果色，动作带图标。骰子会弹跳，最有“玩”的感觉，弱化了健身的压迫感。</p><a href="5-playful.html" target="_blank">单独打开 ↗</a></figcaption></figure>
+</div>
+</body>
+</html>

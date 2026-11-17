@@ -10,6 +10,7 @@ import com.exerciseornot.app.ui.history.HistoryViewModel
 import com.exerciseornot.app.ui.hints.HintsViewModel
 import com.exerciseornot.app.ui.record.RecordViewModel
 import com.exerciseornot.app.ui.settings.SettingsViewModel
+import com.exerciseornot.app.ui.stats.StatsViewModel
 
 object AppViewModelFactory {
     val Factory: ViewModelProvider.Factory = viewModelFactory {
@@ -29,6 +30,10 @@ object AppViewModelFactory {
         initializer {
             val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ExerciseOrNotApp
             DiceViewModel(app.container.dicePreferences, app.container.clock)
+        }
+        initializer {
+            val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ExerciseOrNotApp
+            StatsViewModel(app.container.workoutRepository, app.container.recordRequests)
         }
         initializer {
             val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ExerciseOrNotApp

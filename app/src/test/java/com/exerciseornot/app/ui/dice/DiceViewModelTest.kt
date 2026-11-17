@@ -124,4 +124,49 @@ class DiceViewModelTest {
         assertTrue(vm.rolling.value)
         assertEquals(1, random.draws)
     }
+
+    @Test
+    fun animatedRoll_waitsForMatchingLanding() {
+        val vm = newViewModel()
+        vm.rollAnimated()
+        awaitUntil("animation requested") { vm.animation.value != null }
+        val request = vm.animation.value!!
+        assertTrue(vm.rolling.value)
+        vm.animationFinished(request.id + 1, request.result.face)
+        assertTrue("a stale callback must not finish this throw", vm.rolling.value)
+        vm.animationFinished(request.id, request.result.face)
+        assertEquals(false, vm.rolling.value)
+        assertEquals(null, vm.animation.value)
+        assertEquals(request.result, runBlocking { prefs.lastResult.first() })
+    }
+
+    @Test
+    fun closingScene_keepsSavedResultAndAllowsNextRoll() {
+        val vm = newViewModel()
+        vm.rollAnimated()
+        awaitUntil("first animation") { vm.animation.value != null }
+        val first = vm.animation.value!!
+        vm.closeScene()
+        assertEquals(false, vm.rolling.value)
+        assertEquals(first.result, runBlocking { prefs.lastResult.first() })
+        vm.rollAnimated()
+        awaitUntil("second animation") { vm.animation.value != null }
+        val second = vm.animation.value!!
+        vm.animationFinished(first.id, first.result.face)
+        assertEquals(second, vm.animation.value)
+        vm.animationFinished(second.id, second.result.face)
+        assertEquals(false, vm.rolling.value)
+    }
+
+    @Test
+    fun failedAnimation_releasesControlsWithoutChangingResult() {
+        val vm = newViewModel()
+        vm.rollAnimated()
+        awaitUntil("animation requested") { vm.animation.value != null }
+        val request = vm.animation.value!!
+        vm.animationFailed(request.id)
+        assertEquals(false, vm.rolling.value)
+        assertTrue(vm.error.value != null)
+        assertEquals(request.result, runBlocking { prefs.lastResult.first() })
+    }
 }

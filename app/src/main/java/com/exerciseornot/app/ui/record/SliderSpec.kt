@@ -1,6 +1,7 @@
 package com.exerciseornot.app.ui.record
 
 import com.exerciseornot.app.data.db.WeightMode
+import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
@@ -11,21 +12,15 @@ data class SliderSpec(val min: Float, val max: Float, val step: Float) {
     val steps: Int get() = ((max - min) / step).roundToInt() - 1
 }
 
-/**
- * Window centred on [value] (snapped to the step grid) so small adjustments are easy;
- * recomputed after each drag so the user can keep moving in one direction.
- */
+/** All weight modes use a fine 0.5 kg slider; the separate buttons choose their own increment. */
+@Suppress("UNUSED_PARAMETER")
 fun sliderSpec(value: Float?, mode: WeightMode, field: DraftField): SliderSpec = when (field) {
-    DraftField.Reps -> SliderSpec(1f, 30f, 1f)
-    DraftField.Weight -> when (mode) {
-        WeightMode.BODYWEIGHT -> SliderSpec(0f, 40f, 2.5f)
-        WeightMode.TOTAL -> centred(value ?: 20f, span = 20f, step = 2.5f)
-        WeightMode.PER_SIDE -> centred(value ?: 10f, span = 10f, step = 1f)
+    DraftField.Reps -> SliderSpec(1f, maxOf(30f, ceil((value ?: 10f) / 10f) * 10f), 1f)
+    DraftField.Weight -> {
+        val current = value ?: 0f
+        // Keep imported values above the normal limit adjustable without silently changing them.
+        val limit = maxOf(1000f, ceil(current / 5f) * 5f)
+        val min = (floor(current / 5f) * 5f - 20f).coerceIn(0f, limit - 40f)
+        SliderSpec(min, min + 40f, .5f)
     }
-}
-
-private fun centred(value: Float, span: Float, step: Float): SliderSpec {
-    val centre = floor(value / step + 0.5f) * step
-    val min = (centre - span).coerceAtLeast(0f)
-    return SliderSpec(min, min + 2 * span, step)
 }

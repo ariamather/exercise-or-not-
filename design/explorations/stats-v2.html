@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>练不练 · 统计</title>
+<style>
+/* Tokens follow 6-spatial: warm paper, muted green. Heat ramps validated (ordinal) against --card in each mode. */
+:root{
+  color-scheme:light;
+  --desk:#e8eae3;--paper:#f6f5f0;--card:#fbfcf7;
+  --ink:#28392f;--ink-2:#536052;--muted:#7d847b;--faint:#a5ab9e;
+  --line:#e3e5dc;--grid:#eceee6;--soft:#e9eddf;--empty:#edf0e6;
+  --accent:#2c573d;--on-accent:#fafbf5;--wash:rgba(44,87,61,.10);--spark:#b7bdb0;
+  --h1:#9bba8e;--h2:#6f9a6b;--h3:#4a7a56;--h4:#2c573d;
+  --focus:#9dac67;--shadow:0 24px 80px #37432c20;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --desk:#0d110e;--paper:#151b17;--card:#1c2520;
+    --ink:#e3e9de;--ink-2:#b5bfb1;--muted:#8c968a;--faint:#667063;
+    --line:#2a352d;--grid:#263029;--soft:#25302a;--empty:#26312a;
+    --accent:#86b884;--on-accent:#13201a;--wash:rgba(134,184,132,.12);--spark:#56614f;
+    --h1:#3f6a4a;--h2:#5c9165;--h3:#86b884;--h4:#bfe0b0;
+    --focus:#86b884;--shadow:0 24px 80px #00000060;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --desk:#0d110e;--paper:#151b17;--card:#1c2520;
+  --ink:#e3e9de;--ink-2:#b5bfb1;--muted:#8c968a;--faint:#667063;
+  --line:#2a352d;--grid:#263029;--soft:#25302a;--empty:#26312a;
+  --accent:#86b884;--on-accent:#13201a;--wash:rgba(134,184,132,.12);--spark:#56614f;
+  --h1:#3f6a4a;--h2:#5c9165;--h3:#86b884;--h4:#bfe0b0;
+  --focus:#86b884;--shadow:0 24px 80px #00000060;
+}
+
+*{box-sizing:border-box}
+html{background:var(--desk)}
+body{margin:0;background:var(--desk);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;font-synthesis:none}
+button{font:inherit;color:inherit;border:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:8px}
+h1,h2,h3,p{margin:0}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+
+/* Preview chrome (desktop only) */
+.caption{max-width:428px;margin:32px auto 16px;display:flex;justify-content:space-between;align-items:center;gap:16px;color:var(--muted);font-size:11px;letter-spacing:1px}
+.theme-switch{display:flex;gap:2px;background:var(--soft);border-radius:10px;padding:2px}
+.theme-switch button{font-size:11px;padding:5px 10px;border-radius:8px;color:var(--muted);letter-spacing:.5px}
+.theme-switch button[aria-pressed="true"]{background:var(--card);color:var(--ink)}
+
+.app{width:100%;max-width:428px;margin:0 auto 48px;background:var(--paper);border-radius:36px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;min-height:852px}
+.app-header{height:76px;display:flex;align-items:center;justify-content:space-between;padding:12px 26px 0;flex:none}
+.brand{display:flex;align-items:center;font-size:19px;font-weight:650;letter-spacing:.5px}
+.brand-mark{width:26px;height:26px;background:var(--accent);color:var(--on-accent);font:25px Georgia,serif;border-radius:8px;display:grid;place-items:center;margin-right:9px;line-height:22px;padding-bottom:4px;transform:rotate(-8deg)}
+.brand-dot{color:#8d9a67;margin-left:2px}
+.today{font-size:11px;color:var(--muted);letter-spacing:1px}
+
+main{flex:1;padding:20px 20px 8px;display:flex;flex-direction:column;gap:28px}
+.page-title{padding:0 6px;display:flex;align-items:baseline;justify-content:space-between}
+.page-title h1{font-size:30px;font-weight:550;letter-spacing:-1px}
+.page-title h1 span{color:#94a073}
+
+/* Hero */
+.hero{padding:0 6px}
+.eyebrow{font-size:10px;letter-spacing:2.5px;color:var(--muted);font-weight:600}
+.hero-figure{display:flex;align-items:baseline;gap:8px;margin-top:6px}
+.hero-figure strong{font-size:64px;line-height:1;font-weight:600;letter-spacing:-2px}
+.hero-figure span{font-size:15px;color:var(--ink-2)}
+.hero-note{margin-top:10px;font-size:12px;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:22px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.kpi{padding:14px 0 13px}
+.kpi+.kpi{padding-left:14px;border-left:1px solid var(--line)}
+.kpi b{display:block;font-size:20px;font-weight:600;letter-spacing:-.3px}
+.kpi b small{font-size:11px;font-weight:400;color:var(--muted);margin-left:2px}
+.kpi span{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+
+/* Section + card */
+.section-head{display:flex;justify-content:space-between;align-items:baseline;padding:0 6px;margin-bottom:12px}
+.section-head h2{font-size:15px;font-weight:600}
+.section-head small{font-size:11px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px 16px 16px}
+
+/* Heatmap */
+.heat{display:grid;grid-template-columns:16px repeat(12,minmax(0,1fr));gap:2px;font-variant-numeric:tabular-nums}
+.heat .m{font-size:10px;color:var(--muted);height:16px;white-space:nowrap;overflow:visible}
+.heat .wd{font-size:9px;color:var(--faint);display:flex;align-items:center}
+.cell{aspect-ratio:1;border-radius:5px;background:var(--empty);padding:0;min-width:0;position:relative;transition:transform .12s}
+.cell[data-bin="1"]{background:var(--h1)}.cell[data-bin="2"]{background:var(--h2)}.cell[data-bin="3"]{background:var(--h3)}.cell[data-bin="4"]{background:var(--h4)}
+.cell:hover{transform:scale(1.12);z-index:1}
+.cell[data-today]::after{content:"";position:absolute;inset:3px;border-radius:3px;border:1.5px solid var(--faint)}
+.cell[aria-pressed="true"]{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--ink);z-index:2}
+.cell.void{visibility:hidden}
+.heat-foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:10px;color:var(--muted)}
+.scale{display:flex;align-items:center;gap:6px}
+.scale i{display:inline-block;width:11px;height:11px;border-radius:3px}
+.scale .lbl{display:flex;gap:2px;align-items:center}
+.day{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.day-top{display:flex;justify-content:space-between;align-items:baseline}
+.day-top b{font-size:13px;font-weight:600}
+.day-top span{font-size:12px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{font-size:12px;background:var(--soft);border-radius:8px;padding:4px 9px;color:var(--ink-2)}
+.chip em{font-style:normal;color:var(--muted);margin-left:5px}
+.day-empty{font-size:12px;color:var(--muted);margin-top:8px}
+
+/* Exercise list */
+.ex-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.ex{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.ex-head{width:100%;display:grid;grid-template-columns:minmax(0,1fr) 64px 82px 14px;align-items:center;gap:12px;padding:15px 16px;min-height:64px;text-align:left}
+.ex-name{min-width:0}
+.ex-name b{display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ex-name small{font-size:11px;color:var(--muted)}
+.ex-last{text-align:right;white-space:nowrap}
+.ex-last b{display:block;font-size:14px;font-weight:600}
+.ex-last small{font-size:11px;color:var(--muted)}
+.chev{width:14px;height:14px;color:var(--faint);transition:transform .2s}
+.ex[data-open] .chev{transform:rotate(180deg)}
+.ex-body{padding:0 16px 16px}
+.ex:not([data-open]) .ex-body{display:none}
+.readout{padding:14px 0 4px;border-top:1px solid var(--line);min-height:84px}
+.ro-main{display:flex;align-items:baseline;gap:6px}
+.ro-main strong{font-size:30px;font-weight:600;letter-spacing:-.8px;line-height:1.15}
+.ro-main span{font-size:13px;color:var(--ink-2)}
+.ro-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.ro-sets{font-size:11px;color:var(--ink-2);margin-top:2px;font-variant-numeric:tabular-nums}
+.chart{position:relative;margin:6px -4px 0;touch-action:pan-y;cursor:crosshair;border-radius:10px}
+.chart svg{display:block;width:100%;overflow:visible}
+.chart text{font-family:inherit;font-variant-numeric:tabular-nums}
+.ex-foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:11px;color:var(--muted);gap:8px}
+.link{font-size:11px;color:var(--ink-2);padding:10px 2px;min-height:40px;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px;font-variant-numeric:tabular-nums}
+th{font-weight:500;color:var(--muted);font-size:10px;text-align:left;padding:6px 4px;border-bottom:1px solid var(--line)}
+td{padding:8px 4px;border-bottom:1px solid var(--line);color:var(--ink-2);vertical-align:top}
+td:nth-child(2){color:var(--ink);font-weight:600;white-space:nowrap}
+td:first-child{white-space:nowrap}
+
+.foot-note{text-align:center;font-size:10px;color:var(--faint);letter-spacing:.5px;padding:4px 0 8px}
+
+/* Bottom nav (same as 6-spatial) */
+.bottom-nav{position:sticky;bottom:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:12px 28px 20px;border-top:1px solid var(--line);background:var(--paper);flex:none}
+.nav-item{color:var(--faint);display:flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;min-height:44px;padding:8px;font-size:12px;white-space:nowrap}
+.nav-item.active{color:var(--accent);background:var(--soft)}
+.nav-item svg{width:21px;height:21px}
+
+@media (max-width:480px){
+  html,body{background:var(--paper)}
+  .caption{display:none}
+  .app{max-width:none;border-radius:0;box-shadow:none;margin:0;min-height:100svh}
+  main{padding:16px 16px 8px}
+  .bottom-nav{padding-bottom:max(16px,env(safe-area-inset-bottom));padding-left:16px;padding-right:16px}
+}
+@media (max-width:350px){
+  .hero-figure strong{font-size:54px}
+  .ex-head{grid-template-columns:minmax(0,1fr) 48px 74px 14px;gap:8px;padding:14px 12px}
+  .card{padding:16px 12px 14px}
+  .kpi+.kpi{padding-left:10px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (forced-colors:active){.cell{border:1px solid CanvasText}.cell[data-bin="0"]{background:Canvas}}
+</style>
+</head>
+<body>
+<div class="caption">
+  <span>练不练 / 统计 · 设计稿 v2</span>
+  <div class="theme-switch" role="group" aria-label="预览配色">
+    <button type="button" data-theme-set="light" aria-pressed="false">浅色</button>
+    <button type="button" data-theme-set="dark" aria-pressed="false">深色</button>
+    <button type="button" data-theme-set="auto" aria-pressed="true">跟随系统</button>
+  </div>
+</div>
+
+<div class="app">
+  <header class="app-header">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
+    <span class="today" id="today-label"></span>
+  </header>
+
+  <main>
+    <div class="page-title"><h1>统计<span>.</span></h1></div>
+
+    <section class="hero" aria-labelledby="hero-label">
+      <div class="eyebrow" id="hero-label">本月</div>
+      <div class="hero-figure"><strong id="hero-days">0</strong><span>天练过</span></div>
+      <p class="hero-note" id="hero-note"></p>
+      <div class="kpis">
+        <div class="kpi"><b id="kpi-sets"></b><span>本月完成组数</span></div>
+        <div class="kpi"><b id="kpi-ex"></b><span>本月练过的动作</span></div>
+        <div class="kpi"><b id="kpi-avg"></b><span>近 12 周每周</span></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="heat-title">
+      <div class="section-head"><h2 id="heat-title">训练日历</h2><small>近 12 周 · 每格一天</small></div>
+      <div class="card">
+        <div class="heat" id="heat" role="grid" aria-label="近 12 周每天完成的组数"></div>
+        <div class="heat-foot">
+          <span>点一格查看那天</span>
+          <span class="scale" aria-label="颜色越深，当天组数越多">
+            <span class="lbl">少</span>
+            <i style="background:var(--empty)" title="没练"></i>
+            <i style="background:var(--h1)" title="1–5 组"></i>
+            <i style="background:var(--h2)" title="6–8 组"></i>
+            <i style="background:var(--h3)" title="9–11 组"></i>
+            <i style="background:var(--h4)" title="12 组以上"></i>
+            <span class="lbl">多</span>
+          </span>
+        </div>
+        <div class="day" id="day" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="ex-title">
+      <div class="section-head"><h2 id="ex-title">动作</h2><small>每次训练的最佳一组</small></div>
+      <ul class="ex-list" id="ex-list"></ul>
+    </section>
+
+    <p class="foot-note">示例数据 · 记录只在这台手机上</p>
+  </main>
+
+  <nav class="bottom-nav" aria-label="主导航">
+    <button class="nav-item" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="8" cy="8" r=".85" fill="currentColor"/><circle cx="12" cy="12" r=".85" fill="currentColor"/><circle cx="16" cy="16" r=".85" fill="currentColor"/></svg><span>掷骰子</span></button>
+    <button class="nav-item" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="3"/><path d="M9 3v3m6-3v3M9 11h6m-6 5h4"/></svg><span>记录</span></button>
+    <button class="nav-item active" type="button" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="13" width="3" height="7" rx="1"/><rect x="10.5" y="8" width="3" height="12" rx="1"/><rect x="17" y="4" width="3" height="16" rx="1"/></svg><span>统计</span></button>
+  </nav>
+</div>
+
+<script>
+(() => {
+  /* ---------- theme preview ---------- */
+  const rootEl = document.documentElement;
+  const setTheme = t => {
+    if (t === 'auto') rootEl.removeAttribute('data-theme'); else rootEl.dataset.theme = t;
+    document.querySelectorAll('[data-theme-set]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeSet === t)));
+  };
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.addEventListener('click', () => setTheme(b.dataset.themeSet)));
+  const qsTheme = new URLSearchParams(location.search).get('theme');
+  if (qsTheme === 'light' || qsTheme === 'dark') setTheme(qsTheme);
+
+  /* ---------- date helpers ---------- */
+  const TODAY = '2026-11-17', START = '2026-08-31', WEEKS = 12;
+  const WD = '一二三四五六日';
+  const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const dow = iso => (new Date(iso + 'T00:00:00Z').getUTCDay() + 6) % 7;
+  const mdLong = iso => `${+iso.slice(5, 7)} 月 ${+iso.slice(8)} 日 · 周${WD[dow(iso)]}`;
+  const mdShort = iso => `${+iso.slice(5, 7)}/${+iso.slice(8)}`;
+  const num = n => String(Math.round(n * 10) / 10);
+  const dayIndex = iso => Math.round((Date.parse(iso) - Date.parse(START)) / 864e5);
+
+  /* ---------- sample data (deterministic) ---------- */
+  let seed = 7;
+  const rand = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const EX = {
+    bench: { name: '杠铃卧推', mode: '总重', unit: 'kg', base: 32.5, step: 2.5 },
+    squat: { name: '深蹲', mode: '总重', unit: 'kg', base: 50, step: 5 },
+    press: { name: '哑铃肩推', mode: '单只', unit: 'kg', base: 10, step: 1 },
+    pull:  { name: '引体向上', mode: '自重', unit: 'reps', base: 5, step: 1 },
+  };
+  const PATTERN = [[0,2,4],[1,3,5],[0,3],[0,2,4,6],[1,4],[2],[0,2,5],[1,3,5],[0,2,4],[1,4,6],[0,2,4],[0]];
+  const TPL = { A: [['bench',4],['press',3]], B: [['squat',4],['pull',3]], D: [['bench',4],['squat',3],['press',3]], C: [['bench',3],['squat',3],['press',3],['pull',3]], S: [['squat',3]] };
+  const ROT = ['A','B','D','B','C','A','B'];
+  const count = { bench: 0, squat: 0, press: 0, pull: 0 };
+  const sessions = [];
+  let n = 0;
+  PATTERN.forEach((offs, w) => offs.forEach(o => {
+    const date = addDays(START, w * 7 + o);
+    if (date > TODAY) return;
+    const tpl = w === 5 ? 'S' : ROT[n++ % ROT.length];
+    const deload = date >= '2026-10-07' && date <= '2026-10-13';
+    const items = TPL[tpl].map(([key, setsN]) => {
+      const e = EX[key], k = count[key]++;
+      const lvl = Math.floor(k / 3) - (deload ? 1 : 0);
+      const r0 = [8, 9, 10][k % 3];
+      const sets = [];
+      const extra = rand() < .25 ? 1 : 0;
+      for (let j = 0; j < setsN + extra; j++) {
+        if (e.unit === 'reps') sets.push({ w: 0, r: Math.max(2, e.base + lvl - j) });
+        else sets.push({ w: e.base + e.step * lvl, r: Math.max(5, r0 - j + (rand() < .3 ? 1 : 0)) });
+      }
+      return { key, sets };
+    });
+    sessions.push({ date, items, total: items.reduce((s, i) => s + i.sets.length, 0) });
+  }));
+  const byDate = Object.fromEntries(sessions.map(s => [s.date, s]));
+  const bestOf = sets => sets.reduce((b, s) => (s.w > b.w || (s.w === b.w && s.r > b.r)) ? s : b);
+  const history = {};
+  for (const key of Object.keys(EX)) {
+    history[key] = sessions.flatMap(s => s.items.filter(i => i.key === key).map(i => ({ date: s.date, sets: i.sets, best: bestOf(i.sets) })));
+  }
+  const yOf = (key, b) => EX[key].unit === 'reps' ? b.r : b.w;
+  const setText = (key, s) => EX[key].unit === 'reps' ? `${s.r}` : `${num(s.w)}×${s.r}`;
+
+  /* ---------- tiny DOM helpers (textContent only) ---------- */
+  const $ = id => document.getElementById(id);
+  const el = (tag, attrs = {}, ...kids) => {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'class') node.className = v; else if (k === 'text') node.textContent = v; else node.setAttribute(k, v);
+    }
+    kids.flat().forEach(k => k != null && node.append(k));
+    return node;
+  };
+  const SVG = 'http://www.w3.org/2000/svg';
+  const sv = (tag, attrs = {}) => { const n = document.createElementNS(SVG, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); return n; };
+
+  /* ---------- header + hero ---------- */
+  $('today-label').textContent = `${+TODAY.slice(5,7)} 月 ${+TODAY.slice(8)} 日 · 周${WD[dow(TODAY)]}`;
+  const monthStart = TODAY.slice(0, 8) + '01';
+  const thisMonth = sessions.filter(s => s.date >= monthStart);
+  const lastStart = '2026-10-01', lastSame = '2026-10-' + TODAY.slice(8);
+  const lastMonthSame = sessions.filter(s => s.date >= lastStart && s.date <= lastSame);
+  $('hero-days').textContent = thisMonth.length;
+  const diff = thisMonth.length - lastMonthSame.length;
+  $('hero-note').textContent = `上月同期 ${lastMonthSame.length} 天` + (diff > 0 ? `，这个月多练了 ${diff} 天` : diff < 0 ? `，这个月少 ${-diff} 天` : '，和这个月一样');
+  const kpi = (id, v, unit) => { const b = $(id); b.textContent = v; b.append(el('small', { text: unit })); };
+  kpi('kpi-sets', thisMonth.reduce((s, x) => s + x.total, 0), '组');
+  kpi('kpi-ex', new Set(thisMonth.flatMap(s => s.items.map(i => i.key))).size, '个');
+  const weeksElapsed = (dayIndex(TODAY) + 1) / 7;
+  kpi('kpi-avg', num(sessions.length / weeksElapsed), '次');
+
+  /* ---------- heatmap ---------- */
+  const binOf = t => !t ? 0 : t <= 5 ? 1 : t <= 8 ? 2 : t <= 11 ? 3 : 4;
+  const heat = $('heat');
+  let selectedDay = sessions.at(-1).date;
+  const cells = new Map();
+  heat.append(el('span'));
+  for (let c = 0; c < WEEKS; c++) {
+    const monday = addDays(START, c * 7);
+    const prev = c === 0 ? null : addDays(START, (c - 1) * 7);
+    const showMonth = c === 0 || monday.slice(5, 7) !== prev.slice(5, 7);
+    heat.append(el('span', { class: 'm', 'aria-hidden': 'true', text: showMonth ? `${+monday.slice(5, 7)}月` : '' }));
+  }
+  for (let r = 0; r < 7; r++) {
+    heat.append(el('span', { class: 'wd', 'aria-hidden': 'true', text: r % 2 === 0 ? WD[r] : '' }));
+    for (let c = 0; c < WEEKS; c++) {
+      const date = addDays(START, c * 7 + r);
+      if (date > TODAY) { heat.append(el('span', { class: 'cell void', 'aria-hidden': 'true' })); continue; }
+      const s = byDate[date];
+      const b = el('button', { type: 'button', class: 'cell', 'data-bin': binOf(s?.total), 'data-date': date, tabindex: '-1',
+        'aria-label': `${mdLong(date)}，${s ? s.total + ' 组' : '没练'}`, 'aria-pressed': 'false', title: `${mdShort(date)} · ${s ? s.total + ' 组' : '没练'}` });
+      if (date === TODAY) b.dataset.today = '';
+      b.addEventListener('click', () => selectDay(date, false));
+      cells.set(date, b);
+      heat.append(b);
+    }
+  }
+  heat.addEventListener('keydown', e => {
+    const step = { ArrowUp: -1, ArrowDown: 1, ArrowLeft: -7, ArrowRight: 7 }[e.key];
+    if (!step) return;
+    const next = addDays(selectedDay, step);
+    if (cells.has(next)) { e.preventDefault(); selectDay(next, true); }
+  });
+  function selectDay(date, focus) {
+    cells.get(selectedDay)?.setAttribute('aria-pressed', 'false');
+    cells.get(selectedDay)?.setAttribute('tabindex', '-1');
+    selectedDay = date;
+    const cell = cells.get(date);
+    cell.setAttribute('aria-pressed', 'true'); cell.setAttribute('tabindex', '0');
+    if (focus) cell.focus();
+    const s = byDate[date], box = $('day');
+    box.replaceChildren(el('div', { class: 'day-top' }, el('b', { text: mdLong(date) }), el('span', { text: s ? `共 ${s.total} 组` : '' })));
+    if (s) box.append(el('div', { class: 'chips' }, s.items.map(i => el('span', { class: 'chip' }, EX[i.key].name, el('em', { text: `${i.sets.length} 组` })))));
+    else box.append(el('p', { class: 'day-empty', text: date === TODAY ? '今天还没有记录' : '这天没有训练记录' }));
+  }
+  selectDay(selectedDay, false);
+
+  /* ---------- exercises ---------- */
+  const order = Object.keys(EX).sort((a, b) => history[b].at(-1).date.localeCompare(history[a].at(-1).date));
+  const list = $('ex-list');
+  const deltaText = key => {
+    const h = history[key], a = h.at(-2)?.best, b = h.at(-1).best;
+    if (!a) return '第一次';
+    if (EX[key].unit === 'reps') { const d = b.r - a.r; return d ? `${d > 0 ? '↑' : '↓'} ${Math.abs(d)} 次` : '和上次持平'; }
+    const dw = b.w - a.w; if (dw) return `${dw > 0 ? '↑' : '↓'} ${num(Math.abs(dw))} kg`;
+    const dr = b.r - a.r; return dr ? `${dr > 0 ? '↑' : '↓'} ${Math.abs(dr)} 次` : '和上次持平';
+  };
+  const bestLabel = (key, s) => EX[key].unit === 'reps' ? [String(s.r), '次 · 自重'] : [num(s.w), `kg × ${s.r}`];
+
+  function sparkline(key) {
+    const pts = history[key].slice(-8).map(h => yOf(key, h.best));
+    const W = 64, H = 26, p = 4;
+    const lo = Math.min(...pts), hi = Math.max(...pts), span = hi - lo || 1;
+    const x = i => p + i * (W - 2 * p) / (pts.length - 1), y = v => H - p - (v - lo) / span * (H - 2 * p);
+    const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, 'aria-hidden': 'true' });
+    svg.append(sv('polyline', { points: pts.map((v, i) => `${x(i)},${y(v)}`).join(' '), fill: 'none', stroke: 'var(--spark)', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    svg.append(sv('circle', { cx: x(pts.length - 1), cy: y(pts.at(-1)), r: 3.5, fill: 'var(--accent)', stroke: 'var(--card)', 'stroke-width': 2 }));
+    return svg;
+  }
+
+  const rows = {};
+  let openKey = null;
+  for (const key of order) {
+    const e = EX[key], last = history[key].at(-1).best;
+    const [v, u] = bestLabel(key, last);
+    const head = el('button', { type: 'button', class: 'ex-head', 'aria-expanded': 'false', 'aria-controls': `body-${key}` },
+      el('span', { class: 'ex-name' }, el('b', { text: e.name }), el('small', { text: `${e.mode} · ${history[key].length} 次训练` })),
+      sparkline(key),
+      el('span', { class: 'ex-last' }, el('b', { text: e.unit === 'reps' ? `${v} 次` : `${v} kg` }), el('small', { text: deltaText(key) })),
+      (() => { const s = sv('svg', { class: 'chev', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'aria-hidden': 'true' }); s.append(sv('path', { d: 'm6 9 6 6 6-6' })); return s; })()
+    );
+    const body = el('div', { class: 'ex-body', id: `body-${key}` });
+    const li = el('li', { class: 'ex' }, head, body);
+    head.addEventListener('click', () => toggle(key));
+    rows[key] = { li, head, body };
+    list.append(li);
+  }
+  function toggle(key) {
+    const wasOpen = openKey === key;
+    for (const k of order) { rows[k].li.removeAttribute('data-open'); rows[k].head.setAttribute('aria-expanded', 'false'); rows[k].body.replaceChildren(); }
+    openKey = wasOpen ? null : key;
+    if (openKey) { rows[key].li.dataset.open = ''; rows[key].head.setAttribute('aria-expanded', 'true'); buildBody(key); }
+  }
+
+  /* ---------- detail chart ---------- */
+  function niceStep(range, target) {
+    const raw = range / target, mag = 10 ** Math.floor(Math.log10(raw));
+    for (const m of [1, 2, 2.5, 5, 10]) if (m * mag >= raw) return m * mag;
+    return 10 * mag;
+  }
+  function buildBody(key) {
+    const e = EX[key], h = history[key], body = rows[key].body;
+    const readout = el('div', { class: 'readout', 'aria-live': 'polite' });
+    const chart = el('div', { class: 'chart', tabindex: '0', role: 'img' });
+    const first = yOf(key, h[0].best), lastV = yOf(key, h.at(-1).best);
+    const unitWord = e.unit === 'reps' ? '次' : 'kg';
+    chart.setAttribute('aria-label', `${e.name}每次训练最佳一组，从 ${num(first)} ${unitWord} 到 ${num(lastV)} ${unitWord}，共 ${h.length} 次。左右方向键逐次查看。`);
+    const tableBtn = el('button', { type: 'button', class: 'link', 'aria-expanded': 'false', text: '以表格查看' });
+    const foot = el('div', { class: 'ex-foot' }, el('span', { text: `近 12 周 ${num(first)} → ${num(lastV)} ${unitWord}` }), tableBtn);
+    const tableWrap = el('div', { hidden: '' });
+    tableWrap.append(el('table', {},
+      el('thead', {}, el('tr', {}, el('th', { text: '日期' }), el('th', { text: '最佳一组' }), el('th', { text: e.unit === 'reps' ? '全部组（次）' : '全部组（kg × 次）' }))),
+      el('tbody', {}, [...h].reverse().map(x => el('tr', {},
+        el('td', { text: mdShort(x.date) }),
+        el('td', { text: e.unit === 'reps' ? `${x.best.r} 次` : `${num(x.best.w)} × ${x.best.r}` }),
+        el('td', { text: x.sets.map(s => setText(key, s)).join(' · ') }))))
+    ));
+    tableBtn.addEventListener('click', () => {
+      const open = tableWrap.hidden; tableWrap.hidden = !open;
+      tableBtn.setAttribute('aria-expanded', String(open)); tableBtn.textContent = open ? '收起表格' : '以表格查看';
+    });
+    body.append(readout, chart, foot, tableWrap);
+
+    let active = h.length - 1;
+    const showReadout = i => {
+      const x = h[i], [v, u] = bestLabel(key, x.best);
+      readout.replaceChildren(
+        el('div', { class: 'ro-main' }, el('strong', { text: v }), el('span', { text: u })),
+        el('div', { class: 'ro-sub', text: `${mdLong(x.date)} · 最佳一组${i === h.length - 1 ? '（最近一次）' : ''} · 共 ${x.sets.length} 组` }),
+        el('div', { class: 'ro-sets', text: x.sets.map(s => setText(key, s)).join(' · ') + (e.unit === 'reps' ? ' 次' : '') })
+      );
+    };
+
+    const draw = () => {
+      const W = Math.max(240, chart.clientWidth), H = 176;
+      const padL = 34, padR = 18, padT = 24, axisB = 22, plotH = H - padT - axisB;
+      const vals = h.map(x => yOf(key, x.best));
+      let lo = Math.min(...vals), hi = Math.max(...vals);
+      const step = niceStep(Math.max(hi - lo, e.unit === 'reps' ? 3 : e.step * 2), 3);
+      lo = Math.floor((lo - step * .25) / step) * step; hi = Math.ceil((hi + step * .25) / step) * step;
+      if (e.unit === 'reps') lo = Math.max(0, lo);
+      const t0 = Date.parse(h[0].date), t1 = Date.parse(h.at(-1).date);
+      const X = iso => padL + (Date.parse(iso) - t0) / (t1 - t0) * (W - padL - padR);
+      const Y = v => padT + (1 - (v - lo) / (hi - lo)) * plotH;
+      const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, height: H, 'aria-hidden': 'true' });
+
+      for (let v = lo; v <= hi + 1e-9; v += step) {
+        svg.append(sv('line', { x1: padL, x2: W - padR, y1: Y(v), y2: Y(v), stroke: 'var(--grid)', 'stroke-width': 1 }));
+        const t = sv('text', { x: padL - 8, y: Y(v) + 3.5, 'text-anchor': 'end', 'font-size': 10, fill: 'var(--muted)' }); t.textContent = num(v); svg.append(t);
+      }
+      // month ticks on the x axis
+      const months = new Set();
+      for (let d = h[0].date; d <= h.at(-1).date; d = addDays(d, 1)) if (d.endsWith('-01')) months.add(d);
+      const xLabels = [[h[0].date, mdShort(h[0].date)], ...[...months].map(d => [d, `${+d.slice(5, 7)}月`])];
+      xLabels.forEach(([d, label], i) => {
+        const x = X(d);
+        if (i > 0 && x - X(xLabels[i - 1][0]) < 30) return;
+        if (i > 0) svg.append(sv('line', { x1: x, x2: x, y1: padT + plotH, y2: padT + plotH + 4, stroke: 'var(--line)' }));
+        const t = sv('text', { x, y: H - 5, 'text-anchor': i === 0 ? 'start' : 'middle', 'font-size': 10, fill: 'var(--muted)' }); t.textContent = label; svg.append(t);
+      });
+      svg.append(sv('line', { x1: padL, x2: W - padR, y1: padT + plotH, y2: padT + plotH, stroke: 'var(--line)', 'stroke-width': 1 }));
+
+      const pts = h.map((x, i) => [X(x.date), Y(vals[i])]);
+      const path = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join('');
+      svg.append(sv('path', { d: `${path}L${pts.at(-1)[0]},${padT + plotH}L${pts[0][0]},${padT + plotH}Z`, fill: 'var(--wash)' }));
+      svg.append(sv('path', { d: path, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+
+      const cross = sv('line', { y1: padT - 6, y2: padT + plotH, stroke: 'var(--faint)', 'stroke-width': 1, visibility: 'hidden' });
+      svg.append(cross);
+      const endDot = sv('circle', { cx: pts.at(-1)[0], cy: pts.at(-1)[1], r: 4.5, fill: 'var(--accent)', stroke: 'var(--card)', 'stroke-width': 2 });
+      svg.append(endDot);
+      const endLbl = sv('text', { x: pts.at(-1)[0], y: pts.at(-1)[1] - 11, 'text-anchor': 'end', 'font-size': 11, 'font-weight': 600, fill: 'var(--ink)' });
+      endLbl.textContent = num(vals.at(-1)) + (e.unit === 'reps' ? ' 次' : ' kg');
+      svg.append(endLbl);
+      const hot = sv('circle', { r: 5, fill: 'var(--card)', stroke: 'var(--accent)', 'stroke-width': 2.5, visibility: 'hidden' });
+      svg.append(hot);
+      chart.replaceChildren(svg);
+
+      const mark = i => {
+        active = i; showReadout(i);
+        const [x, y] = pts[i], isLast = i === pts.length - 1;
+        cross.setAttribute('x1', x); cross.setAttribute('x2', x); cross.setAttribute('visibility', isLast ? 'hidden' : 'visible');
+        hot.setAttribute('cx', x); hot.setAttribute('cy', y); hot.setAttribute('visibility', isLast ? 'hidden' : 'visible');
+      };
+      const nearest = clientX => {
+        const r = chart.getBoundingClientRect(), x = (clientX - r.left) * (W / r.width);
+        let best = 0; pts.forEach((p, i) => { if (Math.abs(p[0] - x) < Math.abs(pts[best][0] - x)) best = i; });
+        return best;
+      };
+      chart.onpointermove = ev => mark(nearest(ev.clientX));
+      chart.onpointerdown = ev => mark(nearest(ev.clientX));
+      chart.onpointerleave = ev => { if (ev.pointerType === 'mouse') mark(pts.length - 1); };
+      chart.onkeydown = ev => {
+        const d = { ArrowLeft: -1, ArrowRight: 1, Home: -1e3, End: 1e3 }[ev.key];
+        if (d == null) return; ev.preventDefault(); mark(Math.min(pts.length - 1, Math.max(0, active + d)));
+      };
+      mark(active);
+    };
+    draw();
+    new ResizeObserver(() => { if (body.isConnected && chart.clientWidth) draw(); }).observe(chart);
+  }
+  toggle(order[0]);
+})();
+</script>
+</body>
+</html>
