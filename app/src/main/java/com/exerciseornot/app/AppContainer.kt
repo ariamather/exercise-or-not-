@@ -6,7 +6,7 @@ import com.exerciseornot.app.backup.BackupService
 import com.exerciseornot.app.data.ExerciseRepository
 import com.exerciseornot.app.data.WorkoutRepository
 import com.exerciseornot.app.data.db.AppDatabase
-import com.exerciseornot.app.dice.DicePreferences
+import com.exerciseornot.app.chance.ChancePreferences
 import com.exerciseornot.app.ui.RecordRequests
 import com.exerciseornot.app.ui.hints.HintPreferences
 import java.io.File
@@ -21,11 +21,11 @@ class AppContainer(context: Context) {
     val workoutRepository = WorkoutRepository(database, clock)
     val exerciseRepository = ExerciseRepository(database, clock)
     val recordRequests = RecordRequests()
-    val dicePreferences = DicePreferences(settingsStore)
+    val chancePreferences = ChancePreferences(settingsStore)
     val hintPreferences = HintPreferences(settingsStore)
     val backupService = BackupService(
         database,
-        dicePreferences,
+        chancePreferences,
         settingsStore,
         File(context.filesDir, "backup"),
         appVersion = BuildConfig.VERSION_NAME,

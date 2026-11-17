@@ -5,7 +5,8 @@ import com.exerciseornot.app.data.db.SetEntryEntity
 import com.exerciseornot.app.data.db.SetStatus
 import com.exerciseornot.app.data.db.WorkoutEntity
 import com.exerciseornot.app.data.db.WorkoutExerciseEntity
-import com.exerciseornot.app.dice.DICE_FACES
+import com.exerciseornot.app.chance.ChanceGames
+import com.exerciseornot.app.chance.ChanceSettings
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.int
@@ -94,8 +95,13 @@ object BackupCodec {
         }
 
         val faces = f.settings.diceTrainFaces.toSet()
-        if (faces.any { it !in DICE_FACES }) fail("骰子点数超出 1–6")
+        if (faces.any { it !in 1..6 }) fail("骰子点数超出 1–6")
+        // 0.2.0 backups only have the faces; their count is the probability.
+        val target = f.settings.chanceTarget ?: (faces.size / 6.0)
+        if (target.isNaN() || target !in 0.0..1.0) fail("练的概率超出 0–100%")
+        // A game this version doesn't know (from a newer app) falls back to the default one.
+        val chance = ChanceSettings(ChanceGames.resolve(f.settings.chanceGame).id, target)
 
-        return BackupContent(f.exportedAt, exercises, workouts, items, sets, faces)
+        return BackupContent(f.exportedAt, exercises, workouts, items, sets, chance)
     }
 }

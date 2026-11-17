@@ -12,8 +12,8 @@ import com.exerciseornot.app.data.WorkoutTarget
 import com.exerciseornot.app.data.db.AppDatabase
 import com.exerciseornot.app.data.db.WeightMode
 import com.exerciseornot.app.data.logSets
-import com.exerciseornot.app.dice.DicePreferences
-import com.exerciseornot.app.dice.DiceResult
+import com.exerciseornot.app.chance.ChancePreferences
+import com.exerciseornot.app.chance.ChanceResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -46,7 +46,7 @@ class HintsViewModelTest {
     private lateinit var db: AppDatabase
     private lateinit var repo: WorkoutRepository
     private lateinit var exercises: ExerciseRepository
-    private lateinit var dice: DicePreferences
+    private lateinit var dice: ChancePreferences
     private lateinit var vm: HintsViewModel
 
     @Before
@@ -57,7 +57,7 @@ class HintsViewModelTest {
         repo = WorkoutRepository(db, clock)
         exercises = ExerciseRepository(db, clock)
         val store = PreferenceDataStoreFactory.create(scope = storeScope) { tmp.root.resolve("settings.preferences_pb") }
-        dice = DicePreferences(store)
+        dice = ChancePreferences(store)
         vm = HintsViewModel(HintPreferences(store), repo, dice, lastExport)
         listOf(vm.showDice, vm.showRecord, vm.showBackup).forEach { f -> collectors.launch { f.collect {} } }
     }
@@ -105,7 +105,7 @@ class HintsViewModelTest {
     @Test
     fun diceHint_hiddenAfterRoll() {
         vm.showDice.await(true)
-        runBlocking { dice.saveResult(DiceResult(3, false, LocalDate.of(2026, 11, 10))) }
+        runBlocking { dice.saveResult(ChanceResult("dice", "3", false, LocalDate.of(2026, 11, 10))) }
         vm.showDice.await(false)
     }
 

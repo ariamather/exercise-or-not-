@@ -13,7 +13,7 @@ import com.exerciseornot.app.data.WorkoutTarget
 import com.exerciseornot.app.data.db.AppDatabase
 import com.exerciseornot.app.data.db.WeightMode
 import com.exerciseornot.app.data.logSets
-import com.exerciseornot.app.dice.DicePreferences
+import com.exerciseornot.app.chance.ChancePreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -62,7 +62,7 @@ class SettingsViewModelTest {
         repo = WorkoutRepository(db, clock)
         exercises = ExerciseRepository(db, clock)
         val store = PreferenceDataStoreFactory.create(scope = storeScope) { tmp.root.resolve("settings.preferences_pb") }
-        val service = BackupService(db, DicePreferences(store), store, tmp.newFolder("backup"), "test", clock)
+        val service = BackupService(db, ChancePreferences(store), store, tmp.newFolder("backup"), "test", clock)
         vm = SettingsViewModel(service)
         collectors.launch { vm.messages.collect { messages += it } }
         collectors.launch { vm.lastExportAt.collect {} }

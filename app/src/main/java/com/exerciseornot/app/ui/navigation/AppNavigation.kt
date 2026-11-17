@@ -42,7 +42,7 @@ import com.exerciseornot.app.ui.AppViewModelFactory
 import com.exerciseornot.app.ui.common.DiceIcon
 import com.exerciseornot.app.ui.common.StatsIcon
 import com.exerciseornot.app.ui.stats.StatsScreen
-import com.exerciseornot.app.ui.dice.DiceScreen
+import com.exerciseornot.app.ui.chance.ChanceScreen
 import com.exerciseornot.app.ui.history.HistoryScreen
 import com.exerciseornot.app.ui.record.RecordScreen
 import com.exerciseornot.app.ui.settings.SettingsScreen
@@ -114,7 +114,7 @@ fun AppNavigation() {
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
         ) {
             composable(Tab.Dice.route) {
-                DiceScreen(
+                ChanceScreen(
                     viewModel(factory = AppViewModelFactory.Factory),
                     onOpenRecord = { navigateToTab(Tab.Record) },
                 )

@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light">
-  <title>练不练 · 掷骰子</title>
-  <link rel="stylesheet" href="scene.css">
+  <title>练不练</title>
+  <link rel="stylesheet" href="shell.css">
 </head>
 <body>
   <div class="page">
@@ -14,19 +14,16 @@
     </header>
     <main>
       <h1>今天，<br>练不练<span>？</span></h1>
-      <button class="dice-stage" id="stage" aria-label="点击立体骰子，掷一下" disabled>
-        <canvas id="shadow" aria-hidden="true"></canvas><canvas id="die" aria-hidden="true"></canvas>
-      </button>
-      <div class="result" id="result" role="status" aria-live="polite">让骰子先开个头。</div>
+      <!-- The scene draws inside #stage; everything else here is shared by every game. -->
+      <button class="stage" id="stage" disabled></button>
+      <div class="result" id="result" role="status" aria-live="polite"></div>
       <div class="actions">
         <p class="error" id="error" role="alert" hidden></p>
-        <button class="primary" id="roll" disabled><span id="roll-label">掷一下</span><span aria-hidden="true">→</span></button>
+        <button class="primary" id="draw" disabled><span id="draw-label"></span><span aria-hidden="true">→</span></button>
         <button class="shortcut" id="record">已经决定了，直接记录 ↗</button>
       </div>
     </main>
   </div>
-  <script src="dice-physics.js"></script>
-  <script src="dice-3d.js"></script>
-  <script src="scene.js"></script>
+  <script src="shell.js"></script>
 </body>
 </html>

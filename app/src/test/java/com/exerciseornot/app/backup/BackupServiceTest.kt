@@ -12,8 +12,8 @@ import com.exerciseornot.app.data.WorkoutTarget
 import com.exerciseornot.app.data.db.AppDatabase
 import com.exerciseornot.app.data.db.WeightMode
 import com.exerciseornot.app.data.logSets
-import com.exerciseornot.app.dice.DicePreferences
-import com.exerciseornot.app.dice.DiceResult
+import com.exerciseornot.app.chance.ChancePreferences
+import com.exerciseornot.app.chance.ChanceResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -49,7 +49,7 @@ class BackupServiceTest {
     private lateinit var db: AppDatabase
     private lateinit var repo: WorkoutRepository
     private lateinit var exercises: ExerciseRepository
-    private lateinit var dice: DicePreferences
+    private lateinit var dice: ChancePreferences
     private lateinit var service: BackupService
     private lateinit var dir: File
     private var replacedCount = 0
@@ -62,7 +62,7 @@ class BackupServiceTest {
         repo = WorkoutRepository(db, clock)
         exercises = ExerciseRepository(db, clock)
         val store = PreferenceDataStoreFactory.create(scope = storeScope) { tmp.root.resolve("settings.preferences_pb") }
-        dice = DicePreferences(store)
+        dice = ChancePreferences(store)
         dir = tmp.newFolder("backup")
         service = BackupService(db, dice, store, dir, "test", clock) { replacedCount++ }
     }
@@ -88,15 +88,15 @@ class BackupServiceTest {
         repo.logSets(db, WorkoutTarget.New(today.minusDays(2)), bench, 40_000 to 10, 40_000 to 8)
         repo.logSets(db, WorkoutTarget.New(today), pullUp, null to 8)
         exercises.create("旧动作", WeightMode.PER_SIDE).id.also { exercises.archive(it) }
-        dice.setTrainFaces(setOf(6))
-        dice.saveResult(DiceResult(6, true, today))
+        dice.setTarget(1.0 / 6)
+        dice.saveResult(ChanceResult("dice", "6", true, today))
     }
 
     private suspend fun exportBytes(): ByteArray = ByteArrayOutputStream().also { service.exportTo(it) }.toByteArray()
 
     private suspend fun clearAll() {
         dao.deleteAllSets(); dao.deleteAllWorkoutExercises(); dao.deleteAllWorkouts(); dao.deleteAllExercises()
-        dice.setTrainFaces(setOf(4, 5, 6))
+        dice.setTarget(0.5)
     }
 
     @Test
@@ -110,7 +110,7 @@ class BackupServiceTest {
         service.restore(service.preview(ByteArrayInputStream(bytes)))
 
         assertEquals(before, tables())
-        assertEquals(setOf(6), dice.trainFaces.first())
+        assertEquals(1.0 / 6, dice.settings.first().target, 1e-9)
         assertEquals(1, replacedCount)
     }
 
@@ -119,8 +119,18 @@ class BackupServiceTest {
         seed()
         val text = exportBytes().toString(Charsets.UTF_8)
         assertTrue(text.contains("\"DRAFT\""))
-        assertFalse(text.contains("dice.last"))
+        assertFalse(text.contains("chance.last"))
+        assertFalse(text.contains("\"outcome"))
         assertEquals(2, service.preview(ByteArrayInputStream(text.toByteArray())).summary.workouts)
+    }
+
+    @Test
+    fun export_staysReadableBy020() = runBlocking {
+        seed()
+        val text = exportBytes().toString(Charsets.UTF_8)
+        // 0.2.0 requires diceTrainFaces; 1 of 6 is written as the top face, like the new dice rule.
+        assertTrue(text, Regex("\"diceTrainFaces\":\\s*\\[\\s*6\\s*]").containsMatchIn(text))
+        assertTrue(text.contains("\"chanceGame\": \"dice\""))
     }
 
     @Test

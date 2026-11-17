@@ -1,5 +1,6 @@
 package com.exerciseornot.app.backup
 
+import com.exerciseornot.app.chance.ChanceSettings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -16,8 +17,10 @@ class BackupCodecTest {
             BackupSet("s2", "we1", 1, 40_000, 10, "DRAFT", null, 1, 1),
         ),
         faces: List<Int> = listOf(6),
+        game: String? = null,
+        target: Double? = null,
         formatVersion: Int = BACKUP_FORMAT_VERSION,
-    ) = BackupFile(formatVersion, 1, "0.1.0", 42, exercises, workouts, items, sets, BackupSettings(faces))
+    ) = BackupFile(formatVersion, 1, "0.1.0", 42, exercises, workouts, items, sets, BackupSettings(faces, game, target))
 
     private fun rejects(f: BackupFile, reasonPart: String) = rejectsText(BackupCodec.encode(f), reasonPart)
 
@@ -32,12 +35,31 @@ class BackupCodecTest {
         assertEquals(listOf("e1"), content.exercises.map { it.id })
         assertEquals("2026-11-08", content.workouts.single().trainingDate)
         assertEquals(listOf(40_000, 40_000), content.sets.map { it.weightGrams })
-        assertEquals(setOf(6), content.diceTrainFaces)
+        // A 0.2.0 backup has faces only: one face means a 1 in 6 chance.
+        assertEquals(ChanceSettings("dice", 1.0 / 6), content.chance)
         val summary = content.summary
         assertEquals(1, summary.exercises)
         assertEquals(1, summary.workouts)
         assertEquals(1, summary.loggedSets)
         assertEquals("2026-11-08", summary.firstDate)
+    }
+
+    @Test
+    fun chanceTarget_winsOverLegacyFaces() {
+        val content = BackupCodec.decode(BackupCodec.encode(file(faces = listOf(4, 5, 6), game = "dice", target = 0.25)))
+        assertEquals(ChanceSettings("dice", 0.25), content.chance)
+    }
+
+    @Test
+    fun unknownGame_fallsBackToDefault() {
+        val content = BackupCodec.decode(BackupCodec.encode(file(game = "spinner-from-the-future", target = 0.5)))
+        assertEquals(ChanceSettings("dice", 0.5), content.chance)
+    }
+
+    @Test
+    fun chanceTargetOutOfRange_rejected() {
+        rejects(file(target = 1.5), "概率")
+        rejects(file(target = -0.1), "概率")
     }
 
     @Test

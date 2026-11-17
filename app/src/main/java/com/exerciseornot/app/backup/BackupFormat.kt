@@ -1,5 +1,6 @@
 package com.exerciseornot.app.backup
 
+import com.exerciseornot.app.chance.ChanceSettings
 import com.exerciseornot.app.data.db.ExerciseEntity
 import com.exerciseornot.app.data.db.SetEntryEntity
 import com.exerciseornot.app.data.db.SetStatus
@@ -27,8 +28,17 @@ data class BackupFile(
     val settings: BackupSettings,
 )
 
+/**
+ * [diceTrainFaces] is what 0.2.0 reads (it requires the field and ignores unknown ones), so it
+ * is still written, from the current probability, and a newer backup restores on 0.2.0 too.
+ * [chanceTarget] wins when present.
+ */
 @Serializable
-data class BackupSettings(val diceTrainFaces: List<Int>)
+data class BackupSettings(
+    val diceTrainFaces: List<Int>,
+    val chanceGame: String? = null,
+    val chanceTarget: Double? = null,
+)
 
 @Serializable
 data class BackupExercise(
@@ -82,7 +92,7 @@ data class BackupContent(
     val workouts: List<WorkoutEntity>,
     val workoutExercises: List<WorkoutExerciseEntity>,
     val sets: List<SetEntryEntity>,
-    val diceTrainFaces: Set<Int>,
+    val chance: ChanceSettings,
 ) {
     val summary: BackupSummary
         get() = BackupSummary(

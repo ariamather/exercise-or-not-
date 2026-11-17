@@ -1,4 +1,4 @@
-package com.exerciseornot.app.ui.dice
+package com.exerciseornot.app.ui.chance
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -25,29 +25,39 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
+import java.io.IOException
 
 private const val SCENE_HOST = "appassets.androidplatform.net"
-private const val SCENE_URL = "https://$SCENE_HOST/dice/index.html"
+private const val ASSET_ROOT = "chance"
 
-/** Only the dice page uses the packaged WebGL scene. Records and settings remain Compose UI. */
+/** Packaged files only: lowercase names, no "..", nothing outside assets/chance/. */
+private val ASSET_PATH = Regex("[a-z0-9-]+(/[a-z0-9-]+)*\\.(html|js|css)")
+
+/**
+ * The home page: a packaged web scene reveals what [ChanceViewModel] already drew and saved.
+ * Records and settings remain Compose UI.
+ */
 @Composable
-fun DiceScreen(viewModel: DiceViewModel, onOpenRecord: () -> Unit, modifier: Modifier = Modifier) {
-    val faces by viewModel.trainFaces.collectAsStateWithLifecycle()
+fun ChanceScreen(viewModel: ChanceViewModel, onOpenRecord: () -> Unit, modifier: Modifier = Modifier) {
+    val setup by viewModel.setup.collectAsStateWithLifecycle()
     val result by viewModel.todayResult.collectAsStateWithLifecycle()
-    val rolling by viewModel.rolling.collectAsStateWithLifecycle()
+    val drawing by viewModel.drawing.collectAsStateWithLifecycle()
     val animation by viewModel.animation.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     var showSettings by rememberSaveable { mutableStateOf(false) }
     val openRecord by rememberUpdatedState(onOpenRecord)
-    var scene by remember { mutableStateOf<DiceWebView?>(null) }
+    var scene by remember { mutableStateOf<ChanceWebView?>(null) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val answer = animation?.result ?: result
+    // A result drawn with another game still answers today, but this scene can't show its outcome.
+    val outcome = answer?.takeIf { it.gameId == setup.game.id }?.outcomeId
+    val sceneId = setup.game.sceneId
     val state = JSONObject().apply {
-        put("face", answer?.face ?: 1)
+        put("outcome", outcome ?: JSONObject.NULL)
         put("hasResult", answer != null)
         put("train", answer?.train ?: false)
-        put("rolling", rolling)
+        put("drawing", drawing)
         put("requestId", animation?.id ?: 0L)
         put("error", error ?: "")
     }.toString()
@@ -55,16 +65,22 @@ fun DiceScreen(viewModel: DiceViewModel, onOpenRecord: () -> Unit, modifier: Mod
     AndroidView(
         modifier = modifier.fillMaxSize(),
         factory = { context ->
-            DiceWebView(
+            ChanceWebView(
                 context,
-                onRoll = viewModel::rollAnimated,
+                onDraw = viewModel::drawAnimated,
                 onSettings = { showSettings = true },
                 onRecord = { openRecord() },
                 onFinished = viewModel::animationFinished,
                 onFailed = viewModel::animationFailed,
             ).also { scene = it }
         },
-        update = { it.render(state) },
+        update = {
+            if (it.sceneId != sceneId) {
+                viewModel.closeScene()
+                it.load(sceneId)
+            }
+            it.render(state)
+        },
         onRelease = {
             it.release()
             viewModel.closeScene()
@@ -88,23 +104,25 @@ fun DiceScreen(viewModel: DiceViewModel, onOpenRecord: () -> Unit, modifier: Mod
     }
 
     if (showSettings) {
-        DiceSettingsSheet(faces, viewModel::toggleFace, onDismiss = { showSettings = false })
+        ChanceSettingsSheet(setup, onStop = viewModel::setStop, onDismiss = { showSettings = false })
     }
 }
 
 @SuppressLint("SetJavaScriptEnabled")
-private class DiceWebView(
+private class ChanceWebView(
     context: Context,
-    onRoll: () -> Unit,
+    onDraw: () -> Unit,
     onSettings: () -> Unit,
     onRecord: () -> Unit,
-    onFinished: (Long, Int) -> Unit,
+    onFinished: (Long, String) -> Unit,
     onFailed: (Long) -> Unit,
 ) : WebView(context) {
     private var released = false
     private var ready = false
     private var state = "{}"
     private var deliveredState: String? = null
+    var sceneId: String? = null
+        private set
 
     init {
         setBackgroundColor(Color.rgb(246, 245, 240))
@@ -122,17 +140,20 @@ private class DiceWebView(
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = true
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse {
                 val uri = request.url
-                val file = uri.path?.removePrefix("/dice/").orEmpty()
-                val allowed = setOf("index.html", "scene.css", "scene.js", "dice-3d.js", "dice-physics.js")
-                if (uri.scheme != "https" || uri.host != SCENE_HOST || uri.path?.startsWith("/dice/") != true || file !in allowed) {
-                    return WebResourceResponse("text/plain", "UTF-8", 403, "Forbidden", emptyMap(), ByteArrayInputStream(byteArrayOf()))
-                }
+                val path = uri.path.orEmpty().removePrefix("/$ASSET_ROOT/")
+                if (uri.scheme != "https" || uri.host != SCENE_HOST || uri.path?.startsWith("/$ASSET_ROOT/") != true ||
+                    !ASSET_PATH.matches(path)
+                ) return status(403, "Forbidden")
                 val mime = when {
-                    file.endsWith(".js") -> "application/javascript"
-                    file.endsWith(".css") -> "text/css"
+                    path.endsWith(".js") -> "application/javascript"
+                    path.endsWith(".css") -> "text/css"
                     else -> "text/html"
                 }
-                return WebResourceResponse(mime, "UTF-8", context.assets.open("dice/$file"))
+                return try {
+                    WebResourceResponse(mime, "UTF-8", context.assets.open("$ASSET_ROOT/$path"))
+                } catch (e: IOException) {
+                    status(404, "Not Found")
+                }
             }
         }
         addJavascriptInterface(object {
@@ -141,14 +162,23 @@ private class DiceWebView(
                 deliveredState = null
                 deliver()
             }
-            @JavascriptInterface fun roll() = onMain(onRoll)
+            @JavascriptInterface fun draw() = onMain(onDraw)
             @JavascriptInterface fun settings() = onMain(onSettings)
             @JavascriptInterface fun record() = onMain(onRecord)
-            @JavascriptInterface fun finished(id: Long, face: Int) = onMain { onFinished(id, face) }
+            @JavascriptInterface fun finished(id: Long, outcome: String) = onMain { onFinished(id, outcome) }
             @JavascriptInterface fun failed(id: Long) = onMain { onFailed(id) }
-        }, "AndroidDice")
-        loadUrl(SCENE_URL)
+        }, "AndroidChance")
     }
+
+    fun load(sceneId: String) {
+        this.sceneId = sceneId
+        ready = false
+        deliveredState = null
+        loadUrl("https://$SCENE_HOST/$ASSET_ROOT/index.html?scene=$sceneId")
+    }
+
+    private fun status(code: Int, reason: String) =
+        WebResourceResponse("text/plain", "UTF-8", code, reason, emptyMap(), ByteArrayInputStream(byteArrayOf()))
 
     private fun onMain(action: () -> Unit) {
         post { if (!released) action() }
@@ -162,14 +192,14 @@ private class DiceWebView(
     private fun deliver() {
         if (released || !ready || deliveredState == state) return
         deliveredState = state
-        evaluateJavascript("window.NativeDice.render($state)", null)
+        evaluateJavascript("window.EonChance.render($state)", null)
     }
 
     fun release() {
         released = true
         ready = false
         stopLoading()
-        removeJavascriptInterface("AndroidDice")
+        removeJavascriptInterface("AndroidChance")
         destroy()
     }
 }

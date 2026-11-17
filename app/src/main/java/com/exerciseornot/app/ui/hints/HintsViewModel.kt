@@ -3,7 +3,7 @@ package com.exerciseornot.app.ui.hints
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.exerciseornot.app.data.WorkoutRepository
-import com.exerciseornot.app.dice.DicePreferences
+import com.exerciseornot.app.chance.ChancePreferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,11 +16,11 @@ import java.time.Instant
 class HintsViewModel(
     private val hints: HintPreferences,
     workouts: WorkoutRepository,
-    dice: DicePreferences,
+    chance: ChancePreferences,
     lastExportAt: Flow<Instant?>,
 ) : ViewModel() {
 
-    val showDice: StateFlow<Boolean> = combine(hints.isDismissed(Hint.Dice), dice.lastResult) { dismissed, last ->
+    val showDice: StateFlow<Boolean> = combine(hints.isDismissed(Hint.Dice), chance.lastResult) { dismissed, last ->
         !dismissed && last == null
     }.asState()
 

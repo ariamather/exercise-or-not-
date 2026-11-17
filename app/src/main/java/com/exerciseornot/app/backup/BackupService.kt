@@ -7,7 +7,9 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.room.withTransaction
 import com.exerciseornot.app.data.db.AppDatabase
 import com.exerciseornot.app.data.db.DB_SCHEMA_VERSION
-import com.exerciseornot.app.dice.DicePreferences
+import com.exerciseornot.app.chance.ChancePreferences
+import com.exerciseornot.app.chance.DiceGame
+import com.exerciseornot.app.chance.snap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +34,7 @@ const val MAX_BACKUP_BYTES = 20 * 1024 * 1024
  */
 class BackupService(
     private val db: AppDatabase,
-    private val dice: DicePreferences,
+    private val chance: ChancePreferences,
     private val settings: DataStore<Preferences>,
     private val dir: File,
     private val appVersion: String,
@@ -97,7 +99,9 @@ class BackupService(
                 settings = BackupSettings(emptyList()),
             )
         }
-        return file.copy(settings = BackupSettings(dice.trainFaces.first().sorted()))
+        val s = chance.settings.first()
+        val legacyFaces = DiceGame.trainFaces(DiceGame.snap(s.target))
+        return file.copy(settings = BackupSettings(legacyFaces, s.gameId, s.target))
     }
 
     private suspend fun replaceAll(content: BackupContent) {
@@ -113,9 +117,9 @@ class BackupService(
         }
         onDataReplaced()
         try {
-            dice.setTrainFaces(content.diceTrainFaces)
+            chance.setSettings(content.chance)
         } catch (e: Exception) {
-            throw IllegalArgumentException("训练数据已恢复，但骰子设置未能恢复，请在骰子设置里重新选择")
+            throw IllegalArgumentException("训练数据已恢复，但练的概率未能恢复，请在掷骰子页的设置里重新调整")
         }
     }
 
