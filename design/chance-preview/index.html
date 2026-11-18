@@ -8,15 +8,14 @@
   <base href="../../app/src/main/assets/chance/">
   <link rel="stylesheet" href="shell.css">
   <style>
-    .preview-bar{position:fixed;top:8px;right:8px;z-index:10;display:flex;gap:6px;font:11px -apple-system,sans-serif}
+    .preview-bar{position:fixed;top:8px;right:8px;z-index:10;display:flex;flex-wrap:wrap;gap:6px;max-width:calc(100% - 16px);justify-content:flex-end;font:11px -apple-system,sans-serif}
     .preview-bar a,.preview-bar span{padding:5px 9px;border-radius:8px;background:#e9eddf;color:#28392f;text-decoration:none}
     .preview-bar a[aria-current]{background:#365b43;color:#fafbf5}
+    #check-result{position:fixed;left:8px;bottom:8px;z-index:10;margin:0;max-width:calc(100% - 16px);max-height:40vh;overflow:auto;padding:8px;border-radius:8px;background:#28392f;color:#fafbf5;font:11px ui-monospace,monospace;white-space:pre-wrap}
   </style>
 </head>
 <body>
-  <nav class="preview-bar" aria-label="预览玩法">
-    <a id="p-dice" href="#">骰子</a><a id="p-cup" href="#">骰盅</a><span id="p-log">—</span>
-  </nav>
+  <nav class="preview-bar" aria-label="预览玩法" id="p-bar"><span id="p-log">—</span></nav>
   <div class="page">
     <header><div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
       <button id="settings" class="icon-button" aria-label="设置训练概率"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg></button>
@@ -33,45 +32,89 @@
     </main>
   </div>
   <script>
-  /* Stand-in for ChanceViewModel + the WebView bridge: 4、5、6 train (50%), one draw per press. */
+  /*
+   * Stand-in for ChanceViewModel + the WebView bridge.
+   *
+   *   ?scene=cup                         which scene folder to load
+   *   &outcomes=1,2,3,4,5,6&train=4,5,6  the outcome model (default: the scene's entry in GAMES)
+   *   &pace=user                         reveal pace ('timed' by default)
+   *   &auto                              draw once after loading
+   *   &check                             run the scene contract checks (see tools/scene-check/run.py)
+   *
+   * Add a new game to GAMES so it gets a link here and is covered by the checks.
+   */
+  const D6 = { outcomes: ['1', '2', '3', '4', '5', '6'], train: ['4', '5', '6'] };
+  const GAMES = {
+    dice: { name: '骰子', ...D6 },
+    cup: { name: '骰盅', ...D6 },
+  };
   (function () {
     const params = new URLSearchParams(location.search);
     // shell.js picks the scene from ?scene=; open the cup when the file is opened directly.
     if (!params.has('scene')) { location.replace(location.pathname + '?scene=cup'); return; }
-    const scene = params.get('scene');
+    const sceneId = params.get('scene');
+    const game = GAMES[sceneId] || {};
+    const list = key => (params.get(key) || '').split(',').filter(Boolean);
+    const outcomes = list('outcomes').length ? list('outcomes') : (game.outcomes || D6.outcomes);
+    const train = list('train').length ? list('train') : (game.train || D6.train);
+    const pace = params.get('pace') === 'user' ? 'user' : 'timed';
+
     const history = [];
     const log = t => { history.push(t); document.getElementById('p-log').textContent = t; document.body.dataset.log = history.join(' | '); };
-    window.addEventListener('error', e => log('error: ' + e.message));
-    window.addEventListener('unhandledrejection', e => log('rejection: ' + (e.reason && e.reason.message || e.reason)));
-    ['dice', 'cup'].forEach(id => {
-      const a = document.getElementById('p-' + id);
+    window.__errors = [];
+    window.addEventListener('error', e => { window.__errors.push(e.message); log('error: ' + e.message); });
+    window.addEventListener('unhandledrejection', e => { const m = e.reason && e.reason.message || String(e.reason); window.__errors.push(m); log('rejection: ' + m); });
+
+    const bar = document.getElementById('p-bar');
+    for (const [id, g] of Object.entries(GAMES)) {
+      const a = document.createElement('a');
+      a.textContent = g.name;
       a.href = location.pathname + '?scene=' + id;
-      if (id === scene) a.setAttribute('aria-current', 'page');
-    });
-    let state = { outcome: null, hasResult: false, train: false, drawing: false, requestId: 0, error: '' };
+      if (id === sceneId) a.setAttribute('aria-current', 'page');
+      bar.insertBefore(a, bar.lastElementChild);
+    }
+
+    let state = { outcome: null, hasResult: false, train: false, drawing: false, requestId: 0, pace, error: '' };
     let nextId = 0;
     const push = () => window.EonChance.render(Object.assign({}, state));
+    const listeners = [];
+    const emit = event => listeners.splice(0).forEach(fn => fn(event));
+    // Tests force the next outcome; otherwise every outcome is equally likely.
+    window.__preview = {
+      state: () => state, outcomes, pace,
+      push, draw: forced => window.AndroidChance.draw(forced),
+      next: () => new Promise(resolve => listeners.push(resolve)),
+    };
     window.AndroidChance = {
-      ready() { log('ready'); push(); if (params.has('auto')) setTimeout(() => this.draw(), 300); },
-      draw() {
-        const face = 1 + Math.floor(Math.random() * 6);
-        state = Object.assign({}, state, { drawing: true, requestId: ++nextId, outcome: String(face), hasResult: true, train: face >= 4, error: '' });
-        log('drew ' + face);
+      ready() { log('ready'); emit({ type: 'ready' }); push(); if (params.has('auto')) setTimeout(() => this.draw(), 300); },
+      draw(forced) {
+        const outcome = forced != null ? String(forced) : outcomes[Math.floor(Math.random() * outcomes.length)];
+        state = Object.assign({}, state, { drawing: true, requestId: ++nextId, outcome, hasResult: true, train: train.includes(outcome), error: '' });
+        log('drew ' + outcome);
         push();
       },
       finished(id, outcome) {
-        if (id !== state.requestId) return;
+        if (id !== state.requestId) { emit({ type: 'stale', id, outcome }); return; }
         log('finished ' + outcome + (outcome === state.outcome ? ' ✓' : ' ✗ mismatch'));
+        emit({ type: 'finished', id, outcome, expected: state.outcome });
         state = Object.assign({}, state, { drawing: false, requestId: 0 });
         push();
       },
-      failed(id) { log('failed ' + id); state = Object.assign({}, state, { drawing: false, requestId: 0, error: '动画未能完成，请重试' }); push(); },
+      failed(id) {
+        log('failed ' + id);
+        emit({ type: 'failed', id });
+        state = Object.assign({}, state, { drawing: false, requestId: 0, error: '动画未能完成，请重试' });
+        push();
+      },
       settings() { log('settings'); },
       record() { log('record'); },
       haptic(kind) { if (navigator.vibrate) navigator.vibrate(kind === 'thud' ? 22 : 6); },
     };
-    // The shell reads ?scene= from location; it already matches.
-    void scene;
+    if (params.has('check')) {
+      const s = document.createElement('script');
+      s.src = '../../../../../tools/scene-check/check.js';
+      document.head.append(s);
+    }
   })();
   </script>
   <script src="shell.js"></script>

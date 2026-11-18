@@ -3,8 +3,10 @@
  * a scene only reveals it.
  *
  * A scene lives in scenes/<id>/scene.js and calls EonChance.register({
- *   requires: ['helper.js', ...],      // loaded first, relative to the scene folder
- *   styles: ['scene.css', ...],         // optional stylesheets, relative to the scene folder
+ *   api: 1,                             // the contract below; the shell refuses newer ones
+ *   libs: ['anim.js', 'gl.js', ...],    // shared helpers from lib/, loaded first, in order
+ *   requires: ['helper.js', ...],       // this scene's own scripts, relative to its folder
+ *   styles: ['scene.css', ...],         // optional stylesheets, relative to its folder
  *   tapToDraw: false,                   // optional; the stage then belongs to the scene (e.g. dragging)
  *   labels: { ... },                    // see DEFAULT_LABELS
  *   create(stage, host) -> {
@@ -12,14 +14,25 @@
  *     show(outcome | null),                        // stop anything running and display `outcome` (null = idle)
  *     revealing() -> boolean,
  *   }
- * }). `host.fail(message)` reports a scene that can no longer run (e.g. a lost WebGL context);
- * `host.haptic('tick' | 'thud')` asks for a short vibration and is a no-op where unsupported.
- * Whatever a scene does before `reveal` (shaking, spinning) is decoration: it never picks the outcome.
+ * }).
+ *
+ * `host` gives a scene:
+ *   fail(message)        it can no longer run (e.g. a lost WebGL context)
+ *   haptic('tick'|'thud') a short vibration; a no-op where unsupported
+ *   draw()               asks Android to draw, as the main button does (e.g. tapping a card)
+ *   asset(path)          URL of a file in this scene's folder (textures, models, sounds)
+ *   parts(outcome)       a combined outcome's parts: "3,5" -> ["3", "5"]
+ *   pace()               'timed' or 'user' for the reveal in progress (or the game's default)
+ *
+ * Outcomes are strings. A 'user' reveal waits for the user (scratching, turning a wheel) with no
+ * deadline; the main button then offers to skip, which calls show(outcome). Whatever a scene
+ * does before `reveal` (shaking, spinning) is decoration: it never picks the outcome.
  */
 (function () {
   'use strict';
+  const API = 1;
   const DEFAULT_LABELS = {
-    action: '开始', again: '再来一次', busy: '正在揭晓…',
+    action: '开始', again: '再来一次', busy: '正在揭晓…', skip: '直接看结果',
     idle: '让运气先开个头。', waiting: '答案正在路上。',
     stageIdle: '点击开始', stageBusy: '正在揭晓',
     stageResult: () => '点击再来一次',
@@ -29,13 +42,18 @@
   const stage = $('stage'), button = $('draw'), label = $('draw-label');
   const result = $('result'), error = $('error'), record = $('record');
   const sceneId = new URLSearchParams(location.search).get('scene') || 'dice';
+  const base = 'scenes/' + sceneId + '/';
   let definition = null, scene = null, labels = DEFAULT_LABELS, sceneError = '';
-  let state = {}, request = 0, busy = false;
+  let state = {}, request = 0, busy = false, skipped = 0;
+
+  const userPaced = () => busy && state.pace === 'user' && !!state.requestId;
 
   function controls() {
     busy = !!state.drawing;
-    button.disabled = stage.disabled = busy || !scene || !!sceneError;
-    label.textContent = busy ? labels.busy : state.hasResult ? labels.again : labels.action;
+    const skip = userPaced() && skipped !== state.requestId;
+    button.disabled = !skip && (busy || !scene || !!sceneError);
+    stage.disabled = busy && !userPaced() || !scene || !!sceneError;
+    label.textContent = skip ? labels.skip : busy ? labels.busy : state.hasResult ? labels.again : labels.action;
     result.className = 'result' + (!busy && state.hasResult ? ' answer' + (state.train ? '' : ' rest') : '');
     result.textContent = busy ? labels.waiting : !state.hasResult ? labels.idle : state.train ? '走吧，练一点。' : '今天，歇一歇。';
     stage.setAttribute('aria-label', busy ? labels.stageBusy
@@ -60,6 +78,12 @@
     try { scene && scene.show(outcome); } catch (_) { /* the native error line already explains it */ }
   }
 
+  /* Paths stay inside the scene folder: lowercase names, no "..", like the native whitelist. */
+  function asset(path) {
+    if (!/^[a-z0-9_-]+(\/[a-z0-9_-]+)*\.[a-z0-9]+$/.test(String(path))) throw new Error('bad asset path ' + path);
+    return base + path;
+  }
+
   window.EonChance = {
     register(def) { definition = def; },
     render(next) {
@@ -71,11 +95,11 @@
         const id = request;
         if (!scene || sceneError) { AndroidChance.failed(id); return; }
         Promise.resolve().then(() => scene.reveal(next.outcome)).then(shown => {
-          if (request !== id) return;
+          if (request !== id || skipped === id) return;
           if (shown === next.outcome) AndroidChance.finished(id, shown);
           else { show(next.outcome); AndroidChance.failed(id); }
         }).catch(() => {
-          if (request === id) { show(next.outcome); AndroidChance.failed(id); }
+          if (request === id && skipped !== id) { show(next.outcome); AndroidChance.failed(id); }
         });
       } else if (!next.requestId && !next.drawing) {
         // Keep the resting pose a reveal ended on; only redraw when something actually changed.
@@ -108,13 +132,18 @@
 
   async function start() {
     if (!/^[a-z0-9-]+$/.test(sceneId)) throw new Error('bad scene id');
-    const base = 'scenes/' + sceneId + '/';
     await loadScript(base + 'scene.js');
     if (!definition) throw new Error('scene did not register');
+    if (definition.api !== API) throw new Error('scene needs api ' + definition.api);
     labels = Object.assign({}, DEFAULT_LABELS, definition.labels);
-    for (const file of definition.styles || []) await loadStyle(base + file);
-    for (const file of definition.requires || []) await loadScript(base + file);
-    scene = definition.create(stage, { fail, haptic });
+    for (const file of definition.styles || []) await loadStyle(asset(file));
+    for (const file of definition.libs || []) await loadScript('lib/' + file);
+    for (const file of definition.requires || []) await loadScript(asset(file));
+    scene = definition.create(stage, {
+      fail, haptic, draw, asset,
+      parts: outcome => String(outcome).split(','),
+      pace: () => state.pace || 'timed',
+    });
   }
 
   function draw() {
@@ -123,8 +152,19 @@
     button.disabled = stage.disabled = true;
     AndroidChance.draw();
   }
+
+  /* A user-paced reveal can always be skipped: show the saved outcome and report it shown. */
+  function skip() {
+    const id = state.requestId;
+    if (!userPaced() || skipped === id) return;
+    skipped = id;
+    show(state.outcome);
+    controls();
+    AndroidChance.finished(id, state.outcome);
+  }
+
   stage.addEventListener('click', () => { if (!definition || definition.tapToDraw !== false) draw(); });
-  button.addEventListener('click', draw);
+  button.addEventListener('click', () => (userPaced() ? skip() : draw()));
   $('settings').addEventListener('click', () => AndroidChance.settings());
   record.addEventListener('click', () => AndroidChance.record());
 

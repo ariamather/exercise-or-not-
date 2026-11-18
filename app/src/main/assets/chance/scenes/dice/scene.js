@@ -1,6 +1,7 @@
 /* One 3D die. The physics plans a throw that lands on the face Android already chose. */
 EonChance.register({
-  requires: ['dice-physics.js', 'dice-3d.js'],
+  api: 1,
+  libs: ['dice-physics.js', 'gl.js'],
   labels: {
     action: '掷一下', again: '再掷一次', busy: '正在掷…',
     idle: '让骰子先开个头。',

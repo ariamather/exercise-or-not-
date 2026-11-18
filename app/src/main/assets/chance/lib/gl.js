@@ -1,6 +1,17 @@
-/* Dependency-free WebGL die. Six numbered faces, rounded geometry and lit recessed pips.
- * Replays fixed-step rigid-body trajectories from dice-physics.js.
- * Packaged locally with the Android app; no network or external runtime is needed. */
+/* Shared WebGL stage for every game: a tray, a camera, lights, an optional die and any number of
+ * props (meshes, flat-coloured or textured). Load lib/dice-physics.js first; the die's size and
+ * throws come from there.
+ *
+ *   const scene = new EonGL.Scene(glCanvas, shadowCanvas, {
+ *     die: true,                                  // false: no die at all (coin, wheel…)
+ *     tray: { halfX: 2.85, halfZ: 2.5, corner: .44 },
+ *     eye: [2.8, 7.5, 10.2], target: [0, .7, 0],  // camera
+ *   });
+ *   const prop = scene.addMesh(vertices, [r, g, b], shadow, { texture, band });
+ *   scene.loadTexture(host.asset('face.webp')).then(t => { prop.texture = t; scene.draw(); });
+ *
+ * Vertices are 9 floats: [x,y,z, nx,ny,nz, u,v, cavity?1:0]. `band` draws the dice cup's rim
+ * band and darker base. Packaged locally with the Android app; no network or external runtime. */
 (function () {
   'use strict';
   const TAU = Math.PI * 2;
@@ -38,7 +49,7 @@
   const FRAGMENT=`
     precision highp float;
     varying vec3 vNormal; varying vec3 vWorld; varying vec2 vUv; varying float vFace;
-    uniform vec3 uEye; uniform float uSolid; uniform vec3 uColor;
+    uniform vec3 uEye; uniform float uSolid; uniform vec3 uColor; uniform sampler2D uTex; uniform float uTextured; uniform float uBand;
     float pipDistance(vec2 p){
       float d=10.0;
       if(vFace<1.5 || (vFace>2.5 && vFace<3.5) || (vFace>4.5 && vFace<5.5))d=length(p);
@@ -52,8 +63,8 @@
         // Props (e.g. a dice cup): one brand colour under the die's lights. vFace>.5 marks the cavity.
         vec3 sn=normalize(vNormal),sl=normalize(vec3(-3.0,7.0,5.0)),sv=normalize(uEye-vWorld);
         float sk=max(dot(sn,sl),0.0),sf=max(dot(sn,normalize(vec3(5.0,1.0,2.0))),0.0);
-        vec3 base=uColor;
-        if(vFace<.5){
+        vec3 base=uTextured>.5?texture2D(uTex,vUv).rgb:uColor;
+        if(vFace<.5&&uBand>.5){
           float band=smoothstep(.555,.565,vUv.y)*(1.0-smoothstep(.59,.60,vUv.y));
           base=mix(base,vec3(.55,.60,.40),band*.75);
           base=mix(base,uColor*.78,1.0-step(.135,vUv.y));
@@ -80,7 +91,7 @@
     }
   `;
   class DiceScene{
-    constructor(canvas,shadow){
+    constructor(canvas,shadow,options={}){
       this.canvas=canvas;this.shadow=shadow;this.stage=shadow.parentElement;this.ctx=shadow.getContext('2d');this.visible=true;
       this.gl=canvas.getContext('webgl',{alpha:true,antialias:true,premultipliedAlpha:false});
       if(!this.gl)throw new Error('3D rendering is unavailable');
@@ -89,9 +100,9 @@
       if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.program));
       gl.useProgram(this.program);const data=geometry();this.vertexCount=data.length/9;this.buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
       this.attribs=[['aPosition',3,0],['aNormal',3,3],['aUv',2,6],['aFace',1,8]].map(([name,size,offset])=>{const a=gl.getAttribLocation(this.program,name);gl.enableVertexAttribArray(a);return [a,size,offset];});this.bindBuffer(this.buffer);
-      this.uniforms=Object.fromEntries(['uModel','uVP','uEye','uSolid','uColor'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
-      this.meshes=[];this.dieVisible=true;
-      this.eye=[2.8,7.5,10.2];this.view=cameraMatrix(this.eye,[0,.7,0]);this.q=faceRotation(1,-.3);this.position=[0,EonDicePhysics.HALF,.65];this.air=0;this.rolling=false;this.lost=false;this.generation=0;
+      this.uniforms=Object.fromEntries(['uModel','uVP','uEye','uSolid','uColor','uTex','uTextured','uBand'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
+      this.meshes=[];this.dieVisible=options.die!==false;this.tray=Object.assign({halfX:2.85,halfZ:2.5,corner:.44},options.tray);
+      this.eye=options.eye||[2.8,7.5,10.2];this.view=cameraMatrix(this.eye,options.target||[0,.7,0]);this.q=faceRotation(1,-.3);this.position=[0,EonDicePhysics.HALF,.65];this.air=0;this.rolling=false;this.lost=false;this.generation=0;
       gl.enable(gl.DEPTH_TEST);gl.enable(gl.CULL_FACE);gl.clearColor(0,0,0,0);
       // The die has its own viewport-sized layer outside every clipped app panel.
       // The floor remains in the stage; both use the same camera and world origin.
@@ -107,7 +118,9 @@
     bindBuffer(buffer){const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);for(const [a,size,offset] of this.attribs)gl.vertexAttribPointer(a,size,gl.FLOAT,false,36,offset*4);}
     /* A solid prop lit like the die. data: 9 floats per vertex [x,y,z, nx,ny,nz, u,v, cavity?1:0];
      * the mesh origin is its base. shadow: blob radius as a fraction of stage height (0 = none). */
-    addMesh(data,color,shadow=0){const gl=this.gl,buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);const mesh={buffer,count:data.length/9,color,shadow,q:[0,0,0,1],position:[0,0,0],visible:true};this.meshes.push(mesh);return mesh;}
+    addMesh(data,color,shadow=0,options={}){const gl=this.gl,buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);const mesh={buffer,count:data.length/9,color,shadow,q:[0,0,0,1],position:[0,0,0],visible:true,texture:options.texture||null,band:options.band?1:0};this.meshes.push(mesh);return mesh;}
+    /* Any packaged image (png, webp, jpg); any size works (no mipmaps, edges clamped). */
+    loadTexture(src){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{const gl=this.gl,t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);for(const [k,v] of [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])gl.texParameteri(gl.TEXTURE_2D,k,v);resolve(t);};img.onerror=()=>reject(new Error('cannot load '+src));img.src=src;});}
     blob(x3,z3,size,opacity,air){
       const ctx=this.ctx,[x,y]=this.project([x3,0,z3]);ctx.save();ctx.translate(x+5+air*9,y+3);ctx.scale(1,.43);
       const g=ctx.createRadialGradient(0,0,size*.1,0,0,size);g.addColorStop(0,`rgba(47,62,33,${opacity})`);g.addColorStop(.35,`rgba(47,62,33,${opacity*.6})`);g.addColorStop(1,'rgba(47,62,33,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,size,0,TAU);ctx.fill();ctx.restore();
@@ -129,7 +142,7 @@
     }
     project(p){const m=this.vp,w=m[3]*p[0]+m[7]*p[1]+m[11]*p[2]+m[15];return [(m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12])/w*this.width/2+this.width/2,(-(m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13])/w+1)*this.height/2];}
     floorPath(y=0){
-      const ctx=this.ctx,rx=2.85,rz=2.5,r=.44;
+      const ctx=this.ctx,rx=this.tray.halfX,rz=this.tray.halfZ,r=this.tray.corner;
       ctx.beginPath();
       const corners=[[-rx+r,-rz+r,Math.PI],[rx-r,-rz+r,-Math.PI/2],[rx-r,rz-r,0],[-rx+r,rz-r,Math.PI/2]];
       let first=true;
@@ -154,7 +167,7 @@
       if(this.dieVisible){this.bindBuffer(this.buffer);gl.uniformMatrix4fv(u.uModel,false,modelMatrix(this.q,this.position));gl.drawArrays(gl.TRIANGLES,0,this.vertexCount);}
       if(this.meshes.some(m=>m.visible)){
         gl.disable(gl.CULL_FACE);gl.uniform1f(u.uSolid,1);
-        for(const m of this.meshes){if(!m.visible)continue;this.bindBuffer(m.buffer);gl.uniform3fv(u.uColor,m.color);gl.uniformMatrix4fv(u.uModel,false,modelMatrix(m.q,m.position));gl.drawArrays(gl.TRIANGLES,0,m.count);}
+        for(const m of this.meshes){if(!m.visible)continue;this.bindBuffer(m.buffer);gl.uniform3fv(u.uColor,m.color);gl.uniform1f(u.uBand,m.band);gl.uniform1f(u.uTextured,m.texture?1:0);if(m.texture){gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,m.texture);gl.uniform1i(u.uTex,0);}gl.uniformMatrix4fv(u.uModel,false,modelMatrix(m.q,m.position));gl.drawArrays(gl.TRIANGLES,0,m.count);}
         gl.enable(gl.CULL_FACE);
       }
       this.drawFloor();
@@ -195,5 +208,7 @@
       } finally {if(generation===this.generation)this.rolling=false;}
     }
   }
+  // EonGL is the shared name; EonDice stays for the die's own helpers.
+  window.EonGL={Scene:DiceScene,qAxis,qMultiply,qSlerp};
   window.EonDice={DiceScene,faceRotation,topFace,supportHeight};
 })();

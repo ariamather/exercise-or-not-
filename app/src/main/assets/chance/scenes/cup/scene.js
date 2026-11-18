@@ -7,9 +7,10 @@
  * One button is always enough: pressing it without shaking plays a short automatic figure 8.
  */
 EonChance.register({
+  api: 1,
   tapToDraw: false,
   styles: ['scene.css'],
-  requires: ['../dice/dice-physics.js', '../dice/dice-3d.js'],
+  libs: ['anim.js', 'dice-physics.js', 'gl.js'],
   labels: {
     action: '开盅', again: '再摇一次', busy: '开盅中…',
     idle: '拖动骰盅摇一摇，再开盅。',
@@ -29,7 +30,6 @@ EonChance.register({
     const TILT_MAX = .3, OPEN_LIFT = 1.3, OPEN_TILT = .55, OPEN_SWING = 1.75;
     const PICK_MS = 150, DROP_MS = 180, BOUNCE_MS = 90;
     const SHAKEN_PX = 60;                   // total drag distance that counts as "shaken"
-    const REVERSE = Math.cos(100 * Math.PI / 180);
 
     stage.classList.add('cup-stage');
     const shadowCanvas = document.createElement('canvas');
@@ -41,22 +41,21 @@ EonChance.register({
     hint.setAttribute('aria-hidden', 'true');
     stage.append(shadowCanvas, glCanvas, hint);
 
-    const scene = new EonDice.DiceScene(glCanvas, shadowCanvas);
+    const scene = new EonGL.Scene(glCanvas, shadowCanvas);
     glCanvas.addEventListener('webglcontextlost', () => host.fail('骰盅已暂停，请重新打开这一页。'));
-    const cup = scene.addMesh(cupGeometry(), [.25, .42, .31], .2);
+    const cup = scene.addMesh(cupGeometry(), [.25, .42, .31], .2, { band: true });
 
-    let open = false, shaken = false, revealing = false, generation = 0;
+    let open = false, shaken = false, revealing = false;
     let drag = null, lastTick = 0;
     // Where the cup last landed: offsets from CX/CZ. The die is placed there when the cup opens.
     let restX = 0, restZ = 0;
     // Current drag state.
     let x = 0, z = 0, dragging = false, raf = 0, pickStart = 0, lastFrame = 0, lastMove = 0;
-    let hop = 0, velX = 0, velZ = 0, tiltX = 0, tiltZ = 0;
-
-    const wait = ms => new Promise(r => setTimeout(r, ms));
-    const ease = t => 1 - Math.pow(1 - t, 3);
-    const qAxis = (axis, a) => [...axis.map(v => v * Math.sin(a / 2)), Math.cos(a / 2)];
-    const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+    let hop = 0, tiltX = 0, tiltZ = 0;
+    // A new press, reveal or show() cancels whatever is still animating.
+    const tl = new EonAnim.Timeline(() => scene.lost);
+    const vel = new EonAnim.Velocity({ smoothMs: 60, reverseDegrees: 100, minSpeed: 1.2 });
+    const { ease, clamp, qAxis, wait } = EonAnim;
 
     // The cup's origin is the centre of its rim, so the mesh sits straight on the tray.
     function pose(px, lift, pz, ax = tiltX, az = tiltZ) {
@@ -81,7 +80,7 @@ EonChance.register({
     // Put the closed cup straight back on the tray where it last landed.
     function restPose() {
       hideDie();
-      hop = 0; velX = 0; velZ = 0; tiltX = 0; tiltZ = 0;
+      hop = 0; vel.reset(); tiltX = 0; tiltZ = 0;
       x = restX; z = restZ;
       hint.textContent = '拖动骰盅，摇一摇';
       pose(x, 0, z, 0, 0);
@@ -123,14 +122,11 @@ EonChance.register({
       if (!dragging || scene.lost) return;
       const dt = Math.min(64, now - (lastFrame || now)), k = 1 - Math.exp(-dt / 80);
       lastFrame = now;
-      if (now - lastMove > 40) {
-        const f = Math.exp(-dt / 90);
-        velX *= f; velZ *= f;
-      }
-      const speed = Math.hypot(velX, velZ);
+      if (now - lastMove > 40) vel.decay(dt, 90);
+      const speed = vel.speed;
       hop += (Math.min(HOP_MAX, speed * .16) - hop) * k;
       // Lean against the motion; a rotation vector keeps reversals smooth through zero.
-      let ax = -velZ * .04, az = velX * .04;
+      let ax = -vel.z * .04, az = vel.x * .04;
       const m = Math.hypot(ax, az);
       if (m > TILT_MAX) { ax *= TILT_MAX / m; az *= TILT_MAX / m; }
       const f = 1 - Math.exp(-dt / 70);
@@ -145,14 +141,15 @@ EonChance.register({
       if (stage.disabled || revealing || drag) return;
       e.preventDefault();
       stage.setPointerCapture(e.pointerId);
-      generation++;  // a new press cancels a landing/bounce still in flight
+      tl.cancel();  // a new press cancels a landing/bounce still in flight
+      vel.reset();
       if (open) restPose();
       const [sx, sz] = scales(restX, restZ);
       x = restX; z = restZ;
       hop = 0; tiltX = 0; tiltZ = 0;
       drag = {
         id: e.pointerId, x0: e.clientX, y0: e.clientY, lastX: e.clientX, lastY: e.clientY,
-        lastT: e.timeStamp, lastWX: x, lastWZ: z, moved: 0, dir: null, sx, sz,
+        lastT: e.timeStamp, lastWX: x, lastWZ: z, moved: 0, sx, sz,
       };
       dragging = true;
       pickStart = lastFrame = lastMove = performance.now();
@@ -164,16 +161,8 @@ EonChance.register({
       const nx = clamp(restX + (e.clientX - drag.x0) / drag.sx, -X_LIMIT, X_LIMIT);
       const nz = clamp(CZ + restZ + (e.clientY - drag.y0) / drag.sz, -Z_LIMIT, Z_LIMIT) - CZ;
       drag.moved += Math.hypot(e.clientX - drag.lastX, e.clientY - drag.lastY);
-      const dt = Math.max(1, e.timeStamp - drag.lastT);
       // Velocity from how far the cup actually moved, so pushing against an edge doesn't count.
-      velX += ((nx - drag.lastWX) / dt * 1000 - velX) * (1 - Math.exp(-dt / 60));
-      velZ += ((nz - drag.lastWZ) / dt * 1000 - velZ) * (1 - Math.exp(-dt / 60));
-      const speed = Math.hypot(velX, velZ);
-      if (speed > 1.2) {
-        const dx = velX / speed, dz = velZ / speed;
-        if (drag.dir && drag.dir[0] * dx + drag.dir[1] * dz < REVERSE) tick(e.timeStamp);
-        drag.dir = [dx, dz];
-      }
+      if (vel.add(nx - drag.lastWX, nz - drag.lastWZ, e.timeStamp - drag.lastT)) tick(e.timeStamp);
       lastMove = e.timeStamp;
       drag.lastX = e.clientX; drag.lastY = e.clientY; drag.lastT = e.timeStamp;
       drag.lastWX = nx; drag.lastWZ = nz;
@@ -187,27 +176,16 @@ EonChance.register({
       cancelAnimationFrame(raf);
       stage.classList.remove('is-dragging');
       restX = x; restZ = z;
-      settle(generation);
+      settle(tl.generation);
     }
     stage.addEventListener('pointerup', endDrag);
     stage.addEventListener('pointercancel', endDrag);
 
-    function animate(duration, frame, gen) {
-      return new Promise(resolve => {
-        const start = performance.now();
-        const step = now => {
-          if (gen !== generation || scene.lost) { resolve(false); return; }
-          const t = Math.min(1, (now - start) / duration);
-          frame(t, now);
-          if (t < 1) requestAnimationFrame(step); else resolve(true);
-        };
-        requestAnimationFrame(step);
-      });
-    }
+    const animate = (duration, frame, gen) => tl.run(duration, frame, gen);
     // Fall back onto the tray where the cup was released, with a small bounce.
     function settle(gen) {
       const lift = cup.position[1], fromHop = hop, fromX = tiltX, fromZ = tiltZ;
-      hop = 0; velX = 0; velZ = 0;
+      hop = 0; vel.reset();
       if (reduced.matches || lift <= .01) { tiltX = 0; tiltZ = 0; pose(x, 0, z, 0, 0); return Promise.resolve(true); }
       return animate(DROP_MS, t => {
         const left = 1 - ease(t);
@@ -241,7 +219,7 @@ EonChance.register({
     async function reveal(outcome) {
       const value = Number(outcome);
       if (!(value >= 1 && value <= 6)) return null;
-      const gen = ++generation;
+      const gen = tl.cancel();
       revealing = true;
       try {
         // Opening mid-drag: stop following the finger and land where the cup is now.
@@ -255,9 +233,9 @@ EonChance.register({
         // Already open: close instantly over the die, like pressing again to re-shake.
         if (open) restPose(); else hideDie();
         if (!reduced.matches && cup.position[1] > .01 && !(await settle(gen))) return null;
-        if (gen !== generation) return null;
+        if (!tl.live(gen)) return null;
         if (!reduced.matches && !shaken && !(await autoShake(gen))) return null;
-        if (gen !== generation) return null;
+        if (!tl.live(gen)) return null;
         placeDie(value);
         host.haptic('thud');
         if (reduced.matches) { opened(); return outcome; }
@@ -270,14 +248,14 @@ EonChance.register({
         if (!ok) return null;
         opened();
         await wait(120);
-        return gen === generation ? outcome : null;
+        return tl.live(gen) ? outcome : null;
       } finally {
-        if (gen === generation) { revealing = false; shaken = false; }
+        if (gen === tl.generation) { revealing = false; shaken = false; }
       }
     }
 
     function show(outcome) {
-      generation++;
+      tl.cancel();
       revealing = false;
       if (drag) {
         drag = null; dragging = false;
