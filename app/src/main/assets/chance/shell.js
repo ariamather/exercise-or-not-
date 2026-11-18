@@ -4,13 +4,17 @@
  *
  * A scene lives in scenes/<id>/scene.js and calls EonChance.register({
  *   requires: ['helper.js', ...],      // loaded first, relative to the scene folder
+ *   styles: ['scene.css', ...],         // optional stylesheets, relative to the scene folder
+ *   tapToDraw: false,                   // optional; the stage then belongs to the scene (e.g. dragging)
  *   labels: { ... },                    // see DEFAULT_LABELS
  *   create(stage, host) -> {
  *     reveal(outcome) -> Promise<outcome | null>,  // play until `outcome` shows; resolve with what shows
  *     show(outcome | null),                        // stop anything running and display `outcome` (null = idle)
  *     revealing() -> boolean,
  *   }
- * }). `host.fail(message)` reports a scene that can no longer run (e.g. a lost WebGL context).
+ * }). `host.fail(message)` reports a scene that can no longer run (e.g. a lost WebGL context);
+ * `host.haptic('tick' | 'thud')` asks for a short vibration and is a no-op where unsupported.
+ * Whatever a scene does before `reveal` (shaking, spinning) is decoration: it never picks the outcome.
  */
 (function () {
   'use strict';
@@ -46,6 +50,10 @@
     sceneError = message;
     if (request) AndroidChance.failed(request);
     controls();
+  }
+
+  function haptic(kind) {
+    try { if (typeof AndroidChance.haptic === 'function') AndroidChance.haptic(String(kind)); } catch (_) { /* optional */ }
   }
 
   function show(outcome) {
@@ -87,14 +95,26 @@
     });
   }
 
+  function loadStyle(href) {
+    return new Promise((resolve, reject) => {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = href;
+      l.onload = resolve;
+      l.onerror = () => reject(new Error('cannot load ' + href));
+      document.head.append(l);
+    });
+  }
+
   async function start() {
     if (!/^[a-z0-9-]+$/.test(sceneId)) throw new Error('bad scene id');
     const base = 'scenes/' + sceneId + '/';
     await loadScript(base + 'scene.js');
     if (!definition) throw new Error('scene did not register');
     labels = Object.assign({}, DEFAULT_LABELS, definition.labels);
+    for (const file of definition.styles || []) await loadStyle(base + file);
     for (const file of definition.requires || []) await loadScript(base + file);
-    scene = definition.create(stage, { fail });
+    scene = definition.create(stage, { fail, haptic });
   }
 
   function draw() {
@@ -103,7 +123,7 @@
     button.disabled = stage.disabled = true;
     AndroidChance.draw();
   }
-  stage.addEventListener('click', draw);
+  stage.addEventListener('click', () => { if (!definition || definition.tapToDraw !== false) draw(); });
   button.addEventListener('click', draw);
   $('settings').addEventListener('click', () => AndroidChance.settings());
   record.addEventListener('click', () => AndroidChance.record());

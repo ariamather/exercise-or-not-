@@ -1,0 +1,5 @@
+/* Dice cup: the cup, die and tray are drawn by the shared 3D renderer; only the hint is HTML. */
+.stage.cup-stage{touch-action:none;cursor:grab}
+.stage.cup-stage.is-dragging{cursor:grabbing}
+.cup-hint{position:absolute;left:0;right:0;bottom:2%;text-align:center;font-size:11px;letter-spacing:1px;color:#929787;transition:opacity .2s;pointer-events:none}
+.cup-stage.is-open .cup-hint,.cup-stage:disabled .cup-hint{opacity:0}

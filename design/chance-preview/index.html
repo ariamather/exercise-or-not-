@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>玩法预览</title>
+  <!-- Load the real packaged page; only the Android bridge below is a stand-in. -->
+  <base href="../../app/src/main/assets/chance/">
+  <link rel="stylesheet" href="shell.css">
+  <style>
+    .preview-bar{position:fixed;top:8px;right:8px;z-index:10;display:flex;gap:6px;font:11px -apple-system,sans-serif}
+    .preview-bar a,.preview-bar span{padding:5px 9px;border-radius:8px;background:#e9eddf;color:#28392f;text-decoration:none}
+    .preview-bar a[aria-current]{background:#365b43;color:#fafbf5}
+  </style>
+</head>
+<body>
+  <nav class="preview-bar" aria-label="预览玩法">
+    <a id="p-dice" href="#">骰子</a><a id="p-cup" href="#">骰盅</a><span id="p-log">—</span>
+  </nav>
+  <div class="page">
+    <header><div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
+      <button id="settings" class="icon-button" aria-label="设置训练概率"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg></button>
+    </header>
+    <main>
+      <h1>今天，<br>练不练<span>？</span></h1>
+      <button class="stage" id="stage" disabled></button>
+      <div class="result" id="result" role="status" aria-live="polite"></div>
+      <div class="actions">
+        <p class="error" id="error" role="alert" hidden></p>
+        <button class="primary" id="draw" disabled><span id="draw-label"></span><span aria-hidden="true">→</span></button>
+        <button class="shortcut" id="record">已经决定了，直接记录 ↗</button>
+      </div>
+    </main>
+  </div>
+  <script>
+  /* Stand-in for ChanceViewModel + the WebView bridge: 4、5、6 train (50%), one draw per press. */
+  (function () {
+    const params = new URLSearchParams(location.search);
+    // shell.js picks the scene from ?scene=; open the cup when the file is opened directly.
+    if (!params.has('scene')) { location.replace(location.pathname + '?scene=cup'); return; }
+    const scene = params.get('scene');
+    const history = [];
+    const log = t => { history.push(t); document.getElementById('p-log').textContent = t; document.body.dataset.log = history.join(' | '); };
+    window.addEventListener('error', e => log('error: ' + e.message));
+    window.addEventListener('unhandledrejection', e => log('rejection: ' + (e.reason && e.reason.message || e.reason)));
+    ['dice', 'cup'].forEach(id => {
+      const a = document.getElementById('p-' + id);
+      a.href = location.pathname + '?scene=' + id;
+      if (id === scene) a.setAttribute('aria-current', 'page');
+    });
+    let state = { outcome: null, hasResult: false, train: false, drawing: false, requestId: 0, error: '' };
+    let nextId = 0;
+    const push = () => window.EonChance.render(Object.assign({}, state));
+    window.AndroidChance = {
+      ready() { log('ready'); push(); if (params.has('auto')) setTimeout(() => this.draw(), 300); },
+      draw() {
+        const face = 1 + Math.floor(Math.random() * 6);
+        state = Object.assign({}, state, { drawing: true, requestId: ++nextId, outcome: String(face), hasResult: true, train: face >= 4, error: '' });
+        log('drew ' + face);
+        push();
+      },
+      finished(id, outcome) {
+        if (id !== state.requestId) return;
+        log('finished ' + outcome + (outcome === state.outcome ? ' ✓' : ' ✗ mismatch'));
+        state = Object.assign({}, state, { drawing: false, requestId: 0 });
+        push();
+      },
+      failed(id) { log('failed ' + id); state = Object.assign({}, state, { drawing: false, requestId: 0, error: '动画未能完成，请重试' }); push(); },
+      settings() { log('settings'); },
+      record() { log('record'); },
+      haptic(kind) { if (navigator.vibrate) navigator.vibrate(kind === 'thud' ? 22 : 6); },
+    };
+    // The shell reads ?scene= from location; it already matches.
+    void scene;
+  })();
+  </script>
+  <script src="shell.js"></script>
+</body>
+</html>

@@ -38,7 +38,7 @@
   const FRAGMENT=`
     precision highp float;
     varying vec3 vNormal; varying vec3 vWorld; varying vec2 vUv; varying float vFace;
-    uniform vec3 uEye;
+    uniform vec3 uEye; uniform float uSolid; uniform vec3 uColor;
     float pipDistance(vec2 p){
       float d=10.0;
       if(vFace<1.5 || (vFace>2.5 && vFace<3.5) || (vFace>4.5 && vFace<5.5))d=length(p);
@@ -48,6 +48,21 @@
       return d;
     }
     void main(){
+      if(uSolid>.5){
+        // Props (e.g. a dice cup): one brand colour under the die's lights. vFace>.5 marks the cavity.
+        vec3 sn=normalize(vNormal),sl=normalize(vec3(-3.0,7.0,5.0)),sv=normalize(uEye-vWorld);
+        float sk=max(dot(sn,sl),0.0),sf=max(dot(sn,normalize(vec3(5.0,1.0,2.0))),0.0);
+        vec3 base=uColor;
+        if(vFace<.5){
+          float band=smoothstep(.555,.565,vUv.y)*(1.0-smoothstep(.59,.60,vUv.y));
+          base=mix(base,vec3(.55,.60,.40),band*.75);
+          base=mix(base,uColor*.78,1.0-step(.135,vUv.y));
+        }
+        vec3 c=base*(.48+sk*.46+sf*.10);
+        c+=pow(max(dot(sn,normalize(sl+sv)),0.0),36.0)*.14+pow(1.0-abs(dot(sn,sv)),3.0)*.06;
+        if(vFace>.5)c=uColor*(.28+sk*.10);
+        gl_FragColor=vec4(c,1.0);return;
+      }
       vec3 n=normalize(vNormal),light=normalize(vec3(-3.0,7.0,5.0)),view=normalize(uEye-vWorld);
       float key=max(dot(n,light),0.0),fill=max(dot(n,normalize(vec3(5.0,1.0,2.0))),0.0);
       float lighting=.61+key*.34+fill*.08;
@@ -72,9 +87,10 @@
       const gl=this.gl,shader=(type,source)=>{const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;};
       this.program=gl.createProgram();gl.attachShader(this.program,shader(gl.VERTEX_SHADER,VERTEX));gl.attachShader(this.program,shader(gl.FRAGMENT_SHADER,FRAGMENT));gl.linkProgram(this.program);
       if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.program));
-      gl.useProgram(this.program);const data=geometry();this.vertexCount=data.length/9;const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
-      [['aPosition',3,0],['aNormal',3,3],['aUv',2,6],['aFace',1,8]].forEach(([name,size,offset])=>{const a=gl.getAttribLocation(this.program,name);gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,size,gl.FLOAT,false,36,offset*4);});
-      this.uniforms=Object.fromEntries(['uModel','uVP','uEye'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
+      gl.useProgram(this.program);const data=geometry();this.vertexCount=data.length/9;this.buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
+      this.attribs=[['aPosition',3,0],['aNormal',3,3],['aUv',2,6],['aFace',1,8]].map(([name,size,offset])=>{const a=gl.getAttribLocation(this.program,name);gl.enableVertexAttribArray(a);return [a,size,offset];});this.bindBuffer(this.buffer);
+      this.uniforms=Object.fromEntries(['uModel','uVP','uEye','uSolid','uColor'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
+      this.meshes=[];this.dieVisible=true;
       this.eye=[2.8,7.5,10.2];this.view=cameraMatrix(this.eye,[0,.7,0]);this.q=faceRotation(1,-.3);this.position=[0,EonDicePhysics.HALF,.65];this.air=0;this.rolling=false;this.lost=false;this.generation=0;
       gl.enable(gl.DEPTH_TEST);gl.enable(gl.CULL_FACE);gl.clearColor(0,0,0,0);
       // The die has its own viewport-sized layer outside every clipped app panel.
@@ -88,6 +104,14 @@
       this.resize();
     }
     setVisible(visible){this.visible=visible;this.canvas.hidden=!visible;if(visible)this.resize();}
+    bindBuffer(buffer){const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);for(const [a,size,offset] of this.attribs)gl.vertexAttribPointer(a,size,gl.FLOAT,false,36,offset*4);}
+    /* A solid prop lit like the die. data: 9 floats per vertex [x,y,z, nx,ny,nz, u,v, cavity?1:0];
+     * the mesh origin is its base. shadow: blob radius as a fraction of stage height (0 = none). */
+    addMesh(data,color,shadow=0){const gl=this.gl,buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);const mesh={buffer,count:data.length/9,color,shadow,q:[0,0,0,1],position:[0,0,0],visible:true};this.meshes.push(mesh);return mesh;}
+    blob(x3,z3,size,opacity,air){
+      const ctx=this.ctx,[x,y]=this.project([x3,0,z3]);ctx.save();ctx.translate(x+5+air*9,y+3);ctx.scale(1,.43);
+      const g=ctx.createRadialGradient(0,0,size*.1,0,0,size);g.addColorStop(0,`rgba(47,62,33,${opacity})`);g.addColorStop(.35,`rgba(47,62,33,${opacity*.6})`);g.addColorStop(1,'rgba(47,62,33,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,size,0,TAU);ctx.fill();ctx.restore();
+    }
     resize(){
       const rect=this.stage.getBoundingClientRect();if(rect.width<1||rect.height<1)return;
       this.width=rect.width;this.height=rect.height;this.dpr=Math.min(window.devicePixelRatio||1,2);
@@ -120,12 +144,19 @@
       this.floorPath(-.065);ctx.fillStyle='#d7dccd';ctx.fill();
       this.floorPath();const surface=ctx.createLinearGradient(0,this.height*.2,this.width,this.height*.9);surface.addColorStop(0,'#f0f1e8');surface.addColorStop(1,'#e6eadc');ctx.fillStyle=surface;ctx.fill();ctx.strokeStyle='#dce1d1';ctx.lineWidth=.8;ctx.stroke();
       ctx.save();ctx.clip();
-      const [x,y]=this.project([this.position[0],0,this.position[2]]),size=this.height*(.145*(EonDicePhysics.HALF/.8)+this.air*.05),opacity=.31/(1+this.air*1.1);
-      ctx.translate(x+5+this.air*9,y+3);ctx.scale(1,.43);
-      const gradient=ctx.createRadialGradient(0,0,size*.1,0,0,size);gradient.addColorStop(0,`rgba(47,62,33,${opacity})`);gradient.addColorStop(.35,`rgba(47,62,33,${opacity*.6})`);gradient.addColorStop(1,'rgba(47,62,33,0)');ctx.fillStyle=gradient;ctx.beginPath();ctx.arc(0,0,size,0,TAU);ctx.fill();ctx.restore();
+      if(this.dieVisible)this.blob(this.position[0],this.position[2],this.height*(.145*(EonDicePhysics.HALF/.8)+this.air*.05),.31/(1+this.air*1.1),this.air);
+      for(const m of this.meshes)if(m.visible&&m.shadow){const lift=Math.max(0,m.position[1]);this.blob(m.position[0],m.position[2],this.height*m.shadow*(1+lift*.12),.30/(1+lift*1.4),lift);}
+      ctx.restore();
     }
     draw(){
-      if(!this.vp||this.lost||!this.visible)return;const gl=this.gl;gl.viewport(0,0,this.canvas.width,this.canvas.height);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);gl.uniformMatrix4fv(this.uniforms.uVP,false,this.overlayProjection());gl.uniformMatrix4fv(this.uniforms.uModel,false,modelMatrix(this.q,this.position));gl.uniform3fv(this.uniforms.uEye,this.eye);gl.drawArrays(gl.TRIANGLES,0,this.vertexCount);
+      if(!this.vp||this.lost||!this.visible)return;const gl=this.gl,u=this.uniforms;gl.viewport(0,0,this.canvas.width,this.canvas.height);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);gl.uniformMatrix4fv(u.uVP,false,this.overlayProjection());gl.uniform3fv(u.uEye,this.eye);
+      gl.uniform1f(u.uSolid,0);
+      if(this.dieVisible){this.bindBuffer(this.buffer);gl.uniformMatrix4fv(u.uModel,false,modelMatrix(this.q,this.position));gl.drawArrays(gl.TRIANGLES,0,this.vertexCount);}
+      if(this.meshes.some(m=>m.visible)){
+        gl.disable(gl.CULL_FACE);gl.uniform1f(u.uSolid,1);
+        for(const m of this.meshes){if(!m.visible)continue;this.bindBuffer(m.buffer);gl.uniform3fv(u.uColor,m.color);gl.uniformMatrix4fv(u.uModel,false,modelMatrix(m.q,m.position));gl.drawArrays(gl.TRIANGLES,0,m.count);}
+        gl.enable(gl.CULL_FACE);
+      }
       this.drawFloor();
     }
     cancel(){this.generation++;this.rolling=false;}
