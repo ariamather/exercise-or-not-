@@ -19,8 +19,9 @@ class BackupCodecTest {
         faces: List<Int> = listOf(6),
         game: String? = null,
         target: Double? = null,
+        memory: Map<String, String>? = null,
         formatVersion: Int = BACKUP_FORMAT_VERSION,
-    ) = BackupFile(formatVersion, 1, "0.1.0", 42, exercises, workouts, items, sets, BackupSettings(faces, game, target))
+    ) = BackupFile(formatVersion, 1, "0.1.0", 42, exercises, workouts, items, sets, BackupSettings(faces, game, target, memory))
 
     private fun rejects(f: BackupFile, reasonPart: String) = rejectsText(BackupCodec.encode(f), reasonPart)
 
@@ -54,6 +55,19 @@ class BackupCodecTest {
     fun unknownGame_fallsBackToDefault() {
         val content = BackupCodec.decode(BackupCodec.encode(file(game = "spinner-from-the-future", target = 0.5)))
         assertEquals(ChanceSettings("dice", 0.5), content.chance)
+    }
+
+    @Test
+    fun chanceMemory_isKeptEvenForUnknownModels() {
+        val memory = mapOf("pot12" to "3,7,9", "d6" to "x")
+        assertEquals(memory, BackupCodec.decode(BackupCodec.encode(file(memory = memory))).chanceMemory)
+        assertEquals(emptyMap<String, String>(), BackupCodec.decode(BackupCodec.encode(file())).chanceMemory)
+    }
+
+    @Test
+    fun chanceMemory_badKeysOrHugeValuesRejected() {
+        rejects(file(memory = mapOf("../x" to "1")), "玩法记录")
+        rejects(file(memory = mapOf("pot" to "1".repeat(MAX_MEMORY_CHARS + 1))), "玩法记录")
     }
 
     @Test

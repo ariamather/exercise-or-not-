@@ -51,7 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.exerciseornot.app.chance.ChanceGame
+import com.exerciseornot.app.chance.OutcomeModel
 import com.exerciseornot.app.chance.ChanceGames
 import com.exerciseornot.app.chance.Stop
 import com.exerciseornot.app.chance.nearestStop
@@ -66,11 +66,12 @@ fun ChanceSettingsSheet(
     onDismiss: () -> Unit,
 ) {
     val game = setup.game
+    val model = game.model
     // While dragging, show the stop under the finger; after release, hold it until the saved value arrives.
     var dragValue by remember(game.id) { mutableStateOf<Float?>(null) }
     var pending by remember(game.id) { mutableStateOf<Stop?>(null) }
     LaunchedEffect(setup.stop) { if (pending?.key == setup.stop.key) pending = null }
-    val shown = dragValue?.let { game.nearestStop(it.toDouble()) } ?: pending ?: setup.stop
+    val shown = dragValue?.let { model.nearestStop(it.toDouble()) } ?: pending ?: setup.stop
     val choose: (Stop) -> Unit = { s ->
         if (s.key != shown.key) {
             pending = s
@@ -102,11 +103,11 @@ fun ChanceSettingsSheet(
             }
             Column {
                 StopSlider(
-                    game = game,
+                    model = model,
                     shown = shown,
                     onDrag = { v ->
                         dragValue = v
-                        choose(game.nearestStop(v.toDouble()))
+                        choose(model.nearestStop(v.toDouble()))
                     },
                     onDragEnd = { dragValue = null },
                     onStep = choose,
@@ -135,7 +136,7 @@ fun ChanceSettingsSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun StopSlider(
-    game: ChanceGame,
+    model: OutcomeModel,
     shown: Stop,
     onDrag: (Float) -> Unit,
     onDragEnd: () -> Unit,
@@ -173,7 +174,7 @@ private fun StopSlider(
                     size = Size(width, size.height),
                     cornerRadius = radius,
                 )
-                game.stops.forEach { s ->
+                model.stops.forEach { s ->
                     val f = s.chance.toFloat()
                     val x = (if (rtl) 1f - f else f) * size.width
                     val inset = size.height / 2
@@ -193,8 +194,8 @@ private fun StopSlider(
             setProgress { target ->
                 val now = current
                 val next = when {
-                    target > now.chance + 1e-6 -> game.stops.firstOrNull { it.chance > now.chance + 1e-9 }
-                    target < now.chance - 1e-6 -> game.stops.lastOrNull { it.chance < now.chance - 1e-9 }
+                    target > now.chance + 1e-6 -> model.stops.firstOrNull { it.chance > now.chance + 1e-9 }
+                    target < now.chance - 1e-6 -> model.stops.lastOrNull { it.chance < now.chance - 1e-9 }
                     else -> null
                 }
                 next?.let(onStep)

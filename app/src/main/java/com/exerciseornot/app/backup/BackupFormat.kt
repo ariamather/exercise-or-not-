@@ -11,6 +11,9 @@ import kotlinx.serialization.Serializable
 
 const val BACKUP_FORMAT_VERSION = 1
 
+/** Upper bound for one model's draw memory in a backup; a pot of a few hundred slips fits easily. */
+const val MAX_MEMORY_CHARS = 16_384
+
 /**
  * On-disk backup shape. Kept separate from the Room entities so schema and file format can
  * evolve independently; enums are names, weights are grams, times are epoch millis.
@@ -31,13 +34,15 @@ data class BackupFile(
 /**
  * [diceTrainFaces] is what 0.2.0 reads (it requires the field and ignores unknown ones), so it
  * is still written, from the current probability, and a newer backup restores on 0.2.0 too.
- * [chanceTarget] wins when present.
+ * [chanceTarget] wins when present. [chanceMemory] is each model's draw memory (e.g. what is
+ * left in a pot), keyed by model id; older versions ignore it.
  */
 @Serializable
 data class BackupSettings(
     val diceTrainFaces: List<Int>,
     val chanceGame: String? = null,
     val chanceTarget: Double? = null,
+    val chanceMemory: Map<String, String>? = null,
 )
 
 @Serializable
@@ -93,6 +98,7 @@ data class BackupContent(
     val workoutExercises: List<WorkoutExerciseEntity>,
     val sets: List<SetEntryEntity>,
     val chance: ChanceSettings,
+    val chanceMemory: Map<String, String> = emptyMap(),
 ) {
     val summary: BackupSummary
         get() = BackupSummary(

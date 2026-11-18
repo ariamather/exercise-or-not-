@@ -1,16 +1,13 @@
 package com.exerciseornot.app.chance
 
 /** One six-sided die. "k of 6" trains on the k highest faces, so 50% is 4、5、6 as before. */
-object DiceGame : ChanceGame {
-    override val id = "dice"
-    override val name = "骰子"
-    override val sceneId = "dice"
-    override val outcomeModel = "d6"
+object D6 : OutcomeModel {
+    override val id = "d6"
     override val outcomes = (1..6).map { Outcome("$it", "$it 点") }
     override val stops = (0..6).map { k -> Stop("$k/6", k, 6, rule(trainFaces(k))) }
 
     fun trainFaces(stop: Stop): List<Int> {
-        require(stop.denominator == 6) { "not a dice stop: ${stop.key}" }
+        require(stop.denominator == 6) { "not a d6 stop: ${stop.key}" }
         return trainFaces(stop.numerator)
     }
 

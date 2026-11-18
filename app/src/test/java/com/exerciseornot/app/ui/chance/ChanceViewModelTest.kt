@@ -4,7 +4,8 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.exerciseornot.app.chance.ChancePreferences
 import com.exerciseornot.app.chance.ChanceResult
-import com.exerciseornot.app.chance.DiceGame
+import com.exerciseornot.app.chance.D6
+import com.exerciseornot.app.chance.RevealPace
 import com.exerciseornot.app.chance.draw
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -69,11 +70,11 @@ class ChanceViewModelTest {
 
     @Test
     fun draw_savesTheFirstDrawAndMapsIt() {
-        val expected = DiceGame.draw(DiceGame.stops[3], Random(7))
+        val expected = D6.draw(D6.stops[3], Random(7))
         val vm = newViewModel(seed = 7)
         vm.draw()
         awaitUntil("result") { vm.todayResult.value != null && !vm.drawing.value }
-        assertEquals(ChanceResult("dice", expected.outcomeId, expected.train, today), vm.todayResult.value)
+        assertEquals(ChanceResult("dice", "d6", expected.outcomeId, expected.train, today), vm.todayResult.value)
         assertEquals(vm.todayResult.value, runBlocking { prefs.lastResult.first() })
     }
 
@@ -92,7 +93,7 @@ class ChanceViewModelTest {
         vm.draw()
         awaitUntil("result") { vm.todayResult.value != null && !vm.drawing.value }
         val before = vm.todayResult.value!!
-        val flipped = if (before.train) DiceGame.stops.first() else DiceGame.stops.last()
+        val flipped = if (before.train) D6.stops.first() else D6.stops.last()
         vm.setStop(flipped)
         awaitUntil("stop changed") { vm.setup.value.stop == flipped }
         assertEquals(before, runBlocking { prefs.lastResult.first() })
@@ -109,19 +110,19 @@ class ChanceViewModelTest {
             awaitUntil("result") { !vm.drawing.value && vm.todayResult.value != null }
             assertEquals(false, vm.todayResult.value!!.train)
         }
-        vm.setStop(DiceGame.stops.last())
-        awaitUntil("100% loaded") { vm.setup.value.stop == DiceGame.stops.last() }
+        vm.setStop(D6.stops.last())
+        awaitUntil("100% loaded") { vm.setup.value.stop == D6.stops.last() }
         vm.draw()
         awaitUntil("result") { !vm.drawing.value && vm.todayResult.value?.train == true }
     }
 
     @Test
     fun yesterdaysResult_isNotShown() {
-        runBlocking { prefs.saveResult(ChanceResult("dice", "6", true, today.minusDays(1))) }
+        runBlocking { prefs.saveResult(ChanceResult("dice", "d6", "6", true, today.minusDays(1))) }
         val vm = newViewModel()
         val seen = mutableListOf<ChanceResult?>()
         collectors.launch { vm.todayResult.collect { seen += it } }
-        runBlocking { prefs.saveResult(ChanceResult("dice", "2", false, today)) }
+        runBlocking { prefs.saveResult(ChanceResult("dice", "d6", "2", false, today)) }
         awaitUntil("today's result") { vm.todayResult.value?.outcomeId == "2" }
         assertTrue("yesterday's result leaked: $seen", seen.none { it?.date == today.minusDays(1) })
     }
@@ -163,7 +164,7 @@ class ChanceViewModelTest {
         vm.drawAnimated()
         awaitUntil("animation requested") { vm.animation.value != null }
         val request = vm.animation.value!!
-        val other = DiceGame.outcomes.first { it.id != request.result.outcomeId }.id
+        val other = D6.outcomes.first { it.id != request.result.outcomeId }.id
         vm.animationFinished(request.id, other)
         assertEquals(false, vm.drawing.value)
         assertTrue(vm.error.value != null)
@@ -216,6 +217,19 @@ class ChanceViewModelTest {
         awaitUntil("cup selected") { vm.setup.value.game.id == "cup" }
         assertEquals(before, vm.todayResult.value)
         assertEquals(before, runBlocking { prefs.lastResult.first() })
+    }
+
+    @Test
+    fun animatedDraw_carriesTheGamesPaceAndModel() {
+        val vm = newViewModel()
+        vm.setGame("cup")
+        awaitUntil("cup selected") { vm.setup.value.game.id == "cup" }
+        vm.drawAnimated()
+        awaitUntil("animation requested") { vm.animation.value != null }
+        val request = vm.animation.value!!
+        assertEquals(RevealPace.TIMED, request.pace)
+        assertEquals("cup", request.result.gameId)
+        assertEquals("d6", request.result.modelId)
     }
 
     @Test

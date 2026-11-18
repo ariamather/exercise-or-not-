@@ -9,3 +9,5 @@ captures/
 *.keystore
 *.jks
 !debug.keystore
+dist/
+scratch/

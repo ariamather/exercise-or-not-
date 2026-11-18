@@ -105,7 +105,7 @@ class HintsViewModelTest {
     @Test
     fun diceHint_hiddenAfterRoll() {
         vm.showDice.await(true)
-        runBlocking { dice.saveResult(ChanceResult("dice", "3", false, LocalDate.of(2026, 11, 10))) }
+        runBlocking { dice.saveResult(ChanceResult("dice", "d6", "3", false, LocalDate.of(2026, 11, 10))) }
         vm.showDice.await(false)
     }
 

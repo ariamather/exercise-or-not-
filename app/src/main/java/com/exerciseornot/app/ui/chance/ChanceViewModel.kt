@@ -7,6 +7,7 @@ import com.exerciseornot.app.chance.ChanceGames
 import com.exerciseornot.app.chance.ChancePreferences
 import com.exerciseornot.app.chance.ChanceResult
 import com.exerciseornot.app.chance.ChanceSettings
+import com.exerciseornot.app.chance.RevealPace
 import com.exerciseornot.app.chance.Stop
 import com.exerciseornot.app.chance.draw
 import com.exerciseornot.app.chance.snap
@@ -27,7 +28,7 @@ import kotlin.random.Random
 /** The game in use and the slider stop the user's probability snaps to in that game. */
 data class ChanceSetup(val game: ChanceGame, val target: Double, val stop: Stop)
 
-data class ChanceAnimation(val id: Long, val result: ChanceResult)
+data class ChanceAnimation(val id: Long, val result: ChanceResult, val pace: RevealPace = RevealPace.TIMED)
 
 /** Knows nothing about workouts: a draw never creates or changes training data. */
 class ChanceViewModel(
@@ -71,20 +72,24 @@ class ChanceViewModel(
         _error.value = null
         val id = ++nextDrawId
         activeDrawId = id
-        // Draw exactly once, before any animation; the scene only reveals this value.
         val (game, _, stop) = setup.value
-        val drawn = game.draw(stop, random)
-        val result = ChanceResult(game.id, drawn.outcomeId, drawn.train, LocalDate.now(clock))
         viewModelScope.launch {
             try {
-                prefs.saveResult(result)
+                // Draw exactly once, before any animation; the scene only reveals this value.
+                // Memory and result are read and written around one draw, so they stay in step.
+                val drawn = game.model.draw(stop, random, prefs.memory(game.model.id))
+                val result = ChanceResult(game.id, game.model.id, drawn.outcomeId, drawn.train, LocalDate.now(clock))
+                prefs.saveResult(result, drawn.memory)
                 if (activeDrawId != id) return@launch
                 if (animated) {
-                    _animation.value = ChanceAnimation(id, result)
+                    _animation.value = ChanceAnimation(id, result, game.pace)
                     // The scene acknowledges the actual landing; this only recovers a lost scene.
-                    animationTimeout = viewModelScope.launch {
-                        delay(ANIMATION_TIMEOUT_MS)
-                        animationFailed(id)
+                    // A user-paced reveal has no deadline: leaving the page ends it instead.
+                    if (game.pace == RevealPace.TIMED) {
+                        animationTimeout = viewModelScope.launch {
+                            delay(ANIMATION_TIMEOUT_MS)
+                            animationFailed(id)
+                        }
                     }
                 } else {
                     delay(revealDurationMs)
@@ -144,7 +149,7 @@ class ChanceViewModel(
 
     private fun setupOf(s: ChanceSettings): ChanceSetup {
         val game = ChanceGames.resolve(s.gameId)
-        return ChanceSetup(game, s.target, game.snap(s.target))
+        return ChanceSetup(game, s.target, game.model.snap(s.target))
     }
 
     companion object {

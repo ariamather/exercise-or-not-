@@ -25,16 +25,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.exerciseornot.app.chance.ChanceGames
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.IOException
 
-private const val SCENE_HOST = "appassets.androidplatform.net"
-private const val ASSET_ROOT = "chance"
-
-/** Packaged files only: lowercase names, no "..", nothing outside assets/chance/. */
-private val ASSET_PATH = Regex("[a-z0-9-]+(/[a-z0-9-]+)*\\.(html|js|css)")
+private const val SCENE_HOST = ChanceAssets.HOST
+private const val ASSET_ROOT = ChanceAssets.ROOT
 
 /**
  * The home page: a packaged web scene reveals what [ChanceViewModel] already drew and saved.
@@ -55,9 +51,7 @@ fun ChanceScreen(viewModel: ChanceViewModel, onOpenRecord: () -> Unit, modifier:
     val answer = animation?.result ?: result
     // A result drawn with another game still answers today; it can be shown here when both
     // games reveal the same kind of outcome (the die and the cup are both d6).
-    val outcome = answer
-        ?.takeIf { ChanceGames.resolve(it.gameId).outcomeModel == setup.game.outcomeModel }
-        ?.outcomeId
+    val outcome = answer?.takeIf { it.modelId == setup.game.model.id }?.outcomeId
     val sceneId = setup.game.sceneId
     val state = JSONObject().apply {
         put("outcome", outcome ?: JSONObject.NULL)
@@ -65,6 +59,7 @@ fun ChanceScreen(viewModel: ChanceViewModel, onOpenRecord: () -> Unit, modifier:
         put("train", answer?.train ?: false)
         put("drawing", drawing)
         put("requestId", animation?.id ?: 0L)
+        put("pace", (animation?.pace ?: setup.game.pace).wire)
         put("error", error ?: "")
     }.toString()
 
@@ -153,15 +148,13 @@ private class ChanceWebView(
                 val uri = request.url
                 val path = uri.path.orEmpty().removePrefix("/$ASSET_ROOT/")
                 if (uri.scheme != "https" || uri.host != SCENE_HOST || uri.path?.startsWith("/$ASSET_ROOT/") != true ||
-                    !ASSET_PATH.matches(path)
+                    !ChanceAssets.allowed(path)
                 ) return status(403, "Forbidden")
-                val mime = when {
-                    path.endsWith(".js") -> "application/javascript"
-                    path.endsWith(".css") -> "text/css"
-                    else -> "text/html"
-                }
                 return try {
-                    WebResourceResponse(mime, "UTF-8", context.assets.open("$ASSET_ROOT/$path"))
+                    WebResourceResponse(
+                        ChanceAssets.mimeOf(path), ChanceAssets.encodingOf(path),
+                        context.assets.open("$ASSET_ROOT/$path"),
+                    )
                 } catch (e: IOException) {
                     status(404, "Not Found")
                 }

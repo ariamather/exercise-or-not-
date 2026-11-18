@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 
@@ -21,8 +22,18 @@ data class ChanceSettings(val gameId: String, val target: Double) {
     }
 }
 
-/** [train] is decided when drawn, so later changes to the probability don't rewrite today's answer. */
-data class ChanceResult(val gameId: String, val outcomeId: String, val train: Boolean, val date: LocalDate)
+/**
+ * [train] is decided when drawn, so later changes to the probability don't rewrite today's answer.
+ * [modelId] says what kind of outcome [outcomeId] is, so it is never shown by a scene of another
+ * model, even if [gameId] is unknown to this version.
+ */
+data class ChanceResult(
+    val gameId: String,
+    val modelId: String,
+    val outcomeId: String,
+    val train: Boolean,
+    val date: LocalDate,
+)
 
 /**
  * Chance settings and the last draw; kept apart from workout data on purpose.
@@ -61,9 +72,35 @@ class ChancePreferences(private val store: DataStore<Preferences>) {
         .map { p -> current(p) ?: legacy(p) }
         .distinctUntilChanged()
 
-    suspend fun saveResult(result: ChanceResult) {
+    /** What [OutcomeModel.draw] returned as memory last time for this model; null if nothing. */
+    suspend fun memory(modelId: String): String? = store.data.first()[memoryKey(modelId)]
+
+    /** Every model's memory, for backups. */
+    val memories: Flow<Map<String, String>> = store.data
+        .map { p ->
+            p.asMap().entries
+                .filter { it.key.name.startsWith(MEMORY_PREFIX) && it.value is String }
+                .associate { it.key.name.removePrefix(MEMORY_PREFIX) to it.value as String }
+        }
+        .distinctUntilChanged()
+
+    /** Replaces every model's memory, as a restore does. */
+    suspend fun setMemories(memories: Map<String, String>) {
+        store.edit { p ->
+            p.asMap().keys.filter { it.name.startsWith(MEMORY_PREFIX) }.forEach { p.remove(it) }
+            memories.forEach { (model, value) -> p[memoryKey(model)] = value }
+        }
+    }
+
+    /**
+     * Saves today's answer and, in the same write, the model's new [memory] (null clears it), so a
+     * pot drawn without replacement can never lose a slip between the two.
+     */
+    suspend fun saveResult(result: ChanceResult, memory: String? = null) {
         store.edit {
+            if (memory != null) it[memoryKey(result.modelId)] = memory else it.remove(memoryKey(result.modelId))
             it[KEY_LAST_GAME] = result.gameId
+            it[KEY_LAST_MODEL] = result.modelId
             it[KEY_LAST_OUTCOME] = result.outcomeId
             it[KEY_LAST_TRAIN] = result.train
             it[KEY_LAST_DATE] = result.date.toString()
@@ -83,20 +120,26 @@ class ChancePreferences(private val store: DataStore<Preferences>) {
         val outcome = p[KEY_LAST_OUTCOME] ?: return null
         val train = p[KEY_LAST_TRAIN] ?: return null
         val date = p[KEY_LAST_DATE]?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return null
-        return ChanceResult(game, outcome, train, date)
+        // 0.3.0 saved no model; its games were all known then, so the game tells it.
+        val model = p[KEY_LAST_MODEL] ?: ChanceGames.resolve(game).model.id
+        return ChanceResult(game, model, outcome, train, date)
     }
 
     private fun legacy(p: Preferences): ChanceResult? {
         val face = p[LEGACY_FACE]?.takeIf { it in 1..6 } ?: return null
         val train = p[LEGACY_TRAIN] ?: return null
         val date = p[LEGACY_DATE]?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return null
-        return ChanceResult(DiceGame.id, face.toString(), train, date)
+        return ChanceResult(ChanceGames.Dice.id, D6.id, face.toString(), train, date)
     }
 
     private companion object {
+        const val MEMORY_PREFIX = "chance.memory."
+        fun memoryKey(modelId: String) = stringPreferencesKey(MEMORY_PREFIX + modelId)
+
         val KEY_GAME = stringPreferencesKey("chance.game")
         val KEY_TARGET = doublePreferencesKey("chance.target")
         val KEY_LAST_GAME = stringPreferencesKey("chance.last.game")
+        val KEY_LAST_MODEL = stringPreferencesKey("chance.last.model")
         val KEY_LAST_OUTCOME = stringPreferencesKey("chance.last.outcome")
         val KEY_LAST_TRAIN = booleanPreferencesKey("chance.last.train")
         val KEY_LAST_DATE = stringPreferencesKey("chance.last.date")

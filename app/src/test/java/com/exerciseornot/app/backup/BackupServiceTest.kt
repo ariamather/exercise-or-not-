@@ -89,7 +89,7 @@ class BackupServiceTest {
         repo.logSets(db, WorkoutTarget.New(today), pullUp, null to 8)
         exercises.create("旧动作", WeightMode.PER_SIDE).id.also { exercises.archive(it) }
         dice.setTarget(1.0 / 6)
-        dice.saveResult(ChanceResult("dice", "6", true, today))
+        dice.saveResult(ChanceResult("dice", "d6", "6", true, today))
     }
 
     private suspend fun exportBytes(): ByteArray = ByteArrayOutputStream().also { service.exportTo(it) }.toByteArray()
@@ -112,6 +112,16 @@ class BackupServiceTest {
         assertEquals(before, tables())
         assertEquals(1.0 / 6, dice.settings.first().target, 1e-9)
         assertEquals(1, replacedCount)
+    }
+
+    @Test
+    fun exportThenRestore_keepsModelMemoryAndRestoreReplacesIt() = runBlocking {
+        seed()
+        dice.setMemories(mapOf("pot12" to "1,2,3"))
+        val bytes = exportBytes()
+        dice.setMemories(mapOf("pot12" to "9", "other" to "z"))
+        service.restore(service.preview(ByteArrayInputStream(bytes)))
+        assertEquals(mapOf("pot12" to "1,2,3"), dice.memories.first())
     }
 
     @Test

@@ -9,106 +9,108 @@ class ChanceGameTest {
 
     /** "Probability is transparent": every stop's shown chance is exactly what its rule draws. */
     @Test
-    fun everyGame_stopChanceMatchesItsOutcomes() {
-        for (game in ChanceGames.all) {
-            assertTrue("${game.id}: weights must be positive", game.outcomes.all { it.weight > 0 })
-            assertEquals("${game.id}: outcome ids must be unique", game.outcomes.size, game.outcomes.map { it.id }.toSet().size)
-            assertEquals("${game.id}: first stop is 0%", 0, game.stops.first().numerator)
-            assertEquals("${game.id}: last stop is 100%", game.stops.last().denominator, game.stops.last().numerator)
-            assertEquals("${game.id}: stops are ordered", game.stops.sortedBy { it.chance }, game.stops)
-            assertEquals("${game.id}: stop keys are unique", game.stops.size, game.stops.map { it.key }.toSet().size)
-            for (stop in game.stops) {
-                val (train, total) = game.trainWeight(stop)
-                assertEquals("${game.id} ${stop.key}", stop.numerator.toLong() * total, train.toLong() * stop.denominator)
+    fun everyModel_stopChanceMatchesItsOutcomes() {
+        for (model in ChanceGames.models) {
+            assertTrue("${model.id}: weights must be positive", model.outcomes.all { it.weight > 0 })
+            assertEquals("${model.id}: outcome ids must be unique", model.outcomes.size, model.outcomes.map { it.id }.toSet().size)
+            assertEquals("${model.id}: first stop is 0%", 0, model.stops.first().numerator)
+            assertEquals("${model.id}: last stop is 100%", model.stops.last().denominator, model.stops.last().numerator)
+            assertEquals("${model.id}: stops are ordered", model.stops.sortedBy { it.chance }, model.stops)
+            assertEquals("${model.id}: stop keys are unique", model.stops.size, model.stops.map { it.key }.toSet().size)
+            for (stop in model.stops) {
+                val (train, total) = model.trainWeight(stop)
+                assertEquals("${model.id} ${stop.key}", stop.numerator.toLong() * total, train.toLong() * stop.denominator)
             }
         }
     }
 
     @Test
-    fun everyGame_drawFollowsItsRule() {
-        for (game in ChanceGames.all) for (stop in game.stops) {
+    fun everyModel_drawFollowsItsRule() {
+        for (model in ChanceGames.models) for (stop in model.stops) {
             val random = Random(stop.key.hashCode())
             repeat(200) {
-                val d = game.draw(stop, random)
-                assertTrue(game.outcomes.any { it.id == d.outcomeId })
-                assertEquals(game.trains(stop, d.outcomeId), d.train)
+                val d = model.draw(stop, random)
+                assertTrue(model.outcomes.any { it.id == d.outcomeId })
+                assertEquals(model.trains(stop, d.outcomeId), d.train)
             }
         }
     }
 
     @Test
-    fun dice_drawHitsEveryFaceAboutEvenly() {
-        val stop = DiceGame.stops[3]
+    fun d6_drawHitsEveryFaceAboutEvenly() {
+        val stop = D6.stops[3]
         val counts = mutableMapOf<String, Int>()
         val random = Random(42)
-        repeat(6000) { counts.merge(DiceGame.draw(stop, random).outcomeId, 1, Int::plus) }
+        repeat(6000) { counts.merge(D6.draw(stop, random).outcomeId, 1, Int::plus) }
         assertEquals((1..6).map { "$it" }.toSet(), counts.keys)
         counts.values.forEach { assertTrue("uneven: $counts", it in 850..1150) }
     }
 
     @Test
-    fun dice_stopsTrainOnTheHighestFaces() {
-        assertEquals(listOf("0%", "17%", "33%", "50%", "67%", "83%", "100%"), DiceGame.stops.map { it.percentText })
-        assertEquals("怎么掷都休息", DiceGame.stops[0].rule)
-        assertEquals("掷出 6 就练", DiceGame.stops[1].rule)
-        assertEquals("掷出 4、5、6 就练", DiceGame.stops[3].rule)
-        assertEquals("怎么掷都练", DiceGame.stops[6].rule)
-        assertEquals(listOf(4, 5, 6), DiceGame.trainFaces(DiceGame.stops[3]))
-        assertTrue(DiceGame.trains(DiceGame.stops[3], "4"))
-        assertEquals(false, DiceGame.trains(DiceGame.stops[3], "3"))
+    fun d6_stopsTrainOnTheHighestFaces() {
+        assertEquals(listOf("0%", "17%", "33%", "50%", "67%", "83%", "100%"), D6.stops.map { it.percentText })
+        assertEquals("怎么掷都休息", D6.stops[0].rule)
+        assertEquals("掷出 6 就练", D6.stops[1].rule)
+        assertEquals("掷出 4、5、6 就练", D6.stops[3].rule)
+        assertEquals("怎么掷都练", D6.stops[6].rule)
+        assertEquals(listOf(4, 5, 6), D6.trainFaces(D6.stops[3]))
+        assertTrue(D6.trains(D6.stops[3], "4"))
+        assertEquals(false, D6.trains(D6.stops[3], "3"))
     }
 
     @Test
     fun snap_exactStops() {
-        assertEquals("3/6", DiceGame.snap(0.5).key)
-        assertEquals("1/6", DiceGame.snap(1.0 / 6).key)
-        assertEquals("0/6", DiceGame.snap(0.0).key)
-        assertEquals("6/6", DiceGame.snap(1.0).key)
+        assertEquals("3/6", D6.snap(0.5).key)
+        assertEquals("1/6", D6.snap(1.0 / 6).key)
+        assertEquals("0/6", D6.snap(0.0).key)
+        assertEquals("6/6", D6.snap(1.0).key)
     }
 
     @Test
     fun snap_neverQuietlyReachesNeverOrAlways() {
-        assertEquals("1/6", DiceGame.snap(0.01).key)
-        assertEquals("5/6", DiceGame.snap(0.99).key)
+        assertEquals("1/6", D6.snap(0.01).key)
+        assertEquals("5/6", D6.snap(0.99).key)
     }
 
     @Test
     fun snap_nearestStopAndBadInputIsSafe() {
-        assertEquals("2/6", DiceGame.snap(0.4).key)
-        assertEquals("4/6", DiceGame.snap(0.6).key)
-        assertEquals("3/6", DiceGame.snap(Double.NaN).key)
-        assertEquals("6/6", DiceGame.snap(7.0).key)
-        assertEquals("0/6", DiceGame.snap(-1.0).key)
+        assertEquals("2/6", D6.snap(0.4).key)
+        assertEquals("4/6", D6.snap(0.6).key)
+        assertEquals("3/6", D6.snap(Double.NaN).key)
+        assertEquals("6/6", D6.snap(7.0).key)
+        assertEquals("0/6", D6.snap(-1.0).key)
     }
 
     @Test
     fun nearestStop_canReachTheEnds() {
-        assertEquals("0/6", DiceGame.nearestStop(0.02).key)
-        assertEquals("6/6", DiceGame.nearestStop(0.97).key)
-        assertEquals("2/6", DiceGame.nearestStop(0.30).key)
+        assertEquals("0/6", D6.nearestStop(0.02).key)
+        assertEquals("6/6", D6.nearestStop(0.97).key)
+        assertEquals("2/6", D6.nearestStop(0.30).key)
     }
 
     @Test
-    fun cup_reusesTheDiceOutcomesStopsAndRules() {
-        assertEquals("d6", CupGame.outcomeModel)
-        assertEquals(DiceGame.outcomeModel, CupGame.outcomeModel)
-        assertEquals(DiceGame.outcomes, CupGame.outcomes)
-        assertEquals(DiceGame.stops, CupGame.stops)
-        for (stop in DiceGame.stops) for (outcome in DiceGame.outcomes) {
-            assertEquals(
-                "${stop.key} ${outcome.id}",
-                DiceGame.trains(stop, outcome.id),
-                CupGame.trains(stop, outcome.id),
-            )
-        }
+    fun diceAndCup_shareTheD6Model() {
+        assertEquals(D6, ChanceGames.Dice.model)
+        assertEquals(D6, ChanceGames.Cup.model)
+        assertEquals("dice", ChanceGames.Dice.sceneId)
+        assertEquals("cup", ChanceGames.Cup.sceneId)
+        assertEquals(listOf(D6), ChanceGames.models)
+    }
+
+    /** Shipped ids are stored in preferences and backups; they must never change. */
+    @Test
+    fun shippedIdsAreStable() {
+        assertEquals(listOf("dice", "cup"), ChanceGames.all.map { it.id }.take(2))
+        assertEquals("d6", D6.id)
     }
 
     @Test
     fun registry() {
-        assertEquals(CupGame, ChanceGames.byId("cup"))
-        assertEquals(DiceGame, ChanceGames.resolve("dice"))
+        assertEquals(ChanceGames.Cup, ChanceGames.byId("cup"))
+        assertEquals(ChanceGames.Dice, ChanceGames.resolve("dice"))
         assertEquals(ChanceGames.default, ChanceGames.resolve("something-newer"))
         assertEquals(ChanceGames.default, ChanceGames.resolve(null))
         assertEquals(ChanceGames.all.size, ChanceGames.all.map { it.id }.toSet().size)
+        assertEquals(ChanceGames.models.size, ChanceGames.models.map { it.id }.toSet().size)
     }
 }

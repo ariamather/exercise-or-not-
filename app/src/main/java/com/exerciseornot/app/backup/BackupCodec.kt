@@ -102,6 +102,13 @@ object BackupCodec {
         // A game this version doesn't know (from a newer app) falls back to the default one.
         val chance = ChanceSettings(ChanceGames.resolve(f.settings.chanceGame).id, target)
 
-        return BackupContent(f.exportedAt, exercises, workouts, items, sets, chance)
+        // Memory belongs to models, not games; it is kept as is, even for a model this version
+        // doesn't know, and each model starts afresh from anything it can't read.
+        val memory = f.settings.chanceMemory.orEmpty()
+        if (memory.keys.any { !Regex("[a-z0-9_-]+").matches(it) } || memory.values.any { it.length > MAX_MEMORY_CHARS }) {
+            fail("玩法记录格式不正确")
+        }
+
+        return BackupContent(f.exportedAt, exercises, workouts, items, sets, chance, memory)
     }
 }

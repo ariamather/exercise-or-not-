@@ -58,7 +58,7 @@ class ChancePreferencesTest {
     @Test
     fun lastResult_roundTrips() = runBlocking {
         assertNull(prefs.lastResult.first())
-        val r = ChanceResult("dice", "5", true, LocalDate.of(2026, 11, 11))
+        val r = ChanceResult("dice", "d6", "5", true, LocalDate.of(2026, 11, 11))
         prefs.saveResult(r)
         assertEquals(r, prefs.lastResult.first())
     }
@@ -74,15 +74,35 @@ class ChancePreferencesTest {
         }
         assertEquals(ChanceSettings("dice", 2.0 / 6), prefs.settings.first())
         // The answer was decided when rolled; face 1 trained under the old rule and still does today.
-        assertEquals(ChanceResult("dice", "1", true, LocalDate.of(2026, 11, 17)), prefs.lastResult.first())
-        assertEquals("2/6", DiceGame.snap(prefs.settings.first().target).key)
+        assertEquals(ChanceResult("dice", "d6", "1", true, LocalDate.of(2026, 11, 17)), prefs.lastResult.first())
+        assertEquals("2/6", D6.snap(prefs.settings.first().target).key)
+    }
+
+    /** 0.3.0 saved results without a model id; the game it was drawn with tells it. */
+    @Test
+    fun upgradeFrom030_resultGetsItsModelFromTheGame() = runBlocking {
+        store.edit {
+            it[stringPreferencesKey("chance.last.game")] = "cup"
+            it[stringPreferencesKey("chance.last.outcome")] = "4"
+            it[booleanPreferencesKey("chance.last.train")] = true
+            it[stringPreferencesKey("chance.last.date")] = "2026-11-18"
+        }
+        assertEquals(ChanceResult("cup", "d6", "4", true, LocalDate.of(2026, 11, 18)), prefs.lastResult.first())
+    }
+
+    /** A result from a newer game keeps its own model, so no scene of another model shows it. */
+    @Test
+    fun resultFromUnknownGame_keepsItsModel() = runBlocking {
+        val r = ChanceResult("wheel", "w12", "7", false, LocalDate.of(2026, 11, 19))
+        prefs.saveResult(r)
+        assertEquals(r, prefs.lastResult.first())
     }
 
     @Test
     fun upgradeFrom020_emptyFacesMeansNeverTrain() = runBlocking {
         store.edit { it[stringSetPreferencesKey("dice.trainFaces")] = emptySet() }
         assertEquals(0.0, prefs.settings.first().target, 0.0)
-        assertEquals("0/6", DiceGame.snap(0.0).key)
+        assertEquals("0/6", D6.snap(0.0).key)
     }
 
     @Test
@@ -94,7 +114,7 @@ class ChancePreferencesTest {
             it[stringPreferencesKey("dice.last.date")] = "2026-11-16"
         }
         prefs.setTarget(0.5)
-        prefs.saveResult(ChanceResult("dice", "2", false, LocalDate.of(2026, 11, 17)))
+        prefs.saveResult(ChanceResult("dice", "d6", "2", false, LocalDate.of(2026, 11, 17)))
         val raw = store.data.first().asMap().keys.map { it.name }
         assertFalse(raw.toString(), raw.any { it.startsWith("dice.") })
         assertEquals(0.5, prefs.settings.first().target, 0.0)

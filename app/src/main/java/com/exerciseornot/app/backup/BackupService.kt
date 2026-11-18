@@ -8,7 +8,7 @@ import androidx.room.withTransaction
 import com.exerciseornot.app.data.db.AppDatabase
 import com.exerciseornot.app.data.db.DB_SCHEMA_VERSION
 import com.exerciseornot.app.chance.ChancePreferences
-import com.exerciseornot.app.chance.DiceGame
+import com.exerciseornot.app.chance.D6
 import com.exerciseornot.app.chance.snap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -100,8 +100,9 @@ class BackupService(
             )
         }
         val s = chance.settings.first()
-        val legacyFaces = DiceGame.trainFaces(DiceGame.snap(s.target))
-        return file.copy(settings = BackupSettings(legacyFaces, s.gameId, s.target))
+        val legacyFaces = D6.trainFaces(D6.snap(s.target))
+        val memory = chance.memories.first().takeIf { it.isNotEmpty() }
+        return file.copy(settings = BackupSettings(legacyFaces, s.gameId, s.target, memory))
     }
 
     private suspend fun replaceAll(content: BackupContent) {
@@ -118,6 +119,7 @@ class BackupService(
         onDataReplaced()
         try {
             chance.setSettings(content.chance)
+            chance.setMemories(content.chanceMemory)
         } catch (e: Exception) {
             throw IllegalArgumentException("训练数据已恢复，但练的概率未能恢复，请在掷骰子页的设置里重新调整")
         }
