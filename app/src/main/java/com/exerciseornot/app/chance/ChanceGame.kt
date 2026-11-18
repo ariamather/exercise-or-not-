@@ -17,6 +17,11 @@ interface ChanceGame {
     val name: String
     /** Folder under assets/chance/scenes/ that reveals this game's outcomes. */
     val sceneId: String
+    /**
+     * Games with the same model produce interchangeable outcomes: a d6 face drawn with the die
+     * can be re-shown as the cup's opened die, and vice versa.
+     */
+    val outcomeModel: String
     /** Every possible outcome with its weight; [draw] picks one with exactly these weights. */
     val outcomes: List<Outcome>
     /** Slider positions, ordered by chance; the first is 0% and the last is 100%. */
@@ -66,7 +71,7 @@ fun ChanceGame.trainWeight(stop: Stop): Pair<Int, Int> =
 const val DEFAULT_TARGET = 0.5
 
 object ChanceGames {
-    val all: List<ChanceGame> = listOf(DiceGame)
+    val all: List<ChanceGame> = listOf(DiceGame, CupGame)
     val default: ChanceGame = DiceGame
 
     fun byId(id: String?): ChanceGame? = all.firstOrNull { it.id == id }

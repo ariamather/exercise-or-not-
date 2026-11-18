@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -51,13 +52,19 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.exerciseornot.app.chance.ChanceGame
+import com.exerciseornot.app.chance.ChanceGames
 import com.exerciseornot.app.chance.Stop
 import com.exerciseornot.app.chance.nearestStop
 
 /** One slider for every game; the game decides where it can stop and what each stop means. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChanceSettingsSheet(setup: ChanceSetup, onStop: (Stop) -> Unit, onDismiss: () -> Unit) {
+fun ChanceSettingsSheet(
+    setup: ChanceSetup,
+    onStop: (Stop) -> Unit,
+    onGame: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
     val game = setup.game
     // While dragging, show the stop under the finger; after release, hold it until the saved value arrives.
     var dragValue by remember(game.id) { mutableStateOf<Float?>(null) }
@@ -75,7 +82,20 @@ fun ChanceSettingsSheet(setup: ChanceSetup, onStop: (Stop) -> Unit, onDismiss: (
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.padding(start = 24.dp, end = 24.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("把一点偏爱，交给概率。", fontSize = 19.sp, fontWeight = FontWeight.Medium, modifier = Modifier.semantics { heading() })
-            Text("拖动滑条，选择练的概率", fontSize = 12.sp, color = muted)
+            Text("选一个玩法，再拖动滑条决定练的概率", fontSize = 12.sp, color = muted)
+            Row(
+                Modifier.fillMaxWidth().padding(top = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ChanceGames.all.forEach { option ->
+                    FilterChip(
+                        selected = option.id == game.id,
+                        onClick = { if (option.id != game.id) onGame(option.id) },
+                        label = { Text(option.name, fontSize = 13.sp) },
+                    )
+                }
+            }
             Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("练的概率", fontSize = 12.sp, modifier = Modifier.weight(1f))
                 Text(shown.percentText, fontSize = 28.sp)

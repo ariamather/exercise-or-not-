@@ -190,6 +190,35 @@ class ChanceViewModelTest {
     }
 
     @Test
+    fun setGame_keepsTargetAndSnapsToTheNewGamesStops() {
+        runBlocking { prefs.setTarget(0.5) }
+        val vm = newViewModel()
+        awaitUntil("setup loaded") { vm.setup.value.target == 0.5 }
+        vm.setGame("cup")
+        awaitUntil("cup selected") { vm.setup.value.game.id == "cup" }
+        assertEquals(0.5, vm.setup.value.target, 0.0)
+        assertEquals("3/6", vm.setup.value.stop.key)
+        assertEquals("掷出 4、5、6 就练", vm.setup.value.stop.rule)
+        assertEquals("cup", runBlocking { prefs.settings.first() }.gameId)
+        assertEquals(0.5, runBlocking { prefs.settings.first() }.target, 0.0)
+        assertEquals(null, runBlocking { prefs.lastResult.first() })
+    }
+
+    @Test
+    fun setGame_keepsTodaysAnswerAndIgnoresUnknownGames() {
+        val vm = newViewModel()
+        vm.draw()
+        awaitUntil("result") { vm.todayResult.value != null && !vm.drawing.value }
+        val before = vm.todayResult.value!!
+        vm.setGame("something-newer")
+        assertEquals("dice", vm.setup.value.game.id)
+        vm.setGame("cup")
+        awaitUntil("cup selected") { vm.setup.value.game.id == "cup" }
+        assertEquals(before, vm.todayResult.value)
+        assertEquals(before, runBlocking { prefs.lastResult.first() })
+    }
+
+    @Test
     fun failedAnimation_releasesControlsWithoutChangingResult() {
         val vm = newViewModel()
         vm.drawAnimated()

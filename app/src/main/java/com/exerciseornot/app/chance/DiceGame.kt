@@ -5,6 +5,7 @@ object DiceGame : ChanceGame {
     override val id = "dice"
     override val name = "骰子"
     override val sceneId = "dice"
+    override val outcomeModel = "d6"
     override val outcomes = (1..6).map { Outcome("$it", "$it 点") }
     override val stops = (0..6).map { k -> Stop("$k/6", k, 6, rule(trainFaces(k))) }
 

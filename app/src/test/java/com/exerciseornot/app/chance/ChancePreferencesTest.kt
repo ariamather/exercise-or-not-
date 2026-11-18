@@ -49,6 +49,13 @@ class ChancePreferencesTest {
     }
 
     @Test
+    fun setGame_keepsTheRequestedProbability() = runBlocking {
+        prefs.setTarget(2.0 / 6)
+        prefs.setGame("cup")
+        assertEquals(ChanceSettings("cup", 2.0 / 6), prefs.settings.first())
+    }
+
+    @Test
     fun lastResult_roundTrips() = runBlocking {
         assertNull(prefs.lastResult.first())
         val r = ChanceResult("dice", "5", true, LocalDate.of(2026, 11, 11))

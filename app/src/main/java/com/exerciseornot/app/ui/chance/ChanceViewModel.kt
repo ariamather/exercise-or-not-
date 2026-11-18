@@ -134,6 +134,14 @@ class ChanceViewModel(
         }
     }
 
+    /** Switches the game, keeping the probability the user asked for; the new game snaps it. */
+    fun setGame(id: String) {
+        val game = ChanceGames.byId(id) ?: return
+        viewModelScope.launch {
+            runCatching { prefs.setGame(game.id) }.onFailure { _error.value = "保存设置失败，请重试" }
+        }
+    }
+
     private fun setupOf(s: ChanceSettings): ChanceSetup {
         val game = ChanceGames.resolve(s.gameId)
         return ChanceSetup(game, s.target, game.snap(s.target))

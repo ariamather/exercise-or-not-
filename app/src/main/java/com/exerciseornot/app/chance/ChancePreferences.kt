@@ -45,6 +45,11 @@ class ChancePreferences(private val store: DataStore<Preferences>) {
         store.edit { it.putTarget(target) }
     }
 
+    /** Switches games without touching the target, so a just-moved slider is never overwritten. */
+    suspend fun setGame(gameId: String) {
+        store.edit { it[KEY_GAME] = gameId }
+    }
+
     suspend fun setSettings(settings: ChanceSettings) {
         store.edit {
             it[KEY_GAME] = settings.gameId

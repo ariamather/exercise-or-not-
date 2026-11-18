@@ -3,6 +3,8 @@ package com.exerciseornot.app.ui.chance
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
+import android.os.Build
+import android.view.HapticFeedbackConstants
 import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -23,6 +25,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.exerciseornot.app.chance.ChanceGames
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.IOException
@@ -50,8 +53,11 @@ fun ChanceScreen(viewModel: ChanceViewModel, onOpenRecord: () -> Unit, modifier:
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val answer = animation?.result ?: result
-    // A result drawn with another game still answers today, but this scene can't show its outcome.
-    val outcome = answer?.takeIf { it.gameId == setup.game.id }?.outcomeId
+    // A result drawn with another game still answers today; it can be shown here when both
+    // games reveal the same kind of outcome (the die and the cup are both d6).
+    val outcome = answer
+        ?.takeIf { ChanceGames.resolve(it.gameId).outcomeModel == setup.game.outcomeModel }
+        ?.outcomeId
     val sceneId = setup.game.sceneId
     val state = JSONObject().apply {
         put("outcome", outcome ?: JSONObject.NULL)
@@ -104,7 +110,12 @@ fun ChanceScreen(viewModel: ChanceViewModel, onOpenRecord: () -> Unit, modifier:
     }
 
     if (showSettings) {
-        ChanceSettingsSheet(setup, onStop = viewModel::setStop, onDismiss = { showSettings = false })
+        ChanceSettingsSheet(
+            setup,
+            onStop = viewModel::setStop,
+            onGame = viewModel::setGame,
+            onDismiss = { showSettings = false },
+        )
     }
 }
 
@@ -167,6 +178,16 @@ private class ChanceWebView(
             @JavascriptInterface fun record() = onMain(onRecord)
             @JavascriptInterface fun finished(id: Long, outcome: String) = onMain { onFinished(id, outcome) }
             @JavascriptInterface fun failed(id: Long) = onMain { onFailed(id) }
+            /** Short scene feedback: only "tick" (rattles, landing) and "thud" (opening). */
+            @JavascriptInterface fun haptic(kind: String) = onMain {
+                when (kind) {
+                    "tick" -> performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                    "thud" -> performHapticFeedback(
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) HapticFeedbackConstants.CONFIRM
+                        else HapticFeedbackConstants.KEYBOARD_TAP,
+                    )
+                }
+            }
         }, "AndroidChance")
     }
 

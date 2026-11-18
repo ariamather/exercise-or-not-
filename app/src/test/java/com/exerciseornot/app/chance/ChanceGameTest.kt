@@ -89,7 +89,23 @@ class ChanceGameTest {
     }
 
     @Test
+    fun cup_reusesTheDiceOutcomesStopsAndRules() {
+        assertEquals("d6", CupGame.outcomeModel)
+        assertEquals(DiceGame.outcomeModel, CupGame.outcomeModel)
+        assertEquals(DiceGame.outcomes, CupGame.outcomes)
+        assertEquals(DiceGame.stops, CupGame.stops)
+        for (stop in DiceGame.stops) for (outcome in DiceGame.outcomes) {
+            assertEquals(
+                "${stop.key} ${outcome.id}",
+                DiceGame.trains(stop, outcome.id),
+                CupGame.trains(stop, outcome.id),
+            )
+        }
+    }
+
+    @Test
     fun registry() {
+        assertEquals(CupGame, ChanceGames.byId("cup"))
         assertEquals(DiceGame, ChanceGames.resolve("dice"))
         assertEquals(ChanceGames.default, ChanceGames.resolve("something-newer"))
         assertEquals(ChanceGames.default, ChanceGames.resolve(null))
