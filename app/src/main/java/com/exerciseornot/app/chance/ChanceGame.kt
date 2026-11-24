@@ -20,8 +20,12 @@ interface OutcomeModel {
      * model with [memory][draw] uses them as the long-run share over one full cycle.
      */
     val outcomes: List<Outcome>
-    /** Slider positions, ordered by chance; the first is 0% and the last is 100%. */
+    /** One slider position per probability, ordered by chance from 0% to 100%. */
     val stops: List<Stop>
+
+    /** Resolves a saved rule key, including rules that share a slider position. */
+    fun stopByKey(key: String?): Stop? = stops.firstOrNull { it.key == key }
+
     fun trains(stop: Stop, outcomeId: String): Boolean
 
     /**
@@ -58,7 +62,7 @@ data class ChanceGame(
 /** [id] is letters, digits, "-" and "_"; outcomes from [combine] join their parts with ",". */
 data class Outcome(val id: String, val label: String, val weight: Int = 1)
 
-/** A slider position: training happens with probability [numerator]/[denominator], by [rule]. */
+/** A rule with training probability [numerator]/[denominator]. */
 data class Stop(val key: String, val numerator: Int, val denominator: Int, val rule: String) {
     val chance: Double get() = numerator.toDouble() / denominator
     val percent: Int get() = (numerator * 100.0 / denominator).roundToInt()
@@ -131,8 +135,14 @@ object ChanceGames {
     val Dice = ChanceGame("dice", "骰子", D6)
     /** A die hidden under a dice cup: the die's outcomes and rules, revealed by opening the cup. */
     val Cup = ChanceGame("cup", "骰盅", D6)
+    /** Ten bamboo slips in a lacquered tube: 0%–100% in 10% steps, drawn with replacement. */
+    val Lots = ChanceGame("lots", "签筒", Lots10)
+    val Scratch = ChanceGame("scratch", "刮刮乐", ScratchTicket, pace = RevealPace.USER)
+    val Revolver = ChanceGame("revolver", "左轮", RevolverDraw, pace = RevealPace.USER)
+    val Slot = ChanceGame("slot", "老虎机", SlotMachine)
+    val Wheel = ChanceGame("wheel", "转盘", CarnivalWheel, pace = RevealPace.USER)
 
-    val all: List<ChanceGame> = listOf(Dice, Cup)
+    val all: List<ChanceGame> = listOf(Dice, Cup, Lots, Scratch, Revolver, Slot, Wheel)
     val default: ChanceGame = Dice
     val models: List<OutcomeModel> get() = all.map { it.model }.distinct()
 

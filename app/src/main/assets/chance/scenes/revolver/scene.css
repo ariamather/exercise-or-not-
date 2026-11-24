@@ -1,0 +1,56 @@
+.revolver-stage-wrap { position: relative; flex: none; }
+.revolver-stage { overflow: hidden; }
+.revolver-stage:not(:disabled):active .revolver-track { opacity: 0.78; }
+
+.revolver-track,
+.revolver-cue {
+  position: absolute;
+  pointer-events: none;
+}
+
+.revolver-track {
+  inset: auto 0 21px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.revolver-cell {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border-radius: 50%;
+  border: 1px solid #b4bbae;
+  background: #f3f3eb;
+  color: #405d48;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.revolver-cell.next-round { border: 2px solid #8a783f; }
+.revolver-cell.mark { background: #365b43; color: #fafbf5; border-color: #365b43; }
+.revolver-cell.blank { background: #e8e9e5; color: #545f61; border-color: #c5c9c2; }
+.revolver-cell.outside-rounds { opacity: 0.58; }
+
+.revolver-cue {
+  inset: auto 12px 1px;
+  color: #586b5d;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.revolver-spin {
+  position: absolute;
+  top: 6%;
+  right: 7%;
+  padding: 8px 11px;
+  border: 1px solid #b5beae;
+  border-radius: 999px;
+  background: #f6f5f0;
+  color: #486351;
+  font-size: 12px;
+}
+
+.revolver-spin:disabled { visibility: hidden; }

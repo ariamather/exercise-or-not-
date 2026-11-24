@@ -1,0 +1,3537 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>练不练 · FPS 第一视角左轮交互探索</title>
+<style>
+  :root {
+    color-scheme: light;
+    --desk: #e8eae3;
+    --paper: #f6f5f0;
+    --card: #fbfcf7;
+    --ink: #28392f;
+    --ink-2: #536052;
+    --muted: #7d847b;
+    --line: #dce0d4;
+    --soft: #e9eddf;
+    --accent: #365b43;
+    --accent-hover: #294b36;
+    --on-accent: #fafbf5;
+    --rest: #596e80;
+    --focus: #9dac67;
+    --shadow: 0 24px 70px rgba(40, 57, 47, 0.12);
+    font-family: -apple-system, BlinkMacSystemFont, "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--desk); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; border: 0; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  button:disabled { cursor: default; opacity: 0.45; }
+
+  .workspace {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 24px 24px 56px;
+  }
+
+  /* Top control header */
+  .topbar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .topbar-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px 24px;
+  }
+  .topbar-copy .eyebrow {
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    font-weight: 600;
+    color: #7c886b;
+    margin-bottom: 5px;
+  }
+  .topbar-copy h1 {
+    margin: 0;
+    font-size: 25px;
+    font-weight: 600;
+    letter-spacing: -0.6px;
+  }
+  .topbar-copy p {
+    margin: 5px 0 0;
+    font-size: 13px;
+    color: var(--ink-2);
+    line-height: 1.6;
+    max-width: 740px;
+  }
+
+  .controls-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 7px;
+  }
+  .global-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 7px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 15px;
+  }
+  .controls-label {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 0 6px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .divider-v {
+    width: 1px;
+    height: 18px;
+    background: var(--line);
+    margin: 0 4px;
+  }
+  .pill {
+    padding: 7px 11px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-2);
+    transition: background 0.16s, color 0.16s;
+    white-space: nowrap;
+  }
+  .pill.sm {
+    padding: 5px 9px;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pill.preset {
+    padding: 5px 8px;
+    font-size: 11px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.25;
+    min-width: 50px;
+  }
+  .pill.preset small {
+    font-size: 9.5px;
+    opacity: 0.72;
+    font-weight: 400;
+  }
+  .pill:hover:not(:disabled) { background: var(--soft); color: var(--ink); }
+  .pill[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+  .pill[aria-pressed="true"] small { opacity: 0.88; }
+  .pill.cycle-btn {
+    border: 1px dashed #bcc5af;
+    color: var(--accent);
+    margin-left: auto;
+  }
+
+  .combo-readout {
+    margin-left: auto;
+    padding: 4px 10px;
+    border-radius: 9px;
+    background: var(--soft);
+    color: var(--accent);
+    font-size: 11.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* Two-column phone showcase */
+  .comparison {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 420px));
+    justify-content: center;
+    gap: 28px 32px;
+  }
+  @media (max-width: 860px) {
+    .comparison { grid-template-columns: minmax(0, 420px); }
+    .workspace { padding: 18px 14px 44px; }
+  }
+
+  .scheme-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .scheme-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    padding: 0 6px;
+  }
+  .scheme-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .scheme-title strong { font-size: 15px; font-weight: 600; }
+  .scheme-title span { font-size: 11px; color: var(--muted); }
+
+  .scheme-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .mini-chip {
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .mini-chip:hover { background: var(--soft); }
+  .mini-chip[aria-pressed="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--on-accent);
+  }
+
+  /* Phone frame matching 6-spatial shell.css */
+  .phone {
+    position: relative;
+    width: 100%;
+    background: var(--paper);
+    border-radius: 34px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(40, 57, 47, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 696px;
+  }
+
+  .phone header {
+    height: 64px;
+    padding: 10px 26px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: none;
+    position: relative;
+    z-index: 2;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .brand-mark {
+    width: 26px;
+    height: 26px;
+    background: var(--accent);
+    color: var(--paper);
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    margin-right: 9px;
+    font: 24px Georgia, serif;
+    line-height: 20px;
+    padding-bottom: 4px;
+    transform: rotate(-8deg);
+  }
+  .brand-dot { color: #8d9a67; margin-left: 2px; }
+  .icon-button {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--ink);
+  }
+  .icon-button:hover { background: var(--soft); }
+  .icon-button svg { width: 22px; height: 22px; }
+  .icon-button circle { fill: var(--paper); }
+
+  .phone main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 6px 0 18px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 412px;
+    flex: none;
+    overflow: hidden;
+    touch-action: none;
+    cursor: grab;
+  }
+  .stage.is-dragging { cursor: grabbing; }
+  .stage canvas.shadow-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .stage canvas.gl-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .stage-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 6px 14px 0;
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    color: #929787;
+    transition: opacity 0.2s;
+  }
+  .stage-hint span { pointer-events: none; }
+  .spin-chip {
+    border: 1px solid rgba(46, 86, 65, 0.24);
+    background: rgba(46, 86, 65, 0.06);
+    color: #2E5641;
+    border-radius: 999px;
+    padding: 2px 9px;
+    font-size: 11px;
+    line-height: 1.45;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, opacity 0.15s, border-color 0.15s;
+  }
+  .spin-chip:hover:not(:disabled) {
+    background: rgba(46, 86, 65, 0.12);
+    border-color: rgba(46, 86, 65, 0.36);
+  }
+  .spin-chip:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .stage.is-dragging + .stage-hint { opacity: 0.25; }
+
+  .result-line {
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: 4px 18px 12px;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    color: var(--ink);
+  }
+  .result-line.answer { font-size: 25px; font-weight: 550; }
+  .result-line.rest { color: var(--rest); }
+
+  .actions { padding: 0 30px; }
+  .primary {
+    width: 100%;
+    min-height: 53px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    background: var(--accent);
+    border-radius: 17px;
+    color: var(--on-accent);
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 1.6px;
+    transition: background 0.16s, transform 0.14s;
+  }
+  .primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .primary:active:not(:disabled) { transform: scale(0.985); }
+  .shortcut {
+    width: 100%;
+    min-height: 44px;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 10px 4px;
+  }
+
+  /* Specs & notes footer */
+  .specs {
+    max-width: 872px;
+    margin: 28px auto 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 28px;
+  }
+  @media (max-width: 720px) {
+    .specs { grid-template-columns: 1fr; padding: 18px; }
+  }
+  .spec-block h3 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .spec-block p, .spec-block li {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.75;
+    color: var(--ink-2);
+  }
+  .spec-block ul {
+    margin: 0;
+    padding-left: 16px;
+  }
+  .spec-stats {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+</head>
+<body>
+<div class="workspace">
+  <header class="topbar">
+    <div class="topbar-head">
+      <div class="topbar-copy">
+        <div class="eyebrow">EXERCISE OR NOT · FPS FIRST-PERSON REVOLVER</div>
+        <h1>FPS 第一视角持枪 · 拿远开轮装弹入场 + 每枪可转弹鼓</h1>
+        <p>开局与换弹时将左轮拿远至完整视野，摆出转轮逐发滑入实弹、拨转打乱后平滑移入 <code>40°</code> 广角 FPS 持枪瞄准视角；每开一枪均可点击 <code>↻ 转一转</code> 或直接在舞台拖拽自由拨转弹鼓。</p>
+      </div>
+    </div>
+
+    <div class="controls-stack">
+      <!-- Row 1: Camera View & States -->
+      <div class="global-controls" role="group" aria-label="视角与状态预览">
+        <span class="controls-label">视角</span>
+        <button class="pill" data-view="fp" aria-pressed="true">第一视角</button>
+        <button class="pill" data-view="side" aria-pressed="false">侧视鉴赏</button>
+        <span class="divider-v" aria-hidden="true"></span>
+        <span class="controls-label">状态</span>
+        <button class="pill" data-mode="idle" aria-pressed="false">待命</button>
+        <button class="pill" data-mode="reload" aria-pressed="true">装弹入场</button>
+        <button class="pill" data-mode="load" aria-pressed="false">摆巢看弹</button>
+        <button class="pill" data-mode="blast" aria-pressed="false">开火瞬间</button>
+        <button class="pill" data-mode="train" aria-pressed="false">击发 · 练</button>
+        <button class="pill" data-mode="rest" aria-pressed="false">空枪 · 歇</button>
+        <button class="pill" data-mode="explode" aria-pressed="false">3D 拆解</button>
+        <button class="pill cycle-btn" id="btn-next-excuse">换一句借口 ↻</button>
+      </div>
+
+      <!-- Row 2: 13 Quick Combined Probability Presets -->
+      <div class="global-controls" role="group" aria-label="组合概率快捷档位">
+        <span class="controls-label">快捷档位</span>
+        <button class="pill preset" data-preset="0-1-any" aria-pressed="false">0%<small>0发1枪</small></button>
+        <button class="pill preset" data-preset="2-2-all" aria-pressed="false">7%<small>2发全中</small></button>
+        <button class="pill preset" data-preset="1-1-any" aria-pressed="false">17%<small>1发1枪</small></button>
+        <button class="pill preset" data-preset="3-2-all" aria-pressed="false">20%<small>3发全中</small></button>
+        <button class="pill preset" data-preset="2-1-any" aria-pressed="false">33%<small>2发1枪</small></button>
+        <button class="pill preset" data-preset="4-2-all" aria-pressed="false">40%<small>4发全中</small></button>
+        <button class="pill preset" data-preset="3-1-any" aria-pressed="true">50%<small>3发1枪</small></button>
+        <button class="pill preset" data-preset="2-2-any" aria-pressed="false">60%<small>2发2枪</small></button>
+        <button class="pill preset" data-preset="4-1-any" aria-pressed="false">67%<small>4发1枪</small></button>
+        <button class="pill preset" data-preset="3-2-any" aria-pressed="false">80%<small>3发2枪</small></button>
+        <button class="pill preset" data-preset="5-1-any" aria-pressed="false">83%<small>5发1枪</small></button>
+        <button class="pill preset" data-preset="4-2-any" aria-pressed="false">93%<small>4发2枪</small></button>
+        <button class="pill preset" data-preset="6-1-any" aria-pressed="false">100%<small>6发1枪</small></button>
+      </div>
+
+      <!-- Row 3: Custom k x m x rule builder -->
+      <div class="global-controls" role="group" aria-label="自由组合概率微调">
+        <span class="controls-label">装弹</span>
+        <button class="pill sm" data-k="0" aria-pressed="false">0发</button>
+        <button class="pill sm" data-k="1" aria-pressed="false">1发</button>
+        <button class="pill sm" data-k="2" aria-pressed="false">2发</button>
+        <button class="pill sm" data-k="3" aria-pressed="true">3发</button>
+        <button class="pill sm" data-k="4" aria-pressed="false">4发</button>
+        <button class="pill sm" data-k="5" aria-pressed="false">5发</button>
+        <button class="pill sm" data-k="6" aria-pressed="false">6发</button>
+        <span class="divider-v" aria-hidden="true"></span>
+        <span class="controls-label">连扣</span>
+        <button class="pill sm" data-m="1" aria-pressed="true">1枪</button>
+        <button class="pill sm" data-m="2" aria-pressed="false">2枪</button>
+        <button class="pill sm" data-m="3" aria-pressed="false">3枪</button>
+        <span class="divider-v" aria-hidden="true"></span>
+        <span class="controls-label">规则</span>
+        <button class="pill sm" data-rule="any" aria-pressed="true">中一发就练</button>
+        <button class="pill sm" data-rule="all" aria-pressed="false">全中才练</button>
+        <span class="combo-readout" id="combo-readout">装 3 发 · 1 枪 → 3/6 = 50%</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="comparison" aria-label="FPS 第一视角两套涂装实时对比">
+    <!-- Left Phone: Brand Custom -->
+    <div class="scheme-col" data-scheme="custom">
+      <div class="scheme-meta">
+        <div class="scheme-title">
+          <strong>品牌定制系 · 墨绿烤漆 / 象牙白釉</strong>
+          <span>FPS 持枪纵深，手枪自然从右下边缘伸出指向远处借口牌</span>
+        </div>
+        <div class="scheme-tools">
+          <button class="mini-chip" data-finish="0" aria-pressed="true">墨绿烤漆 + 精钢</button>
+          <button class="mini-chip" data-finish="1" aria-pressed="false">象牙白釉 + 古铜</button>
+          <button class="mini-chip" data-toggle-side aria-pressed="false">侧视比例</button>
+          <button class="mini-chip" data-reset-view>复位</button>
+        </div>
+      </div>
+
+      <article class="phone" id="phone-custom">
+        <header>
+          <div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
+          <button class="icon-button" aria-label="设置训练概率">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg>
+          </button>
+        </header>
+        <main>
+          <div class="stage" id="stage-custom" role="img" aria-label="左轮 FPS 第一视角交互舞台：拖拽拨转弹鼓，点击扣扳机">
+            <canvas class="shadow-canvas" id="shadow-custom" aria-hidden="true"></canvas>
+            <canvas class="gl-overlay" id="gl-custom" aria-hidden="true"></canvas>
+          </div>
+          <div class="stage-hint">
+            <span id="hint-custom">拖动拨转弹鼓 · 点按扣扳机 · 装 3 发 50%</span>
+            <button class="spin-chip" id="spin-custom" type="button">↻ 转一转</button>
+          </div>
+          <div class="result-line" id="result-custom">装 3 发 · 扣 1 枪，打中借口就练 · 50%</div>
+          <div class="actions">
+            <button class="primary" id="btn-custom"><span id="btn-label-custom">扣扳机</span><span aria-hidden="true">→</span></button>
+            <button class="shortcut">已经决定了，直接记录 ↗</button>
+          </div>
+        </main>
+      </article>
+    </div>
+
+    <!-- Right Phone: Classic Heritage -->
+    <div class="scheme-col" data-scheme="classic">
+      <div class="scheme-meta">
+        <div class="scheme-title">
+          <strong>经典复古系 · 烤蓝枪钢 / 哑光枪黑</strong>
+          <span>紧凑握把（~2.1× 轮径）配深色金属反射与远距打击弹道</span>
+        </div>
+        <div class="scheme-tools">
+          <button class="mini-chip" data-finish="2" aria-pressed="true">烤蓝枪钢 + 樱桃木</button>
+          <button class="mini-chip" data-finish="3" aria-pressed="false">哑光枪黑 + 复古黄铜</button>
+          <button class="mini-chip" data-toggle-side aria-pressed="false">侧视比例</button>
+          <button class="mini-chip" data-reset-view>复位</button>
+        </div>
+      </div>
+
+      <article class="phone" id="phone-classic">
+        <header>
+          <div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
+          <button class="icon-button" aria-label="设置训练概率">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg>
+          </button>
+        </header>
+        <main>
+          <div class="stage" id="stage-classic" role="img" aria-label="左轮 FPS 第一视角交互舞台：拖拽拨转弹鼓，点击扣扳机">
+            <canvas class="shadow-canvas" id="shadow-classic" aria-hidden="true"></canvas>
+            <canvas class="gl-overlay" id="gl-classic" aria-hidden="true"></canvas>
+          </div>
+          <div class="stage-hint">
+            <span id="hint-classic">拖动拨转弹鼓 · 点按扣扳机 · 装 3 发 50%</span>
+            <button class="spin-chip" id="spin-classic" type="button">↻ 转一转</button>
+          </div>
+          <div class="result-line" id="result-classic">装 3 发 · 扣 1 枪，打中借口就练 · 50%</div>
+          <div class="actions">
+            <button class="primary" id="btn-classic"><span id="btn-label-classic">扣扳机</span><span aria-hidden="true">→</span></button>
+            <button class="shortcut">已经决定了，直接记录 ↗</button>
+          </div>
+        </main>
+      </article>
+    </div>
+  </section>
+
+  <section class="specs" aria-label="FPS 视角与比例调优说明">
+    <div class="spec-block">
+      <h3>FPS 构图、靶距与空间释放</h3>
+      <ul>
+        <li><strong>拿远开轮逐发装弹 + 平滑入位</strong>：准备阶段将左轮前伸拿远（<code>z - 0.82</code>），向左摆开转轮后把 <code>k</code> 发实弹依次滑入可见弹巢并轻拨转轮打乱，再平滑移回 FPS 瞄准机位。</li>
+        <li><strong>40° 广角靶道纵深</strong>：桌面托盘拉长为纵深靶道，借口牌后移至 <code>z = -3.45</code>，枪口与靶牌间拉开逾 <code>3.0</code> 单位纵深且不遮挡文字；<code>摆巢看弹</code> 亦采用远距开轮视图，看清整支左轮。</li>
+      </ul>
+      <div class="spec-stats" id="stats-revolver">几何体统计计算中…</div>
+    </div>
+    <div class="spec-block">
+      <h3>握把比例收调与每枪可转弹鼓</h3>
+      <ul>
+        <li><strong>黄金紧凑手柄</strong>：握把总长约合转轮直径 <code>2.1×</code>、截面收瘦，告别长柄累赘感。</li>
+        <li><strong>每枪都能转一转轮</strong>：无论是开局前还是连扣间隙，都可随时拖拽或点按 <code>↻ 转一转</code> 自由拨转弹鼓重洗剩余弹仓；每次扣扳机也会同步带动转轮棘轮旋进一格。</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  window.__errors = [];
+  window.addEventListener('error', e => window.__errors.push(e.message || String(e)));
+  window.addEventListener('unhandledrejection', e => window.__errors.push(String(e.reason)));
+
+  const TAU = Math.PI * 2;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  const easeInOut = t => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+  // ---- Vector & Matrix Math ----
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const scale = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+  const normalize = a => {
+    const l = Math.hypot(a[0], a[1], a[2]) || 1;
+    return [a[0] / l, a[1] / l, a[2] / l];
+  };
+
+  function multiply(a, b) {
+    const o = new Float32Array(16);
+    for (let c = 0; c < 4; c++) {
+      for (let r = 0; r < 4; r++) {
+        let s = 0;
+        for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k];
+        o[c * 4 + r] = s;
+      }
+    }
+    return o;
+  }
+
+  function qAxis(axis, angle) {
+    const u = normalize(axis);
+    const s = Math.sin(angle / 2);
+    return [u[0] * s, u[1] * s, u[2] * s, Math.cos(angle / 2)];
+  }
+
+  function qMultiply(a, b) {
+    const ax = a[0], ay = a[1], az = a[2], aw = a[3];
+    const bx = b[0], by = b[1], bz = b[2], bw = b[3];
+    return [
+      aw * bx + ax * bw + ay * bz - az * by,
+      aw * by - ax * bz + ay * bw + az * bx,
+      aw * bz + ax * by - ay * bx + az * bw,
+      aw * bw - ax * bx - ay * by - az * bz,
+    ];
+  }
+
+  function qFromChain(...qs) {
+    return qs.reduce((acc, q) => qMultiply(acc, q), [0, 0, 0, 1]);
+  }
+
+  function modelMatrix(q, p, s = 1) {
+    const [x, y, z, w] = q;
+    const xx = x * x, yy = y * y, zz = z * z;
+    return new Float32Array([
+      (1 - 2 * (yy + zz)) * s, (2 * (x * y + z * w)) * s, (2 * (x * z - y * w)) * s, 0,
+      (2 * (x * y - z * w)) * s, (1 - 2 * (xx + zz)) * s, (2 * (y * z + x * w)) * s, 0,
+      (2 * (x * z + y * w)) * s, (2 * (y * z - x * w)) * s, (1 - 2 * (xx + yy)) * s, 0,
+      p[0], p[1], p[2], 1,
+    ]);
+  }
+
+  function transformPoint(m, p) {
+    return [
+      m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12],
+      m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13],
+      m[2] * p[0] + m[6] * p[1] + m[10] * p[2] + m[14],
+    ];
+  }
+
+  function cameraMatrix(eye, target) {
+    const z = normalize(add(eye, scale(target, -1)));
+    const x = normalize(cross([0, 1, 0], z));
+    const y = cross(z, x);
+    return new Float32Array([
+      x[0], y[0], z[0], 0,
+      x[1], y[1], z[1], 0,
+      x[2], y[2], z[2], 0,
+      -dot(x, eye), -dot(y, eye), -dot(z, eye), 1,
+    ]);
+  }
+
+  function perspective(aspect) {
+    const f = 1 / Math.tan((40 * Math.PI) / 360);
+    const n = 0.1, far = 60;
+    return new Float32Array([
+      f / aspect, 0, 0, 0,
+      0, f, 0, 0,
+      0, 0, (far + n) / (n - far), -1,
+      0, 0, (2 * far * n) / (n - far), 0,
+    ]);
+  }
+
+  // ---- WebGL Stage Engine ----
+  const VERTEX_SRC = `
+    attribute vec3 aPosition;
+    attribute vec3 aNormal;
+    attribute vec2 aUv;
+    attribute float aFlag;
+    uniform mat4 uModel;
+    uniform mat4 uVP;
+    varying vec3 vNormal;
+    varying vec3 vWorld;
+    varying vec2 vUv;
+    varying float vFlag;
+    void main() {
+      vec4 p = uModel * vec4(aPosition, 1.0);
+      vWorld = p.xyz;
+      vNormal = mat3(uModel) * aNormal;
+      vUv = aUv;
+      vFlag = aFlag;
+      gl_Position = uVP * p;
+    }
+  `;
+
+  const FRAGMENT_SRC = `
+    precision highp float;
+    varying vec3 vNormal;
+    varying vec3 vWorld;
+    varying vec2 vUv;
+    varying float vFlag;
+    uniform vec3 uEye;
+    uniform vec3 uColor;
+    uniform vec3 uAccentColor;
+    uniform vec3 uTrimColor;
+    uniform vec3 uCavityColor;
+    uniform vec3 uMatMeta;
+    uniform vec3 uMatRough;
+    uniform float uEmissive;
+    uniform sampler2D uTex;
+    uniform float uTextured;
+    uniform float uGrain;
+    void main() {
+      if (uEmissive > 0.5) {
+        vec3 ec = vFlag > 1.5 ? uAccentColor : (vFlag > 2.5 ? uTrimColor : uColor);
+        gl_FragColor = vec4(ec, uEmissive > 1.5 ? 0.55 : 1.0);
+        return;
+      }
+
+      vec3 n = normalize(vNormal);
+      vec3 keyDir = normalize(vec3(-3.0, 7.0, 5.0));
+      vec3 fillDir = normalize(vec3(5.0, 1.0, 2.0));
+      vec3 rimDir = normalize(vec3(-4.5, 4.0, -5.0));
+      vec3 viewDir = normalize(uEye - vWorld);
+      vec3 R = reflect(-viewDir, n);
+
+      float key = max(dot(n, keyDir), 0.0);
+      float fill = max(dot(n, fillDir), 0.0);
+      float rim = max(dot(n, rimDir), 0.0);
+      float ndv = max(dot(n, viewDir), 0.0);
+
+      if (vFlag > 0.5 && vFlag < 1.5) {
+        float depthShade = mix(0.62, 1.0, clamp(vUv.y, 0.0, 1.0));
+        vec3 cav = uCavityColor * (0.24 + key * 0.14 + fill * 0.06) * depthShade;
+        gl_FragColor = vec4(cav, 1.0);
+        return;
+      }
+
+      vec3 base = uColor;
+      float metal = uMatMeta.x;
+      float rough = uMatRough.x;
+
+      if (vFlag < 0.5 && uTextured > 0.5) {
+        base = texture2D(uTex, vUv).rgb;
+      } else if (vFlag > 1.5 && vFlag < 2.5) {
+        base = uAccentColor;
+        metal = uMatMeta.y;
+        rough = uMatRough.y;
+      } else if (vFlag > 2.5) {
+        base = uTrimColor;
+        metal = uMatMeta.z;
+        rough = uMatRough.z;
+      }
+
+      if (uGrain > 0.5 && vFlag < 0.5 && uTextured < 0.5) {
+        float g = sin(vUv.x * 90.0 + sin(vUv.y * 14.0) * 1.4) * 0.018
+                + sin(vUv.y * 42.0) * 0.010;
+        base *= (1.0 + g);
+      }
+
+      metal = clamp(metal, 0.0, 0.95);
+      rough = clamp(rough, 0.14, 0.92);
+
+      float topBox = smoothstep(0.22, 0.85, R.y);
+      float horizonBand = exp(-pow((R.y - 0.03) * 5.0, 2.0));
+      float floorBounce = smoothstep(-0.05, -0.65, R.y);
+      vec3 env = mix(vec3(0.50, 0.52, 0.48), vec3(1.06, 1.04, 0.99), topBox);
+      env = mix(env, vec3(0.13, 0.16, 0.15), horizonBand * 0.86);
+      env = mix(env, vec3(0.78, 0.79, 0.72), floorBounce * 0.75);
+
+      float diffuseScale = mix(1.0, 0.36, metal);
+      vec3 diffuse = base * diffuseScale * (0.48 + key * 0.42 + fill * 0.12);
+
+      vec3 specTint = mix(vec3(1.0), base * 1.24, metal);
+      float fresnel = metal + (1.0 - metal) * pow(1.0 - ndv, 4.0) * 0.55;
+      float envWeight = (0.08 + metal * 0.70) * (1.0 - rough * 0.62) * (0.55 + 0.45 * fresnel);
+
+      vec3 H = normalize(keyDir + viewDir);
+      float ndh = max(dot(n, H), 0.0);
+      float tightSpec = pow(ndh, mix(96.0, 14.0, rough)) * mix(0.62, 0.09, rough);
+      float broadSpec = pow(ndh, mix(18.0, 6.0, rough)) * mix(0.26, 0.07, rough);
+      float rimSpec = pow(rim, 1.8) * pow(1.0 - ndv, 2.2) * (0.12 + metal * 0.36);
+
+      vec3 lit = diffuse + env * specTint * envWeight + specTint * (tightSpec + broadSpec + rimSpec);
+      gl_FragColor = vec4(lit, 1.0);
+    }
+  `;
+
+  // FPS camera & Side appreciation camera
+  const FP_EYE = [0.0, 1.72, 3.15];
+  const FP_TARGET = [0.0, 0.58, -3.50];
+  const SIDE_EYE = [0.55, 2.60, 7.15];
+  const SIDE_TARGET = [0.36, 0.80, 0.0];
+
+  const relVec = (e, t) => {
+    const r = sub(e, t);
+    const d = Math.hypot(...r);
+    return { dist: d, yaw: Math.atan2(r[0], r[2]), pitch: Math.asin(r[1] / d) };
+  };
+  const SIDE_ORBIT = relVec(SIDE_EYE, SIDE_TARGET);
+
+  const TRAY_FP = { halfX: 2.45, halfZ: 4.30, centerZ: -1.20, corner: 0.42 };
+  const TRAY_SIDE = { halfX: 2.95, halfZ: 2.45, centerZ: 0.0, corner: 0.42 };
+
+  class Stage3D {
+    constructor(stageEl, glCanvas, shadowCanvas, interaction) {
+      this.stage = stageEl;
+      this.canvas = glCanvas;
+      this.shadow = shadowCanvas;
+      this.ctx = shadowCanvas.getContext('2d');
+      this.interaction = interaction;
+      this.gl = glCanvas.getContext('webgl', { alpha: true, antialias: true, premultipliedAlpha: false });
+      if (!this.gl) throw new Error('WebGL unavailable');
+
+      const gl = this.gl;
+      const compile = (type, src) => {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+        return s;
+      };
+      this.program = gl.createProgram();
+      gl.attachShader(this.program, compile(gl.VERTEX_SHADER, VERTEX_SRC));
+      gl.attachShader(this.program, compile(gl.FRAGMENT_SHADER, FRAGMENT_SRC));
+      gl.linkProgram(this.program);
+      if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(this.program));
+      gl.useProgram(this.program);
+
+      this.attribs = [['aPosition', 3, 0], ['aNormal', 3, 3], ['aUv', 2, 6], ['aFlag', 1, 8]]
+        .map(([name, size, offset]) => {
+          const loc = gl.getAttribLocation(this.program, name);
+          gl.enableVertexAttribArray(loc);
+          return [loc, size, offset];
+        });
+      const uNames = [
+        'uModel', 'uVP', 'uEye', 'uColor', 'uAccentColor', 'uTrimColor', 'uCavityColor',
+        'uMatMeta', 'uMatRough', 'uEmissive', 'uTex', 'uTextured', 'uGrain',
+      ];
+      this.uniforms = Object.fromEntries(uNames.map(n => [n, gl.getUniformLocation(this.program, n)]));
+
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.CULL_FACE);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.clearColor(0, 0, 0, 0);
+
+      this.meshes = [];
+      this.shadows = [];
+      this.tray = { ...TRAY_FP };
+      this.viewMode = 'fp';
+      this.eyeOffset = [0, 0, 0];
+      this.setFirstPersonCamera();
+
+      this.observer = new ResizeObserver(() => this.resize());
+      this.observer.observe(this.stage);
+      window.addEventListener('resize', () => this.resize(), { passive: true });
+      this.bindPointer();
+      this.resize();
+    }
+
+    setFirstPersonCamera() {
+      this.viewMode = 'fp';
+      this.tray = { ...TRAY_FP };
+      this.eye = add(FP_EYE, this.eyeOffset);
+      this.target = FP_TARGET.slice();
+      this.updateViewMatrix();
+    }
+
+    setSideCamera(yawDelta = 0, pitchAbs = null) {
+      this.viewMode = 'side';
+      this.tray = { ...TRAY_SIDE };
+      this.target = SIDE_TARGET.slice();
+      this.camYaw = SIDE_ORBIT.yaw + yawDelta;
+      this.camPitch = pitchAbs != null ? clamp(pitchAbs, 0.08, 1.38) : SIDE_ORBIT.pitch;
+      this.camDist = SIDE_ORBIT.dist;
+      const cp = Math.cos(this.camPitch);
+      this.eye = [
+        this.target[0] + this.camDist * cp * Math.sin(this.camYaw),
+        this.target[1] + this.camDist * Math.sin(this.camPitch),
+        this.target[2] + this.camDist * cp * Math.cos(this.camYaw),
+      ];
+      this.updateViewMatrix();
+    }
+
+    setShakeOffset(ox, oy, oz) {
+      this.eyeOffset = [ox, oy, oz];
+      if (this.viewMode === 'fp') {
+        this.eye = add(FP_EYE, this.eyeOffset);
+        this.updateViewMatrix();
+      }
+    }
+
+    updateViewMatrix() {
+      this.view = cameraMatrix(this.eye, this.target);
+      if (this.stageW && this.stageH) {
+        this.vp = multiply(perspective(this.stageW / this.stageH), this.view);
+      }
+    }
+
+    setOrbit(yawDelta, pitchAbs) {
+      if (this.viewMode !== 'side') this.setSideCamera(yawDelta, pitchAbs);
+      else {
+        this.camYaw = SIDE_ORBIT.yaw + yawDelta;
+        if (pitchAbs != null) this.camPitch = clamp(pitchAbs, 0.08, 1.38);
+        const cp = Math.cos(this.camPitch);
+        this.eye = [
+          this.target[0] + this.camDist * cp * Math.sin(this.camYaw),
+          this.target[1] + this.camDist * Math.sin(this.camPitch),
+          this.target[2] + this.camDist * cp * Math.cos(this.camYaw),
+        ];
+        this.updateViewMatrix();
+      }
+      this.draw();
+    }
+
+    resetView() {
+      this.eyeOffset = [0, 0, 0];
+      if (this.viewMode === 'side') this.setSideCamera(0, null);
+      else this.setFirstPersonCamera();
+      this.draw();
+    }
+
+    bindPointer() {
+      let drag = null;
+      this.stage.addEventListener('pointerdown', e => {
+        if (drag) return;
+        e.preventDefault();
+        this.stage.setPointerCapture(e.pointerId);
+        drag = {
+          id: e.pointerId,
+          startX: e.clientX, startY: e.clientY,
+          lastX: e.clientX, lastY: e.clientY,
+          lastTime: performance.now(),
+          moved: false,
+        };
+        this.stage.classList.add('is-dragging');
+        if (this.viewMode === 'fp') this.interaction.onSpinStart();
+      });
+
+      this.stage.addEventListener('pointermove', e => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const now = performance.now();
+        const dt = Math.max(4, now - drag.lastTime);
+        const dx = e.clientX - drag.lastX;
+        const dy = e.clientY - drag.lastY;
+        const totalDist = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+        if (totalDist > 8) drag.moved = true;
+        drag.lastX = e.clientX;
+        drag.lastY = e.clientY;
+        drag.lastTime = now;
+
+        if (this.viewMode === 'side') {
+          this.camYaw -= dx * 0.011;
+          this.camPitch = clamp(this.camPitch + dy * 0.0085, 0.08, 1.38);
+          const cp = Math.cos(this.camPitch);
+          this.eye = [
+            this.target[0] + this.camDist * cp * Math.sin(this.camYaw),
+            this.target[1] + this.camDist * Math.sin(this.camPitch),
+            this.target[2] + this.camDist * cp * Math.cos(this.camYaw),
+          ];
+          this.updateViewMatrix();
+          this.draw();
+        } else if (drag.moved) {
+          const deltaAngle = (dx * 0.022 - dy * 0.018);
+          this.interaction.onSpinDrag(deltaAngle, dt);
+        }
+      });
+
+      const stop = e => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const wasMoved = drag.moved;
+        drag = null;
+        this.stage.classList.remove('is-dragging');
+        if (this.viewMode === 'fp') {
+          if (wasMoved) this.interaction.onSpinEnd();
+          else this.interaction.onStageTap();
+        }
+      };
+      this.stage.addEventListener('pointerup', stop);
+      this.stage.addEventListener('pointercancel', stop);
+    }
+
+    addMesh(data, opts = {}) {
+      const gl = this.gl;
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+      const mDef = opts.metallic ?? 0.0;
+      const rDef = opts.roughness ?? 0.55;
+      const mesh = {
+        buffer,
+        count: data.length / 9,
+        color: opts.color || [0.3, 0.45, 0.35],
+        accent: opts.accent || [0.75, 0.62, 0.36],
+        trim: opts.trim || [0.44, 0.28, 0.19],
+        cavity: opts.cavity || [0.08, 0.11, 0.09],
+        matMeta: opts.matMeta || [mDef, mDef, mDef],
+        matRough: opts.matRough || [rDef, rDef, rDef],
+        emissive: opts.emissive || 0,
+        texture: opts.texture || null,
+        grain: opts.grain ? 1 : 0,
+        q: [0, 0, 0, 1],
+        position: [0, 0, 0],
+        scale: opts.scale || 1,
+        visible: opts.visible !== false,
+        doubleSided: !!opts.doubleSided,
+      };
+      this.meshes.push(mesh);
+      return mesh;
+    }
+
+    createTextureFromCanvas(cnv) {
+      const gl = this.gl;
+      const t = gl.createTexture();
+      this.updateTextureFromCanvas(t, cnv);
+      return t;
+    }
+
+    updateTextureFromCanvas(tex, cnv) {
+      const gl = this.gl;
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cnv);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    }
+
+    resize() {
+      const sr = this.stage.getBoundingClientRect();
+      if (sr.width < 1 || sr.height < 1) return;
+      this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      this.stageW = sr.width;
+      this.stageH = sr.height;
+
+      const w = Math.round(sr.width * this.dpr);
+      const h = Math.round(sr.height * this.dpr);
+      this.shadow.width = w;
+      this.shadow.height = h;
+      this.canvas.width = w;
+      this.canvas.height = h;
+
+      this.vp = multiply(perspective(this.stageW / this.stageH), this.view);
+      this.draw();
+    }
+
+    project(p) {
+      const m = this.vp;
+      const w = m[3] * p[0] + m[7] * p[1] + m[11] * p[2] + m[15];
+      if (w <= 0.05) return [this.stageW * 0.5, this.stageH * 0.5];
+      return [
+        ((m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12]) / w) * (this.stageW / 2) + this.stageW / 2,
+        (-(m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13]) / w + 1) * (this.stageH / 2),
+      ];
+    }
+
+    floorPath(y = 0) {
+      const ctx = this.ctx;
+      const rx = this.tray.halfX, rz = this.tray.halfZ, cz0 = this.tray.centerZ || 0, r = this.tray.corner;
+      ctx.beginPath();
+      const corners = [
+        [-rx + r, cz0 - rz + r, Math.PI],
+        [rx - r, cz0 - rz + r, -Math.PI / 2],
+        [rx - r, cz0 + rz - r, 0],
+        [-rx + r, cz0 + rz - r, Math.PI / 2],
+      ];
+      let first = true;
+      for (const [cx, cz, angle] of corners) {
+        for (let i = 0; i <= 8; i++) {
+          const a = angle + (i * Math.PI) / 16;
+          const pt = this.project([cx + r * Math.cos(a), y, cz + r * Math.sin(a)]);
+          if (first) { ctx.moveTo(pt[0], pt[1]); first = false; }
+          else ctx.lineTo(pt[0], pt[1]);
+        }
+      }
+      ctx.closePath();
+    }
+
+    drawBlob(x3, z3, radiusFrac, opacity, air, stretchX = 1, angleRad = 0) {
+      const ctx = this.ctx;
+      const [sx, sy] = this.project([x3, 0, z3]);
+      const size = this.stageH * radiusFrac * (1 + air * 0.10);
+      ctx.save();
+      ctx.translate(sx + 5 + air * 7, sy + 3 + air * 3);
+      if (angleRad) ctx.rotate(angleRad);
+      ctx.scale(stretchX, 0.43);
+      const g = ctx.createRadialGradient(0, 0, size * 0.12, 0, 0, size);
+      g.addColorStop(0, `rgba(47, 62, 33, ${opacity})`);
+      g.addColorStop(0.4, `rgba(47, 62, 33, ${opacity * 0.56})`);
+      g.addColorStop(1, 'rgba(47, 62, 33, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, size, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    drawFloor() {
+      const ctx = this.ctx;
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      ctx.clearRect(0, 0, this.stageW, this.stageH);
+
+      this.floorPath(-0.065);
+      ctx.fillStyle = '#d7dccd';
+      ctx.fill();
+
+      this.floorPath(0);
+      const surface = ctx.createLinearGradient(0, this.stageH * 0.14, this.stageW, this.stageH * 0.92);
+      surface.addColorStop(0, '#f0f1e8');
+      surface.addColorStop(1, '#e6eadc');
+      ctx.fillStyle = surface;
+      ctx.fill();
+      ctx.strokeStyle = '#dce1d1';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.clip();
+      for (const s of this.shadows) {
+        if (!s.visible) continue;
+        const lift = Math.max(0, s.y);
+        const op = s.opacity / (1 + lift * 1.25);
+        this.drawBlob(s.x, s.z, s.radius, op, lift, s.stretch || 1, s.angle || 0);
+      }
+      ctx.restore();
+    }
+
+    draw() {
+      if (!this.vp) return;
+      const gl = this.gl, u = this.uniforms;
+      gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(this.program);
+      gl.uniformMatrix4fv(u.uVP, false, this.vp);
+      gl.uniform3fv(u.uEye, this.eye);
+
+      for (const m of this.meshes) {
+        if (!m.visible) continue;
+        if (m.doubleSided) gl.disable(gl.CULL_FACE);
+        else gl.enable(gl.CULL_FACE);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, m.buffer);
+        for (const [loc, size, offset] of this.attribs) {
+          gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 36, offset * 4);
+        }
+        gl.uniform3fv(u.uColor, m.color);
+        gl.uniform3fv(u.uAccentColor, m.accent);
+        gl.uniform3fv(u.uTrimColor, m.trim);
+        gl.uniform3fv(u.uCavityColor, m.cavity);
+        gl.uniform3fv(u.uMatMeta, m.matMeta);
+        gl.uniform3fv(u.uMatRough, m.matRough);
+        gl.uniform1f(u.uEmissive, m.emissive);
+        gl.uniform1f(u.uGrain, m.grain);
+        gl.uniform1f(u.uTextured, m.texture ? 1 : 0);
+        if (m.texture) {
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, m.texture);
+          gl.uniform1i(u.uTex, 0);
+        }
+        gl.uniformMatrix4fv(u.uModel, false, modelMatrix(m.q, m.position, m.scale));
+        gl.drawArrays(gl.TRIANGLES, 0, m.count);
+      }
+      this.drawFloor();
+    }
+  }
+
+  // ---- Geometry Builders (Outward CCW enforced) ----
+  function pushTri(out, p0, p1, p2, n, uv0, uv1, uv2, flag = 0) {
+    const cr = cross(sub(p1, p0), sub(p2, p0));
+    if (dot(cr, n) < 0) {
+      out.push(
+        p0[0], p0[1], p0[2], n[0], n[1], n[2], uv0[0], uv0[1], flag,
+        p2[0], p2[1], p2[2], n[0], n[1], n[2], uv2[0], uv2[1], flag,
+        p1[0], p1[1], p1[2], n[0], n[1], n[2], uv1[0], uv1[1], flag
+      );
+    } else {
+      out.push(
+        p0[0], p0[1], p0[2], n[0], n[1], n[2], uv0[0], uv0[1], flag,
+        p1[0], p1[1], p1[2], n[0], n[1], n[2], uv1[0], uv1[1], flag,
+        p2[0], p2[1], p2[2], n[0], n[1], n[2], uv2[0], uv2[1], flag
+      );
+    }
+  }
+
+  function pushTriSmooth(out, p0, p1, p2, n0, n1, n2, uv0, uv1, uv2, f0, f1, f2) {
+    const avgN = add(add(n0, n1), n2);
+    const cr = cross(sub(p1, p0), sub(p2, p0));
+    if (dot(cr, avgN) < 0) {
+      out.push(
+        p0[0], p0[1], p0[2], n0[0], n0[1], n0[2], uv0[0], uv0[1], f0,
+        p2[0], p2[1], p2[2], n2[0], n2[1], n2[2], uv2[0], uv2[1], f2,
+        p1[0], p1[1], p1[2], n1[0], n1[1], n1[2], uv1[0], uv1[1], f1
+      );
+    } else {
+      out.push(
+        p0[0], p0[1], p0[2], n0[0], n0[1], n0[2], uv0[0], uv0[1], f0,
+        p1[0], p1[1], p1[2], n1[0], n1[1], n1[2], uv1[0], uv1[1], f1,
+        p2[0], p2[1], p2[2], n2[0], n2[1], n2[2], uv2[0], uv2[1], f2
+      );
+    }
+  }
+
+  function pushQuad(out, p0, p1, p2, p3, n, uv0, uv1, uv2, uv3, flag = 0) {
+    pushTri(out, p0, p1, p2, n, uv0, uv1, uv2, flag);
+    pushTri(out, p0, p2, p3, n, uv0, uv2, uv3, flag);
+  }
+
+  function pushQuadSmooth(out, p0, p1, p2, p3, n0, n1, n2, n3, uv0, uv1, uv2, uv3, f0, f1, f2, f3) {
+    pushTriSmooth(out, p0, p1, p2, n0, n1, n2, uv0, uv1, uv2, f0, f1, f2);
+    pushTriSmooth(out, p0, p2, p3, n0, n2, n3, uv0, uv2, uv3, f0, f2, f3);
+  }
+
+  function appendBeveledBox(out, x0, x1, y0, y1, z0, z1, bevel = 0.015, flag = 0) {
+    const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+    const b = Math.min(bevel, dx * 0.28, dy * 0.28, dz * 0.28);
+    if (b <= 1e-5) {
+      pushQuad(out, [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [0, 0, 1], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [0, 0, -1], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [-1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0], [0, 1, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, -1, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      return;
+    }
+    const xi0 = x0 + b, xi1 = x1 - b, yi0 = y0 + b, yi1 = y1 - b, zi0 = z0 + b, zi1 = z1 - b;
+    pushQuad(out, [xi0, yi0, z1], [xi1, yi0, z1], [xi1, yi1, z1], [xi0, yi1, z1], [0, 0, 1], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi1, yi0, z0], [xi0, yi0, z0], [xi0, yi1, z0], [xi1, yi1, z0], [0, 0, -1], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x1, yi0, zi1], [x1, yi0, zi0], [x1, yi1, zi0], [x1, yi1, zi1], [1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x0, yi0, zi0], [x0, yi0, zi1], [x0, yi1, zi1], [x0, yi1, zi0], [-1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, y1, zi1], [xi1, y1, zi1], [xi1, y1, zi0], [xi0, y1, zi0], [0, 1, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, y0, zi0], [xi1, y0, zi0], [xi1, y0, zi1], [xi0, y0, zi1], [0, -1, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    const s2 = Math.SQRT1_2;
+    pushQuad(out, [xi1, yi1, z1], [x1, yi1, zi1], [x1, yi0, zi1], [xi1, yi0, z1], [s2, 0, s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x0, yi1, zi1], [xi0, yi1, z1], [xi0, yi0, z1], [x0, yi0, zi1], [-s2, 0, s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x1, yi1, zi0], [xi1, yi1, z0], [xi1, yi0, z0], [x1, yi0, zi0], [s2, 0, -s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, yi1, z0], [x0, yi1, zi0], [x0, yi0, zi0], [xi0, yi0, z0], [-s2, 0, -s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, yi1, z1], [xi1, yi1, z1], [xi1, y1, zi1], [xi0, y1, zi1], [0, s2, s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, y0, zi1], [xi1, y0, zi1], [xi1, yi0, z1], [xi0, yi0, z1], [0, -s2, s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi1, yi1, z0], [xi0, yi1, z0], [xi0, y1, zi0], [xi1, y1, zi0], [0, s2, -s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi1, y0, zi0], [xi0, y0, zi0], [xi0, yi0, z0], [xi1, yi0, z0], [0, -s2, -s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi1, y1, zi1], [x1, yi1, zi1], [x1, yi1, zi0], [xi1, y1, zi0], [s2, s2, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x0, yi1, zi1], [xi0, y1, zi1], [xi0, y1, zi0], [x0, yi1, zi0], [-s2, s2, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x1, yi0, zi1], [xi1, y0, zi1], [xi1, y0, zi0], [x1, yi0, zi0], [s2, -s2, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, y0, zi1], [x0, yi0, zi1], [x0, yi0, zi0], [xi0, y0, zi0], [-s2, -s2, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+          const px = sx > 0 ? [x1, xi1] : [x0, xi0];
+          const py = sy > 0 ? [y1, yi1] : [y0, yi0];
+          const pz = sz > 0 ? [z1, zi1] : [z0, zi0];
+          pushTri(out, [px[0], py[1], pz[1]], [px[1], py[0], pz[1]], [px[1], py[1], pz[0]], normalize([sx, sy, sz]), [0, 0], [1, 0], [0.5, 1], flag);
+        }
+      }
+    }
+  }
+
+  function signedArea2D(pts) {
+    let s = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      s += a[0] * b[1] - b[0] * a[1];
+    }
+    return s * 0.5;
+  }
+
+  function pointInTri2D(p, a, b, c) {
+    const c1 = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+    const c2 = (c[0] - b[0]) * (p[1] - b[1]) - (c[1] - b[1]) * (p[0] - b[0]);
+    const c3 = (a[0] - c[0]) * (p[1] - c[1]) - (a[1] - c[1]) * (p[0] - c[0]);
+    return c1 >= -1e-6 && c2 >= -1e-6 && c3 >= -1e-6;
+  }
+
+  function triangulateCCW(poly) {
+    const idx = poly.map((_, i) => i);
+    const tris = [];
+    let guard = 0;
+    while (idx.length > 3 && guard++ < poly.length * poly.length) {
+      let clipped = false;
+      for (let i = 0; i < idx.length; i++) {
+        const ia = idx[(i + idx.length - 1) % idx.length];
+        const ib = idx[i];
+        const ic = idx[(i + 1) % idx.length];
+        const a = poly[ia], b = poly[ib], c = poly[ic];
+        if ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) <= 1e-6) continue;
+        let hasInside = false;
+        for (let k = 0; k < idx.length; k++) {
+          const id = idx[k];
+          if (id === ia || id === ib || id === ic) continue;
+          if (pointInTri2D(poly[id], a, b, c)) { hasInside = true; break; }
+        }
+        if (!hasInside) {
+          tris.push([ia, ib, ic]);
+          idx.splice(i, 1);
+          clipped = true;
+          break;
+        }
+      }
+      if (!clipped) break;
+    }
+    if (idx.length === 3) tris.push([idx[0], idx[1], idx[2]]);
+    return tris;
+  }
+
+  function appendExtrudedXY(out, rawPoly, z0, z1, bevel = 0.015, flag = 0) {
+    const poly = signedArea2D(rawPoly) >= 0 ? rawPoly.slice() : rawPoly.slice().reverse();
+    const N = poly.length;
+    const b = Math.min(bevel, (z1 - z0) * 0.36);
+    const zF = z1, zFB = z1 - b, zBB = z0 + b, zB = z0;
+
+    const inner = poly.map((_, i) => {
+      const pPrev = poly[(i + N - 1) % N], pCurr = poly[i], pNext = poly[(i + 1) % N];
+      const e1 = normalize([pCurr[0] - pPrev[0], pCurr[1] - pPrev[1]]);
+      const e2 = normalize([pNext[0] - pCurr[0], pNext[1] - pCurr[1]]);
+      const nIn1 = [-e1[1], e1[0]];
+      const nIn2 = [-e2[1], e2[0]];
+      const bis = add([nIn1[0], nIn1[1], 0], [nIn2[0], nIn2[1], 0]);
+      const bl = Math.hypot(bis[0], bis[1]) || 1;
+      const d = Math.min(b * 0.72, 0.022);
+      return [pCurr[0] + (bis[0] / bl) * d, pCurr[1] + (bis[1] / bl) * d];
+    });
+
+    const tris = triangulateCCW(inner);
+    for (const [ia, ib, ic] of tris) {
+      const a = inner[ia], bPt = inner[ib], c = inner[ic];
+      pushTri(out, [a[0], a[1], zF], [bPt[0], bPt[1], zF], [c[0], c[1], zF], [0, 0, 1], [0, 0], [1, 0], [0.5, 1], flag);
+      pushTri(out, [c[0], c[1], zB], [bPt[0], bPt[1], zB], [a[0], a[1], zB], [0, 0, -1], [0, 0], [1, 0], [0.5, 1], flag);
+    }
+
+    for (let i = 0; i < N; i++) {
+      const j = (i + 1) % N;
+      const o0 = poly[i], o1 = poly[j];
+      const i0 = inner[i], i1 = inner[j];
+      const ex = o1[0] - o0[0], ey = o1[1] - o0[1];
+      const ns = normalize([ey, -ex, 0]);
+      const nf = normalize([ns[0] * 0.68, ns[1] * 0.68, 0.73]);
+      const nb = normalize([ns[0] * 0.68, ns[1] * 0.68, -0.73]);
+
+      pushQuad(out, [o0[0], o0[1], zFB], [o1[0], o1[1], zFB], [i1[0], i1[1], zF], [i0[0], i0[1], zF], nf, [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [o0[0], o0[1], zBB], [o1[0], o1[1], zBB], [o1[0], o1[1], zFB], [o0[0], o0[1], zFB], ns, [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [i0[0], i0[1], zB], [i1[0], i1[1], zB], [o1[0], o1[1], zBB], [o0[0], o0[1], zBB], nb, [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    }
+  }
+
+  function appendCurvedTube(out, spinePts, closed, halfW, halfZ, flag = 0) {
+    const c = 0.55;
+    const profile = [
+      [halfW, halfZ * c], [halfW * c, halfZ], [-halfW * c, halfZ], [-halfW, halfZ * c],
+      [-halfW, -halfZ * c], [-halfW * c, -halfZ], [halfW * c, -halfZ], [halfW, -halfZ * c],
+    ];
+    const P = profile.length, S = spinePts.length;
+    const rings = [];
+    for (let i = 0; i < S; i++) {
+      const pPrev = spinePts[closed ? (i + S - 1) % S : Math.max(0, i - 1)];
+      const pNext = spinePts[closed ? (i + 1) % S : Math.min(S - 1, i + 1)];
+      const tx = pNext[0] - pPrev[0], ty = pNext[1] - pPrev[1];
+      const tl = Math.hypot(tx, ty) || 1;
+      const nx = -ty / tl, ny = tx / tl;
+      const ring = [];
+      for (let j = 0; j < P; j++) {
+        const [u, v] = profile[j];
+        ring.push({
+          p: [spinePts[i][0] + nx * u, spinePts[i][1] + ny * u, v],
+          n: normalize([nx * u, ny * u, v]),
+          uv: [j / P, i / Math.max(1, S - 1)],
+        });
+      }
+      rings.push(ring);
+    }
+    const segCount = closed ? S : S - 1;
+    for (let i = 0; i < segCount; i++) {
+      const r0 = rings[i], r1 = rings[(i + 1) % S];
+      for (let j = 0; j < P; j++) {
+        const jn = (j + 1) % P;
+        const a = r0[j], b = r0[jn], cPt = r1[jn], d = r1[j];
+        pushQuadSmooth(out, a.p, b.p, cPt.p, d.p, a.n, b.n, cPt.n, d.n, a.uv, b.uv, cPt.uv, d.uv, flag, flag, flag, flag);
+      }
+    }
+    if (!closed) {
+      const rStart = rings[0], rEnd = rings[S - 1];
+      const tStart = normalize([spinePts[0][0] - spinePts[1][0], spinePts[0][1] - spinePts[1][1], 0]);
+      const tEnd = normalize([spinePts[S - 1][0] - spinePts[S - 2][0], spinePts[S - 1][1] - spinePts[S - 2][1], 0]);
+      for (let j = 0; j < P; j++) {
+        const jn = (j + 1) % P;
+        pushTri(out, [spinePts[0][0], spinePts[0][1], 0], rStart[j].p, rStart[jn].p, tStart, [0.5, 0.5], [0, 0], [1, 0], flag);
+        pushTri(out, [spinePts[S - 1][0], spinePts[S - 1][1], 0], rEnd[j].p, rEnd[jn].p, tEnd, [0.5, 0.5], [0, 0], [1, 0], flag);
+      }
+    }
+  }
+
+  function appendLatheX(out, rings, segs, offset = [0, 0, 0]) {
+    const runs = [];
+    let current = [rings[0]];
+    for (let i = 1; i < rings.length; i++) {
+      current.push(rings[i]);
+      if (rings[i].sharp && i < rings.length - 1) {
+        runs.push(current);
+        current = [rings[i]];
+      }
+    }
+    runs.push(current);
+
+    for (const prof of runs) {
+      const segNorms = [];
+      for (let i = 0; i < prof.length - 1; i++) {
+        const dx = prof[i + 1].x - prof[i].x;
+        const dr = prof[i + 1].r - prof[i].r;
+        const l = Math.hypot(dx, dr) || 1;
+        segNorms.push([-dr / l, dx / l]);
+      }
+      const pNorms = prof.map((_, i) => {
+        const a = segNorms[Math.max(0, i - 1)];
+        const b = segNorms[Math.min(segNorms.length - 1, i)];
+        const nx = a[0] + b[0], nr = a[1] + b[1];
+        const l = Math.hypot(nx, nr) || 1;
+        return [nx / l, nr / l];
+      });
+
+      const vert = (j, s) => {
+        const t = (s / segs) * TAU;
+        const rr = prof[j].r;
+        const ny = Math.cos(t), nz = Math.sin(t);
+        const [nx, nr] = pNorms[j];
+        const n = normalize([nx, nr * ny, nr * nz]);
+        return {
+          p: [prof[j].x + offset[0], rr * ny + offset[1], rr * nz + offset[2]],
+          n,
+          uv: [s / segs, (prof[j].x + 1) * 0.5],
+          f: prof[j].flag,
+        };
+      };
+
+      for (let s = 0; s < segs; s++) {
+        for (let j = 0; j < prof.length - 1; j++) {
+          const a = vert(j, s), b = vert(j, s + 1), c = vert(j + 1, s + 1), d = vert(j + 1, s);
+          if (prof[j].r > 1e-4 || prof[j + 1].r > 1e-4) {
+            pushQuadSmooth(out, a.p, b.p, c.p, d.p, a.n, b.n, c.n, d.n, a.uv, b.uv, c.uv, d.uv, a.f, b.f, c.f, d.f);
+          }
+        }
+      }
+    }
+  }
+
+  function buildPiercedCylinder({ x0, x1, R, rOrbit, rHole, rHub, fluteDepth, fluteX0, fluteX1, bodyFlag = 0, boreFlag = 1 }) {
+    const out = [];
+    const segs = 120;
+    const xRings = [
+      { x: x0, r: R - 0.016 },
+      { x: x0 + 0.018, r: R },
+      { x: fluteX0 - 0.022, r: R },
+      { x: fluteX0, r: R },
+      { x: fluteX0 + 0.045, r: R },
+      { x: (fluteX0 + fluteX1) * 0.5, r: R },
+      { x: fluteX1 - 0.045, r: R },
+      { x: fluteX1, r: R },
+      { x: fluteX1 + 0.022, r: R },
+      { x: x1 - 0.018, r: R },
+      { x: x1, r: R - 0.016 },
+    ];
+
+    const fluteRadiusAt = (theta, x) => {
+      if (x <= fluteX0 - 0.005 || x >= fluteX1 + 0.005) return R;
+      let longT = 1;
+      const edge = 0.055;
+      if (x < fluteX0 + edge) longT = clamp((x - fluteX0) / edge, 0, 1);
+      else if (x > fluteX1 - edge) longT = clamp((fluteX1 - x) / edge, 0, 1);
+      longT = Math.sin(longT * Math.PI * 0.5);
+
+      let dip = 0;
+      for (let i = 0; i < 6; i++) {
+        const fc = (i + 0.5) * (TAU / 6);
+        let d = Math.abs(theta - fc);
+        if (d > Math.PI) d = TAU - d;
+        const w = 0.26;
+        if (d < w) {
+          const u = d / w;
+          dip = Math.max(dip, Math.cos(u * Math.PI * 0.5) * fluteDepth * longT);
+        }
+      }
+      if (x > x0 + 0.024 && x < x0 + 0.085) {
+        for (let i = 0; i < 6; i++) {
+          const nc = i * (TAU / 6);
+          let d = Math.abs(theta - nc);
+          if (d > Math.PI) d = TAU - d;
+          if (d < 0.07) dip = Math.max(dip, 0.013);
+        }
+      }
+      return R - dip;
+    };
+
+    const cylPt = (xi, s) => {
+      const t = (s / segs) * TAU;
+      const x = xRings[xi].x;
+      const baseR = xRings[xi].r;
+      const rr = baseR >= R - 0.002 ? fluteRadiusAt(t, x) : baseR;
+      const y = rr * Math.cos(t), z = rr * Math.sin(t);
+      const dt = 0.018;
+      const rrT = baseR >= R - 0.002 ? fluteRadiusAt(t + dt, x) : baseR;
+      const tVec = [0, rrT * Math.cos(t + dt) - y, rrT * Math.sin(t + dt) - z];
+      const xiPrev = Math.max(0, xi - 1), xiNext = Math.min(xRings.length - 1, xi + 1);
+      const rPrev = xRings[xiPrev].r >= R - 0.002 ? fluteRadiusAt(t, xRings[xiPrev].x) : xRings[xiPrev].r;
+      const rNext = xRings[xiNext].r >= R - 0.002 ? fluteRadiusAt(t, xRings[xiNext].x) : xRings[xiNext].r;
+      const xVec = [xRings[xiNext].x - xRings[xiPrev].x, (rNext - rPrev) * Math.cos(t), (rNext - rPrev) * Math.sin(t)];
+      let n = cross(xVec, tVec);
+      if (dot(n, [0, Math.cos(t), Math.sin(t)]) < 0) n = scale(n, -1);
+      return { p: [x, y, z], n: normalize(n), uv: [s / segs, (x - x0) / (x1 - x0)] };
+    };
+
+    for (let xi = 0; xi < xRings.length - 1; xi++) {
+      for (let s = 0; s < segs; s++) {
+        const a = cylPt(xi, s), b = cylPt(xi, s + 1), c = cylPt(xi + 1, s + 1), d = cylPt(xi + 1, s);
+        pushQuadSmooth(out, a.p, b.p, c.p, d.p, a.n, b.n, c.n, d.n, a.uv, b.uv, c.uv, d.uv, bodyFlag, bodyFlag, bodyFlag, bodyFlag);
+      }
+    }
+
+    const holePts = 24;
+    const rOuterCap = R - 0.016;
+    const tan30 = Math.tan(Math.PI / 6);
+    const sectorOuterPt = (phi) => {
+      const dy = Math.cos(phi), dz = Math.sin(phi);
+      let bestT = Infinity;
+      const b = rOrbit * dy;
+      const c = rOrbit * rOrbit - rOuterCap * rOuterCap;
+      const disc = b * b - c;
+      if (disc >= 0) {
+        const t = -b + Math.sqrt(disc);
+        if (t > 0 && t < bestT) bestT = t;
+      }
+      for (const sgn of [-1, 1]) {
+        const denom = dz - sgn * dy * tan30;
+        if (Math.abs(denom) > 1e-6) {
+          const t = (sgn * rOrbit * tan30) / denom;
+          if (t > 0 && t < bestT) bestT = t;
+        }
+      }
+      const cH = rOrbit * rOrbit - rHub * rHub;
+      const discH = b * b - cH;
+      if (discH >= 0) {
+        const t1 = -b - Math.sqrt(discH), t2 = -b + Math.sqrt(discH);
+        if (t1 > 0 && t1 < bestT) bestT = t1;
+        if (t2 > 0 && t2 < bestT) bestT = t2;
+      }
+      return [rOrbit + bestT * dy, bestT * dz];
+    };
+
+    const holeSamples = [];
+    for (let s = 0; s <= holePts; s++) {
+      const phi = (s / holePts) * TAU;
+      const [oy, oz] = sectorOuterPt(phi);
+      holeSamples.push({ iy: rOrbit + rHole * Math.cos(phi), iz: rHole * Math.sin(phi), oy, oz });
+    }
+
+    for (let k = 0; k < 6; k++) {
+      const ang = k * (TAU / 6);
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+      const rotYZ = (y, z) => [y * ca - z * sa, y * sa + z * ca];
+      for (let s = 0; s < holePts; s++) {
+        const h0 = holeSamples[s], h1 = holeSamples[s + 1];
+        const i0 = rotYZ(h0.iy, h0.iz), i1 = rotYZ(h1.iy, h1.iz);
+        const o0 = rotYZ(h0.oy, h0.oz), o1 = rotYZ(h1.oy, h1.oz);
+        pushQuad(out, [x1, i0[0], i0[1]], [x1, i1[0], i1[1]], [x1, o1[0], o1[1]], [x1, o0[0], o0[1]], [1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], bodyFlag);
+        pushQuad(out, [x0, i0[0], i0[1]], [x0, o0[0], o0[1]], [x0, o1[0], o1[1]], [x0, i1[0], i1[1]], [-1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], bodyFlag);
+
+        const cy = rOrbit * ca, cz = rOrbit * sa;
+        const nIn0 = normalize([0, cy - i0[0], cz - i0[1]]);
+        const nIn1 = normalize([0, cy - i1[0], cz - i1[1]]);
+        pushQuadSmooth(
+          out,
+          [x0, i0[0], i0[1]], [x0, i1[0], i1[1]], [x1, i1[0], i1[1]], [x1, i0[0], i0[1]],
+          nIn0, nIn1, nIn1, nIn0,
+          [0, 0.25], [1, 0.25], [1, 0.9], [0, 0.9],
+          boreFlag, boreFlag, boreFlag, boreFlag
+        );
+      }
+    }
+
+    appendLatheX(out, [
+      { x: x0 - 0.06, r: 0.001, flag: 2 },
+      { x: x0 - 0.06, r: 0.038, flag: 2, sharp: true },
+      { x: x0 - 0.015, r: 0.038, flag: 2 },
+      { x: x0, r: rHub + 0.010, flag: 2, sharp: true },
+      { x: x1, r: rHub + 0.010, flag: 2, sharp: true },
+      { x: x1 + 0.015, r: 0.036, flag: 2 },
+      { x: x1 + 0.16, r: 0.036, flag: 2, sharp: true },
+      { x: x1 + 0.16, r: 0.001, flag: 2 },
+    ], 24);
+
+    return new Float32Array(out);
+  }
+
+  /**
+   * Compact golden-proportion 12-station lofted grip (~2.1x cylinder diameter, trimmed ~15% shorter & ~18% slimmer).
+   */
+  function buildLoftedGrip() {
+    const out = [];
+    const stations = [
+      { cx: -0.41, cy: -0.14, rx: 0.155, rz: 0.135, tilt: -0.18 },
+      { cx: -0.45, cy: -0.22, rx: 0.170, rz: 0.146, tilt: -0.32 },
+      { cx: -0.50, cy: -0.32, rx: 0.184, rz: 0.156, tilt: -0.41 },
+      { cx: -0.55, cy: -0.42, rx: 0.194, rz: 0.164, tilt: -0.45 },
+      { cx: -0.61, cy: -0.53, rx: 0.204, rz: 0.168, tilt: -0.47 },
+      { cx: -0.66, cy: -0.63, rx: 0.212, rz: 0.172, tilt: -0.47 },
+      { cx: -0.72, cy: -0.74, rx: 0.218, rz: 0.172, tilt: -0.45 },
+      { cx: -0.77, cy: -0.84, rx: 0.222, rz: 0.170, tilt: -0.43 },
+      { cx: -0.82, cy: -0.93, rx: 0.222, rz: 0.166, tilt: -0.40 },
+      { cx: -0.86, cy: -1.00, rx: 0.210, rz: 0.155, tilt: -0.38 },
+      { cx: -0.89, cy: -1.05, rx: 0.180, rz: 0.135, tilt: -0.36 },
+      { cx: -0.90, cy: -1.08, rx: 0.125, rz: 0.095, tilt: -0.35 },
+    ];
+    const segs = 30;
+    const pExp = 2.4;
+    const superCos = a => Math.sign(Math.cos(a)) * Math.pow(Math.abs(Math.cos(a)), 2 / pExp);
+    const superSin = a => Math.sign(Math.sin(a)) * Math.pow(Math.abs(Math.sin(a)), 2 / pExp);
+
+    const rings = [];
+    for (let i = 0; i < stations.length; i++) {
+      const st = stations[i];
+      const ct = Math.cos(st.tilt), sn = Math.sin(st.tilt);
+      const ring = [];
+      for (let s = 0; s <= segs; s++) {
+        const a = (s / segs) * TAU - Math.PI;
+        const lx = st.rx * superCos(a);
+        const lz = st.rz * superSin(a);
+        const px = st.cx + lx * ct;
+        const py = st.cy + lx * sn;
+        const pz = lz;
+        const sideU = ((Math.atan2(lz / st.rz, lx / st.rx) + Math.PI) / TAU);
+        const v = 1 - i / (stations.length - 1);
+        ring.push({ p: [px, py, pz], uv: [sideU, v] });
+      }
+      rings.push(ring);
+    }
+
+    const vNorm = (i, s) => {
+      const st = stations[i];
+      const p = rings[i][s].p;
+      const pPrev = i > 0 ? rings[i - 1][s].p : p;
+      const pNext = i < stations.length - 1 ? rings[i + 1][s].p : p;
+      const tDown = sub(pNext, pPrev);
+      const sPrev = (s + segs - 1) % segs;
+      const sNext = (s + 1) % segs;
+      const tRing = sub(rings[i][sNext].p, rings[i][sPrev].p);
+      let n = cross(tDown, tRing);
+      const outHint = [p[0] - st.cx, p[1] - st.cy, p[2]];
+      if (dot(n, outHint) < 0) n = scale(n, -1);
+      return normalize(n);
+    };
+
+    for (let i = 0; i < stations.length - 1; i++) {
+      for (let s = 0; s < segs; s++) {
+        const a = rings[i][s], b = rings[i][s + 1];
+        const c = rings[i + 1][s + 1], d = rings[i + 1][s];
+        const na = vNorm(i, s), nb = vNorm(i, s + 1);
+        const nc = vNorm(i + 1, s + 1), nd = vNorm(i + 1, s);
+        pushQuadSmooth(out, a.p, b.p, c.p, d.p, na, nb, nc, nd, a.uv, b.uv, c.uv, d.uv, 0, 0, 0, 0);
+      }
+    }
+
+    const bot = stations[stations.length - 1];
+    const botCenter = [bot.cx - 0.01, bot.cy - 0.01, 0];
+    const topSt = stations[0];
+    const topCenter = [topSt.cx, topSt.cy, 0];
+    for (let s = 0; s < segs; s++) {
+      pushTri(out, botCenter, rings[stations.length - 1][s].p, rings[stations.length - 1][s + 1].p, [-0.35, -0.94, 0], [0.5, 0.5], [0, 0], [1, 0], 2);
+      pushTri(out, topCenter, rings[0][s + 1].p, rings[0][s].p, [0.2, 0.98, 0], [0.5, 0.5], [0, 0], [1, 0], 0);
+    }
+
+    return new Float32Array(out);
+  }
+
+  function buildBulletGeometry() {
+    const out = [];
+    appendLatheX(out, [
+      { x: -0.32, r: 0.001, flag: 3 },
+      { x: -0.32, r: 0.025, flag: 3, sharp: true },
+      { x: -0.32, r: 0.070, flag: 2, sharp: true },
+      { x: -0.29, r: 0.070, flag: 2, sharp: true },
+      { x: -0.29, r: 0.053, flag: 2, sharp: true },
+      { x: -0.26, r: 0.060, flag: 2 },
+      { x: 0.08, r: 0.060, flag: 2, sharp: true },
+      { x: 0.09, r: 0.056, flag: 3 },
+      { x: 0.17, r: 0.050, flag: 3 },
+      { x: 0.24, r: 0.032, flag: 3 },
+      { x: 0.28, r: 0.010, flag: 3 },
+      { x: 0.29, r: 0.001, flag: 3 },
+    ], 24);
+    return new Float32Array(out);
+  }
+
+  function buildTorusGeo(R, r, segU = 28, segV = 12) {
+    const out = [];
+    const pt = (u, v) => {
+      const cu = Math.cos(u), su = Math.sin(u);
+      const cv = Math.cos(v), sv = Math.sin(v);
+      const rad = R + r * cv;
+      return {
+        p: [r * sv, rad * cu, rad * su],
+        n: normalize([sv, cv * cu, cv * su]),
+      };
+    };
+    for (let i = 0; i < segU; i++) {
+      const u0 = (i / segU) * TAU, u1 = ((i + 1) / segU) * TAU;
+      for (let j = 0; j < segV; j++) {
+        const v0 = (j / segV) * TAU, v1 = ((j + 1) / segV) * TAU;
+        const a = pt(u0, v0), b = pt(u1, v0), c = pt(u1, v1), d = pt(u0, v1);
+        pushQuadSmooth(out, a.p, b.p, c.p, d.p, a.n, b.n, c.n, d.n, [0, 0], [1, 0], [1, 1], [0, 1], 0, 0, 0, 0);
+      }
+    }
+    return new Float32Array(out);
+  }
+
+  // ---- Eight Everyday Fitness Excuses ----
+  const EXCUSES = [
+    { main: '今天太累了', sub: '只想瘫在沙发上', tag: '借口 № 01' },
+    { main: '明天一定练', sub: '明天肯定加倍补上', tag: '借口 № 02' },
+    { main: '再躺五分钟', sub: '刷两条手机就起来', tag: '借口 № 03' },
+    { main: '外面太冷了', sub: '被窝实在太暖和', tag: '借口 № 04' },
+    { main: '刚吃完饭呢', sub: '练完怕不是要岔气', tag: '借口 № 05' },
+    { main: '状态不太对', sub: '不如攒劲下次发力', tag: '借口 № 06' },
+    { main: '昨晚没睡好', sub: '今天还是省点力气', tag: '借口 № 07' },
+    { main: '下次加倍补', sub: '少练一次天塌不了', tag: '借口 № 08' },
+  ];
+
+  function makeWalnutGripTexture(palette) {
+    const W = 512, H = 512;
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    const ctx = c.getContext('2d');
+
+    const grad = ctx.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, palette.light);
+    grad.addColorStop(0.5, palette.mid);
+    grad.addColorStop(1, palette.dark);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    for (let i = 0; i < 42; i++) {
+      ctx.strokeStyle = i % 2 === 0 ? 'rgba(28, 16, 10, 0.14)' : 'rgba(180, 128, 86, 0.08)';
+      ctx.lineWidth = 2 + (i % 4);
+      const x0 = (i / 42) * W;
+      ctx.beginPath();
+      ctx.moveTo(x0, 0);
+      ctx.bezierCurveTo(x0 + Math.sin(i) * 26, H * 0.35, x0 - Math.cos(i) * 26, H * 0.7, x0, H);
+      ctx.stroke();
+    }
+
+    const drawCheckeredPanel = (cx) => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(cx - 54, 118, 108, 286, 26);
+      ctx.clip();
+
+      ctx.fillStyle = 'rgba(22, 12, 7, 0.25)';
+      ctx.fillRect(cx - 58, 114, 116, 294);
+
+      ctx.strokeStyle = 'rgba(18, 9, 4, 0.56)';
+      ctx.lineWidth = 2.6;
+      for (let d = -360; d <= 360; d += 14) {
+        ctx.beginPath();
+        ctx.moveTo(cx - 68, 100 + d);
+        ctx.lineTo(cx + 68, 236 + d);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(cx + 68, 100 + d);
+        ctx.lineTo(cx - 68, 236 + d);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      ctx.strokeStyle = 'rgba(30, 16, 8, 0.52)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.roundRect(cx - 54, 118, 108, 286, 26);
+      ctx.stroke();
+
+      ctx.fillStyle = palette.medallion;
+      ctx.beginPath();
+      ctx.arc(cx, 74, 18, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(42, 28, 12, 0.65)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 244, 210, 0.45)';
+      ctx.beginPath();
+      ctx.arc(cx - 5, 69, 5, 0, TAU);
+      ctx.fill();
+    };
+
+    drawCheckeredPanel(Math.round(W * 0.25));
+    drawCheckeredPanel(Math.round(W * 0.75));
+    return c;
+  }
+
+  function makeFlipAtlasTexture(excuse, frontHits = 0) {
+    const W = 1024, H = 512;
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    const ctx = c.getContext('2d');
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const bg = ctx.createLinearGradient(0, 0, 512, H);
+    bg.addColorStop(0, '#f7f5ee');
+    bg.addColorStop(1, '#eae7dc');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, 512, H);
+
+    ctx.strokeStyle = frontHits > 0 ? 'rgba(181, 73, 58, 0.55)' : '#365b43';
+    ctx.lineWidth = 11;
+    ctx.strokeRect(24, 24, 512 - 48, H - 48);
+    ctx.strokeStyle = 'rgba(141, 154, 103, 0.55)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(38, 38, 512 - 76, H - 76);
+
+    ctx.fillStyle = '#b99d5e';
+    for (const [rx, ry] of [[58, 58], [454, 58], [58, 454], [454, 454]]) {
+      ctx.beginPath();
+      ctx.arc(rx, ry, 8, 0, TAU);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = '#7c886b';
+    ctx.font = '600 28px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText(excuse.tag, 256, 98);
+
+    ctx.fillStyle = 'rgba(141, 154, 103, 0.45)';
+    ctx.fillRect(256 - 72, 134, 144, 3);
+
+    ctx.fillStyle = frontHits > 0 ? 'rgba(40, 57, 47, 0.65)' : '#28392f';
+    ctx.font = '700 84px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText(excuse.main, 256, 232);
+
+    ctx.fillStyle = '#536052';
+    ctx.font = '500 35px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText(excuse.sub, 256, 322);
+
+    ctx.fillStyle = '#8d9a67';
+    for (const [dx, dy] of [[0, -7], [-10, 7], [10, 7]]) {
+      ctx.beginPath();
+      ctx.arc(256 + dx, 424 + dy, 5, 0, TAU);
+      ctx.fill();
+    }
+
+    const holeSpots = [[356, 178], [156, 272], [292, 356]];
+    for (let h = 0; h < Math.min(frontHits, holeSpots.length); h++) {
+      const [hx, hy] = holeSpots[h];
+      ctx.strokeStyle = '#2c1e14';
+      ctx.lineWidth = 4.5;
+      for (const [ang, len] of [[0.3, 72], [1.2, 58], [2.4, 68], [3.6, 76], [4.7, 56], [5.6, 66]]) {
+        ctx.beginPath();
+        ctx.moveTo(hx, hy);
+        ctx.lineTo(hx + Math.cos(ang) * len * 0.5, hy + Math.sin(ang) * len * 0.5);
+        ctx.lineTo(hx + Math.cos(ang + 0.14) * len, hy + Math.sin(ang + 0.14) * len);
+        ctx.stroke();
+      }
+      const scorch = ctx.createRadialGradient(hx, hy, 10, hx, hy, 70);
+      scorch.addColorStop(0, 'rgba(18, 12, 9, 0.98)');
+      scorch.addColorStop(0.36, 'rgba(48, 32, 20, 0.86)');
+      scorch.addColorStop(0.68, 'rgba(92, 60, 34, 0.45)');
+      scorch.addColorStop(1, 'rgba(92, 60, 34, 0)');
+      ctx.fillStyle = scorch;
+      ctx.beginPath();
+      ctx.arc(hx, hy, 70, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = '#0c0908';
+      ctx.beginPath();
+      ctx.arc(hx, hy, 25, 0, TAU);
+      ctx.fill();
+    }
+
+    const gBg = ctx.createLinearGradient(512, 0, 1024, H);
+    gBg.addColorStop(0, '#3a6249');
+    gBg.addColorStop(1, '#2a4a36');
+    ctx.fillStyle = gBg;
+    ctx.fillRect(512, 0, 512, H);
+
+    ctx.strokeStyle = '#c8be82';
+    ctx.lineWidth = 11;
+    ctx.strokeRect(512 + 24, 24, 512 - 48, H - 48);
+    ctx.strokeStyle = 'rgba(200, 190, 130, 0.45)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(512 + 38, 38, 512 - 76, H - 76);
+
+    ctx.fillStyle = '#c8be82';
+    for (const [rx, ry] of [[512 + 58, 58], [1024 - 58, 58], [512 + 58, 454], [1024 - 58, 454]]) {
+      ctx.beginPath();
+      ctx.arc(rx, ry, 8, 0, TAU);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = '#c8be82';
+    ctx.font = '600 30px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText('一枪作废', 768, 92);
+
+    ctx.fillStyle = '#fafbf5';
+    ctx.font = '700 186px "Songti SC", "STSong", "Noto Serif CJK SC", serif';
+    ctx.fillText('练', 768, 242);
+
+    ctx.fillStyle = 'rgba(200, 190, 130, 0.45)';
+    ctx.fillRect(768 - 102, 354, 204, 3);
+
+    ctx.fillStyle = '#eff2e4';
+    ctx.font = '600 35px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText('借口作废 · 去练！', 768, 408);
+
+    return c;
+  }
+
+  // ---- Combined Probability Math ----
+  function comb(n, r) {
+    if (r < 0 || r > n) return 0;
+    if (r === 0 || r === n) return 1;
+    let res = 1;
+    for (let i = 1; i <= r; i++) res = (res * (n - i + 1)) / i;
+    return Math.round(res);
+  }
+  function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+  function calcCombo(k, m, rule) {
+    const total = comb(6, m);
+    const hits = rule === 'all' ? comb(k, m) : total - comb(6 - k, m);
+    const g = gcd(hits, total);
+    const prob = hits / total;
+    const pct = Math.round(prob * 100);
+    const ruleName = m === 1 ? '扣 1 枪' : (rule === 'all' ? '全中才练' : '中一发就练');
+    return {
+      k, m, rule, hits, total, rNum: hits / g, rDen: total / g, prob, pct, ruleName,
+      buttonLabel: '扣扳机',
+      readout: m === 1
+        ? `装 ${k} 发 · 1 枪 → ${hits}/${total} = ${pct}%`
+        : `装 ${k} 发 · 连扣 ${m} 枪 · ${ruleName} → ${hits}/${total} = ${pct}%`,
+      ruleLine: (() => {
+        if (hits === 0) return `装 ${k} 发 · 扣 ${m} 枪 · 怎么扣都歇 · 0%`;
+        if (hits === total) return `装 ${k} 发 · 扣 ${m} 枪 · 必定打翻借口 · 100%`;
+        if (m === 1) return `装 ${k} 发 · 扣 1 枪，打中借口就练 · ${pct}%`;
+        return `装 ${k} 发 · 连扣 ${m} 枪（${ruleName}）· ${pct}%`;
+      })(),
+    };
+  }
+
+  // ---- Scene Constants ----
+  const CYL_R = 0.255;
+  const CYL_ORBIT = 0.156;
+  const BORE_Y = 0.156;
+  const TARGET_PIVOT_Y = 1.12;
+
+  // True FPS positions: far target centered, gun held low-right pointing forward with wrist roll
+  const FP_GUN_POS = [0.44, 0.94, 1.02];
+  const FP_TARGET_POS = [0.0, 0.0, -3.45];
+  const FP_GUN_YAW = Math.atan2(FP_GUN_POS[2] - FP_TARGET_POS[2], FP_TARGET_POS[0] - FP_GUN_POS[0]); // ~1.67 rad
+  const FP_TARGET_YAW = 0.0;
+
+  // Side appreciation positions (for inspecting proportions & exploded view)
+  const SIDE_GUN_POS = [-0.72, 1.16, 0.18];
+  const SIDE_TARGET_POS = [1.56, 0.0, -0.18];
+  const SIDE_GUN_YAW = Math.atan2(SIDE_GUN_POS[2] - SIDE_TARGET_POS[2], SIDE_TARGET_POS[0] - SIDE_GUN_POS[0]);
+  const SIDE_TARGET_YAW = -0.22;
+
+  function buildBarrelGeo() {
+    const out = [];
+    appendLatheX(out, [
+      { x: 0.31, r: 0.114, flag: 0 },
+      { x: 0.35, r: 0.126, flag: 0, sharp: true },
+      { x: 0.42, r: 0.126, flag: 0, sharp: true },
+      { x: 0.45, r: 0.114, flag: 0 },
+      { x: 1.32, r: 0.104, flag: 0, sharp: true },
+      { x: 1.36, r: 0.092, flag: 0, sharp: true },
+      { x: 1.36, r: 0.052, flag: 1, sharp: true },
+      { x: 1.14, r: 0.052, flag: 1, sharp: true },
+      { x: 1.14, r: 0.001, flag: 1 },
+    ], 36, [0, BORE_Y, 0]);
+
+    appendExtrudedXY(out, [
+      [0.32, -0.075],
+      [1.14, -0.055],
+      [1.26, -0.005],
+      [1.30, 0.06],
+      [1.30, 0.14],
+      [0.32, 0.16],
+    ], -0.082, 0.082, 0.032, 0);
+
+    appendLatheX(out, [
+      { x: 0.33, r: 0.001, flag: 2 },
+      { x: 0.33, r: 0.028, flag: 2, sharp: true },
+      { x: 1.16, r: 0.028, flag: 2, sharp: true },
+      { x: 1.18, r: 0.044, flag: 2 },
+      { x: 1.24, r: 0.044, flag: 2, sharp: true },
+      { x: 1.26, r: 0.030, flag: 2 },
+      { x: 1.27, r: 0.001, flag: 2 },
+    ], 24, [0, -0.020, 0]);
+
+    appendExtrudedXY(out, [
+      [0.32, 0.235],
+      [1.32, 0.228],
+      [1.30, 0.285],
+      [1.24, 0.375],
+      [1.17, 0.375],
+      [1.04, 0.280],
+      [0.32, 0.295],
+    ], -0.042, 0.042, 0.012, 0);
+    appendExtrudedXY(out, [
+      [1.18, 0.305], [1.24, 0.305], [1.24, 0.380], [1.18, 0.380],
+    ], -0.018, 0.018, 0.005, 2);
+
+    return new Float32Array(out);
+  }
+
+  function buildFrameGeo() {
+    const out = [];
+    appendExtrudedXY(out, [
+      [-0.48, 0.22],
+      [-0.30, 0.268],
+      [0.34, 0.268],
+      [0.34, 0.322],
+      [-0.31, 0.342],
+      [-0.44, 0.352],
+      [-0.50, 0.318],
+    ], -0.092, 0.092, 0.020, 0);
+
+    // Compact frame + shorter metal grip tang matching the trimmer grip (-0.87, -1.02)
+    appendExtrudedXY(out, [
+      [-0.34, -0.325],
+      [0.33, -0.318],
+      [0.36, -0.260],
+      [0.35, 0.11],
+      [0.29, 0.11],
+      [0.29, -0.265],
+      [-0.30, -0.265],
+      [-0.31, 0.285],
+      [-0.46, 0.285],
+      [-0.54, 0.04],
+      [-0.51, -0.14],
+      [-0.60, -0.40],
+      [-0.74, -0.72],
+      [-0.87, -1.00],
+      [-0.81, -1.03],
+      [-0.68, -0.78],
+      [-0.54, -0.48],
+      [-0.43, -0.325],
+    ], -0.092, 0.092, 0.024, 0);
+
+    appendLatheX(out, [
+      { x: -0.43, r: 0.001, flag: 0 },
+      { x: -0.43, r: 0.24, flag: 0 },
+      { x: -0.39, r: 0.280, flag: 0, sharp: true },
+      { x: -0.32, r: 0.280, flag: 0, sharp: true },
+      { x: -0.305, r: 0.262, flag: 0, sharp: true },
+      { x: -0.305, r: 0.001, flag: 0 },
+    ], 36, [0, 0, 0]);
+
+    const guardSpine = [];
+    for (let i = 0; i <= 18; i++) {
+      const a = Math.PI + (i / 18) * Math.PI;
+      guardSpine.push([-0.10 + 0.23 * Math.cos(a), -0.30 + 0.27 * Math.sin(a)]);
+    }
+    appendCurvedTube(out, guardSpine, false, 0.028, 0.042, 0);
+
+    appendCurvedTube(out, [
+      [-0.09, -0.29],
+      [-0.12, -0.36],
+      [-0.15, -0.44],
+      [-0.13, -0.51],
+      [-0.08, -0.54],
+    ], false, 0.019, 0.022, 2);
+
+    appendBeveledBox(out, -0.44, -0.30, 0.01, 0.09, -0.148, -0.09, 0.012, 2);
+    for (const [sx, sy] of [[-0.36, -0.16], [-0.20, -0.28], [-0.42, -0.26]]) {
+      appendBeveledBox(out, sx - 0.024, sx + 0.024, sy - 0.024, sy + 0.024, -0.112, 0.112, 0.007, 2);
+    }
+
+    return new Float32Array(out);
+  }
+
+  function buildHammerGeo() {
+    const out = [];
+    appendExtrudedXY(out, [
+      [-0.05, -0.06],
+      [0.06, -0.04],
+      [0.11, 0.04],
+      [0.04, 0.13],
+      [-0.07, 0.19],
+      [-0.22, 0.25],
+      [-0.26, 0.20],
+      [-0.18, 0.15],
+      [-0.08, 0.08],
+    ], -0.038, 0.038, 0.012, 2);
+    return new Float32Array(out);
+  }
+
+  function buildYokeGeo() {
+    const out = [];
+    appendBeveledBox(out, 0.08, 0.36, -0.31, -0.25, -0.042, 0.042, 0.012, 0);
+    appendBeveledBox(out, 0.28, 0.36, -0.30, 0.02, -0.038, 0.038, 0.012, 0);
+    return new Float32Array(out);
+  }
+
+  function buildMinimalStandGeo() {
+    const out = [];
+    // Matches SIDE_GUN_POS y = 1.16 (underlug at 1.085, grip heel at 0.08)
+    appendBeveledBox(out, 0.50, 0.84, 0.0, 0.05, -0.22, 0.22, 0.016, 0);
+    const px = 0.67, r = 0.034, y1 = 1.06;
+    for (let s = 0; s < 16; s++) {
+      const a0 = (s / 16) * TAU, a1 = ((s + 1) / 16) * TAU;
+      const p0 = [px + r * Math.cos(a0), 0.05, r * Math.sin(a0)];
+      const p1 = [px + r * Math.cos(a1), 0.05, r * Math.sin(a1)];
+      const p2 = [px + r * Math.cos(a1), y1, r * Math.sin(a1)];
+      const p3 = [px + r * Math.cos(a0), y1, r * Math.sin(a0)];
+      const n0 = [Math.cos(a0), 0, Math.sin(a0)], n1 = [Math.cos(a1), 0, Math.sin(a1)];
+      pushQuadSmooth(out, p0, p1, p2, p3, n0, n1, n1, n0, [0, 0], [1, 0], [1, 1], [0, 1], 2, 2, 2, 2);
+    }
+    appendBeveledBox(out, 0.60, 0.74, 1.04, 1.09, -0.12, 0.12, 0.012, 2);
+    appendBeveledBox(out, 0.60, 0.74, 1.07, 1.16, -0.125, -0.09, 0.01, 2);
+    appendBeveledBox(out, 0.60, 0.74, 1.07, 1.16, 0.09, 0.125, 0.01, 2);
+    appendBeveledBox(out, -1.10, -0.72, 0.0, 0.085, -0.20, 0.20, 0.015, 0);
+    return new Float32Array(out);
+  }
+
+  function buildUStandGeo() {
+    const out = [];
+    // Elevated U-stand (pivot at y = 1.12) supporting larger readable far plaque (hw=0.72, hh=0.74)
+    appendBeveledBox(out, -0.94, 0.94, 0.0, 0.12, -0.42, 0.42, 0.028, 3);
+    appendBeveledBox(out, -0.88, -0.76, 0.10, 1.24, -0.075, 0.075, 0.018, 0);
+    appendBeveledBox(out, 0.76, 0.88, 0.10, 1.24, -0.075, 0.075, 0.018, 0);
+    appendBeveledBox(out, -0.92, -0.71, 1.06, 1.18, -0.092, 0.092, 0.015, 2);
+    appendBeveledBox(out, 0.71, 0.92, 1.06, 1.18, -0.092, 0.092, 0.015, 2);
+    return new Float32Array(out);
+  }
+
+  function buildFlipPlateGeo() {
+    const out = [];
+    const hw = 0.72, hh = 0.74, hd = 0.052;
+    pushQuad(out, [-hw, -hh, hd], [hw, -hh, hd], [hw, hh, hd], [-hw, hh, hd], [0, 0, 1], [0.004, 0], [0.496, 0], [0.496, 1], [0.004, 1], 0);
+    pushQuad(out, [hw, -hh, -hd], [-hw, -hh, -hd], [-hw, hh, -hd], [hw, hh, -hd], [0, 0, -1], [0.996, 1], [0.504, 1], [0.504, 0], [0.996, 0], 0);
+    pushQuad(out, [-hw, hh, hd], [hw, hh, hd], [hw, hh, -hd], [-hw, hh, -hd], [0, 1, 0], [0, 0], [1, 0], [1, 1], [0, 1], 2);
+    pushQuad(out, [-hw, -hh, -hd], [hw, -hh, -hd], [hw, -hh, hd], [-hw, -hh, hd], [0, -1, 0], [0, 0], [1, 0], [1, 1], [0, 1], 2);
+    pushQuad(out, [hw, -hh, hd], [hw, -hh, -hd], [hw, hh, -hd], [hw, hh, hd], [1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], 2);
+    pushQuad(out, [-hw, -hh, -hd], [-hw, -hh, hd], [-hw, hh, hd], [-hw, hh, -hd], [-1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], 2);
+    return new Float32Array(out);
+  }
+
+  function buildStarFlashGeo(blades, len, spread) {
+    const out = [];
+    for (let k = 0; k < blades; k++) {
+      const a = (k / blades) * TAU;
+      const pTip = [len, Math.cos(a) * spread, Math.sin(a) * spread];
+      const pA = [0, Math.cos(a - 0.34) * spread * 0.32, Math.sin(a - 0.34) * spread * 0.32];
+      const pB = [0, Math.cos(a + 0.34) * spread * 0.32, Math.sin(a + 0.34) * spread * 0.32];
+      const n = normalize(cross(sub(pA, pTip), sub(pB, pTip)));
+      pushTri(out, pTip, pA, pB, n, [0.5, 1], [0, 0], [1, 0], 0);
+      pushTri(out, pTip, pB, pA, scale(n, -1), [0.5, 1], [1, 0], [0, 0], 0);
+    }
+    return new Float32Array(out);
+  }
+
+  function buildTracerGeo() {
+    const out = [];
+    appendLatheX(out, [
+      { x: -0.62, r: 0.001, flag: 2 },
+      { x: -0.62, r: 0.026, flag: 2 },
+      { x: 0.05, r: 0.062, flag: 3, sharp: true },
+      { x: 0.20, r: 0.036, flag: 2 },
+      { x: 0.28, r: 0.001, flag: 2 },
+    ], 16);
+    return new Float32Array(out);
+  }
+
+  function buildSparkGeo() {
+    const out = [];
+    appendBeveledBox(out, -0.068, 0.068, -0.026, 0.026, -0.026, 0.026, 0.007, 0);
+    return new Float32Array(out);
+  }
+
+  const GEOS = {
+    barrel: buildBarrelGeo(),
+    frame: buildFrameGeo(),
+    hammer: buildHammerGeo(),
+    yoke: buildYokeGeo(),
+    cyl: buildPiercedCylinder({
+      x0: -0.29, x1: 0.29, R: CYL_R, rOrbit: CYL_ORBIT, rHole: 0.066, rHub: 0.044,
+      fluteDepth: 0.036, fluteX0: -0.19, fluteX1: 0.20, bodyFlag: 0, boreFlag: 1,
+    }),
+    bullet: buildBulletGeometry(),
+    grip: buildLoftedGrip(),
+    stand: buildMinimalStandGeo(),
+    uStand: buildUStandGeo(),
+    flipPlate: buildFlipPlateGeo(),
+    flashCore: buildStarFlashGeo(6, 0.44, 0.22),
+    flashOuter: buildStarFlashGeo(8, 0.82, 0.46),
+    smokeRing: buildTorusGeo(0.22, 0.050, 26, 12),
+    tracer: buildTracerGeo(),
+    spark: buildSparkGeo(),
+  };
+
+  const FINISHES = [
+    {
+      name: '墨绿烤漆 + 精钢',
+      gun: {
+        color: [0.21, 0.35, 0.26], accent: [0.78, 0.65, 0.36], trim: [0.46, 0.31, 0.20], cavity: [0.05, 0.08, 0.06],
+        matMeta: [0.36, 0.90, 0.72], matRough: [0.28, 0.20, 0.32],
+      },
+      cyl: {
+        color: [0.76, 0.78, 0.75], accent: [0.80, 0.82, 0.79], trim: [0.76, 0.78, 0.75], cavity: [0.04, 0.06, 0.05],
+        matMeta: [0.88, 0.90, 0.88], matRough: [0.22, 0.20, 0.22],
+      },
+      wood: { light: '#6e472d', mid: '#50311d', dark: '#362012', medallion: '#d4b263' },
+      bullet: { color: [0.89, 0.73, 0.34], accent: [0.89, 0.73, 0.34], trim: [0.75, 0.31, 0.22], matMeta: [0.92, 0.92, 0.84], matRough: [0.18, 0.18, 0.26] },
+      stand: { color: [0.30, 0.33, 0.31], accent: [0.78, 0.65, 0.36], matMeta: [0.30, 0.86, 0.30], matRough: [0.58, 0.26, 0.58] },
+      uStand: { color: [0.22, 0.36, 0.27], accent: [0.78, 0.65, 0.36], trim: [0.88, 0.86, 0.79], matMeta: [0.25, 0.86, 0.20], matRough: [0.42, 0.24, 0.52] },
+    },
+    {
+      name: '象牙白釉 + 古铜',
+      gun: {
+        color: [0.92, 0.90, 0.84], accent: [0.75, 0.60, 0.34], trim: [0.55, 0.38, 0.25], cavity: [0.08, 0.09, 0.08],
+        matMeta: [0.16, 0.88, 0.65], matRough: [0.30, 0.24, 0.36],
+      },
+      cyl: {
+        color: [0.78, 0.64, 0.36], accent: [0.82, 0.68, 0.40], trim: [0.78, 0.64, 0.36], cavity: [0.06, 0.07, 0.06],
+        matMeta: [0.90, 0.90, 0.90], matRough: [0.22, 0.22, 0.22],
+      },
+      wood: { light: '#8b5b38', mid: '#6e4327', dark: '#4f2e19', medallion: '#d8b96a' },
+      bullet: { color: [0.90, 0.75, 0.38], accent: [0.90, 0.75, 0.38], trim: [0.74, 0.30, 0.22], matMeta: [0.92, 0.92, 0.84], matRough: [0.18, 0.18, 0.26] },
+      stand: { color: [0.22, 0.35, 0.27], accent: [0.76, 0.62, 0.35], matMeta: [0.22, 0.86, 0.22], matRough: [0.50, 0.26, 0.50] },
+      uStand: { color: [0.22, 0.35, 0.27], accent: [0.76, 0.62, 0.35], trim: [0.88, 0.86, 0.79], matMeta: [0.22, 0.86, 0.20], matRough: [0.42, 0.24, 0.52] },
+    },
+    {
+      name: '烤蓝枪钢 + 樱桃木',
+      gun: {
+        color: [0.24, 0.29, 0.35], accent: [0.78, 0.64, 0.36], trim: [0.52, 0.34, 0.22], cavity: [0.05, 0.07, 0.09],
+        matMeta: [0.82, 0.90, 0.82], matRough: [0.24, 0.22, 0.24],
+      },
+      cyl: {
+        color: [0.74, 0.77, 0.78], accent: [0.78, 0.81, 0.82], trim: [0.74, 0.77, 0.78], cavity: [0.05, 0.06, 0.07],
+        matMeta: [0.90, 0.90, 0.90], matRough: [0.20, 0.20, 0.20],
+      },
+      wood: { light: '#8a4e2e', mid: '#6c391e', dark: '#4a2412', medallion: '#d8b766' },
+      bullet: { color: [0.89, 0.73, 0.34], accent: [0.89, 0.73, 0.34], trim: [0.76, 0.30, 0.22], matMeta: [0.92, 0.92, 0.84], matRough: [0.18, 0.18, 0.26] },
+      stand: { color: [0.30, 0.32, 0.34], accent: [0.78, 0.64, 0.36], matMeta: [0.45, 0.86, 0.45], matRough: [0.48, 0.24, 0.48] },
+      uStand: { color: [0.25, 0.30, 0.35], accent: [0.78, 0.64, 0.36], trim: [0.87, 0.85, 0.79], matMeta: [0.60, 0.86, 0.20], matRough: [0.34, 0.24, 0.52] },
+    },
+    {
+      name: '哑光枪黑 + 复古黄铜',
+      gun: {
+        color: [0.20, 0.22, 0.23], accent: [0.78, 0.62, 0.33], trim: [0.50, 0.33, 0.21], cavity: [0.04, 0.05, 0.05],
+        matMeta: [0.68, 0.90, 0.75], matRough: [0.38, 0.22, 0.32],
+      },
+      cyl: {
+        color: [0.30, 0.32, 0.33], accent: [0.78, 0.62, 0.33], trim: [0.30, 0.32, 0.33], cavity: [0.04, 0.05, 0.05],
+        matMeta: [0.78, 0.88, 0.78], matRough: [0.32, 0.22, 0.32],
+      },
+      wood: { light: '#5c3c27', mid: '#412819', dark: '#29170d', medallion: '#cfa958' },
+      bullet: { color: [0.90, 0.74, 0.35], accent: [0.90, 0.74, 0.35], trim: [0.76, 0.30, 0.22], matMeta: [0.92, 0.92, 0.84], matRough: [0.18, 0.18, 0.26] },
+      stand: { color: [0.24, 0.25, 0.26], accent: [0.78, 0.62, 0.33], matMeta: [0.40, 0.86, 0.40], matRough: [0.52, 0.24, 0.52] },
+      uStand: { color: [0.24, 0.26, 0.27], accent: [0.78, 0.62, 0.33], trim: [0.87, 0.85, 0.79], matMeta: [0.50, 0.86, 0.20], matRough: [0.40, 0.24, 0.52] },
+    },
+  ];
+
+  const SPARK_DIRS = [
+    [-1.15, 0.75, 0.30], [1.12, 0.82, 0.28], [-0.75, 1.25, 0.45], [0.78, 1.22, 0.42],
+    [-1.30, 0.24, 0.18], [1.28, 0.20, 0.22], [-0.48, 1.45, -0.22], [0.52, 1.42, -0.18],
+  ];
+
+  function createPhoneScene(schemeKey, initialFinishIdx, getExcuse, getCombo) {
+    let viewMode = 'fp';
+    let finishIdx = initialFinishIdx;
+    const f0 = FINISHES[finishIdx];
+
+    let roundActive = false;
+    let roundFinished = false;
+    let chamberMask = null;
+    let shotsFired = 0;
+    let frontHits = 0;
+    let currentPlateTilt = 0;
+    let busy = false;
+
+    let cylSpin = 0;
+    let cylVel = 0;
+    let spinInertiaRaf = 0;
+    let animId = 0;
+    let activePose = {};
+
+    const stage = new Stage3D(
+      document.getElementById(`stage-${schemeKey}`),
+      document.getElementById(`gl-${schemeKey}`),
+      document.getElementById(`shadow-${schemeKey}`),
+      {
+        onSpinStart() {
+          if (busy) return;
+          cancelSpinInertia();
+          if (roundFinished) resetRoundState(false);
+        },
+        onSpinDrag(deltaAngle, dt) {
+          if (busy) return;
+          cylSpin += deltaAngle;
+          cylVel = clamp((deltaAngle / dt) * 16.6, -0.55, 0.55);
+          poseAssembly({ ...activePose, cylSpin });
+          stage.draw();
+        },
+        onSpinEnd() {
+          if (busy) return;
+          if (roundActive) shuffleRemainingChambers();
+          startSpinInertia();
+        },
+        onStageTap() {
+          if (busy) return;
+          if (roundFinished) { playReloadIntro({ fromAim: true }); return; }
+          pullOneShot(null);
+        },
+      }
+    );
+
+    const texWalnut = stage.createTextureFromCanvas(makeWalnutGripTexture(f0.wood));
+    const texAtlas = stage.createTextureFromCanvas(makeFlipAtlasTexture(getExcuse(), 0));
+
+    const barrelMesh = stage.addMesh(GEOS.barrel, { ...f0.gun });
+    const frameMesh = stage.addMesh(GEOS.frame, { ...f0.gun });
+    const hammerMesh = stage.addMesh(GEOS.hammer, { ...f0.gun });
+    const yokeMesh = stage.addMesh(GEOS.yoke, { ...f0.gun });
+    const cylMesh = stage.addMesh(GEOS.cyl, { ...f0.cyl });
+    const bulletMeshes = Array.from({ length: 6 }, () => stage.addMesh(GEOS.bullet, { ...f0.bullet }));
+    const gripMesh = stage.addMesh(GEOS.grip, {
+      color: [0.45, 0.29, 0.18], accent: [0.82, 0.67, 0.36],
+      matMeta: [0.06, 0.88, 0.88], matRough: [0.56, 0.22, 0.22],
+      texture: texWalnut,
+    });
+    const standMesh = stage.addMesh(GEOS.stand, { ...f0.stand, visible: false });
+
+    const flashCoreMesh = stage.addMesh(GEOS.flashCore, {
+      color: [1.0, 0.97, 0.82], emissive: 1, visible: false, doubleSided: true,
+    });
+    const flashOuterMesh = stage.addMesh(GEOS.flashOuter, {
+      color: [0.99, 0.68, 0.18], emissive: 1, visible: false, doubleSided: true,
+    });
+    const smokeRingMesh = stage.addMesh(GEOS.smokeRing, {
+      color: [0.90, 0.89, 0.84], emissive: 2, visible: false,
+    });
+    const tracerMesh = stage.addMesh(GEOS.tracer, {
+      color: [1.0, 0.92, 0.56], accent: [1.0, 0.82, 0.34], trim: [0.98, 0.55, 0.22],
+      emissive: 1, visible: false,
+    });
+    const sparkMeshes = Array.from({ length: 8 }, () =>
+      stage.addMesh(GEOS.spark, { color: [1.0, 0.78, 0.26], emissive: 1, visible: false })
+    );
+
+    const uStandMesh = stage.addMesh(GEOS.uStand, { ...f0.uStand });
+    const flipPlateMesh = stage.addMesh(GEOS.flipPlate, {
+      color: [0.94, 0.92, 0.85], accent: [0.78, 0.65, 0.37], trim: [0.78, 0.65, 0.37],
+      matMeta: [0.0, 0.88, 0.88], matRough: [0.72, 0.24, 0.24],
+      texture: texAtlas,
+    });
+
+    const gunShadow = { x: FP_GUN_POS[0], y: 0.3, z: FP_GUN_POS[2], radius: 0.15, opacity: 0.18, stretch: 1.25, angle: -FP_GUN_YAW, visible: true };
+    const targetShadow = { x: FP_TARGET_POS[0], y: 0, z: FP_TARGET_POS[2], radius: 0.18, opacity: 0.28, stretch: 1.35, angle: -FP_TARGET_YAW, visible: true };
+    stage.shadows.push(gunShadow, targetShadow);
+
+    function cancelSpinInertia() {
+      if (spinInertiaRaf) { cancelAnimationFrame(spinInertiaRaf); spinInertiaRaf = 0; }
+      cylVel = 0;
+    }
+
+    function startSpinInertia() {
+      if (spinInertiaRaf) { cancelAnimationFrame(spinInertiaRaf); spinInertiaRaf = 0; }
+      const step = () => {
+        if (busy) { spinInertiaRaf = 0; return; }
+        const stepAngle = TAU / 6;
+        const nearest = Math.round(cylSpin / stepAngle) * stepAngle;
+        const diff = nearest - cylSpin;
+        if (Math.abs(cylVel) < 0.008 && Math.abs(diff) < 0.004) {
+          cylSpin = nearest;
+          cylVel = 0;
+          spinInertiaRaf = 0;
+          poseAssembly({ ...activePose, cylSpin });
+          stage.draw();
+          return;
+        }
+        cylSpin += cylVel;
+        cylVel *= 0.92;
+        if (Math.abs(cylVel) < 0.025) cylSpin += diff * 0.18;
+        poseAssembly({ ...activePose, cylSpin });
+        stage.draw();
+        spinInertiaRaf = requestAnimationFrame(step);
+      };
+      spinInertiaRaf = requestAnimationFrame(step);
+    }
+
+    function shuffleRemainingChambers() {
+      if (!roundActive || !chamberMask || shotsFired >= 6) return;
+      for (let i = 5; i > shotsFired; i--) {
+        const j = shotsFired + Math.floor(Math.random() * (i - shotsFired + 1));
+        const t = chamberMask[i];
+        chamberMask[i] = chamberMask[j];
+        chamberMask[j] = t;
+      }
+    }
+
+    function triggerFreeSpin() {
+      if (busy) return;
+      if (roundFinished) resetRoundState(false);
+      cancelSpinInertia();
+      if (roundActive) shuffleRemainingChambers();
+      cylVel = 0.44;
+      startSpinInertia();
+    }
+
+    function applyFinish(idx) {
+      finishIdx = idx;
+      const f = FINISHES[idx];
+      Object.assign(barrelMesh, f.gun);
+      Object.assign(frameMesh, f.gun);
+      Object.assign(hammerMesh, f.gun);
+      Object.assign(yokeMesh, f.gun);
+      Object.assign(cylMesh, f.cyl);
+      for (const b of bulletMeshes) Object.assign(b, f.bullet);
+      Object.assign(standMesh, f.stand);
+      Object.assign(uStandMesh, f.uStand);
+      stage.updateTextureFromCanvas(texWalnut, makeWalnutGripTexture(f.wood));
+      stage.draw();
+    }
+
+    function refreshTextures() {
+      stage.updateTextureFromCanvas(texAtlas, makeFlipAtlasTexture(getExcuse(), frontHits));
+      stage.draw();
+    }
+
+    function layoutCoords() {
+      if (viewMode === 'fp') {
+        return {
+          gunPos: FP_GUN_POS, gunYaw: FP_GUN_YAW,
+          basePitch: 0.03, baseRoll: -0.10,
+          targetPos: FP_TARGET_POS, targetYaw: FP_TARGET_YAW,
+        };
+      }
+      return {
+        gunPos: SIDE_GUN_POS, gunYaw: SIDE_GUN_YAW,
+        basePitch: 0.0, baseRoll: 0.0,
+        targetPos: SIDE_TARGET_POS, targetYaw: SIDE_TARGET_YAW,
+      };
+    }
+
+    const AIM_POSE = {
+      gunShiftX: 0, gunLift: 0, gunShiftZ: 0,
+      gunYawOffset: 0, gunRoll: 0, gunPitch: 0,
+    };
+    const LOAD_POSE_FP = {
+      gunShiftX: -0.32, gunLift: 0.16, gunShiftZ: -0.82,
+      gunYawOffset: 0.58, gunRoll: 0.04, gunPitch: 0.08,
+    };
+    const LOAD_POSE_SIDE = {
+      gunShiftX: 0, gunLift: 0.16, gunShiftZ: 0,
+      gunYawOffset: 0.65, gunRoll: -0.06, gunPitch: 0.04,
+    };
+    const getLoadPose = () => (viewMode === 'fp' ? LOAD_POSE_FP : LOAD_POSE_SIDE);
+    const lerpPose = (a, b, t) => ({
+      gunShiftX: lerp(a.gunShiftX, b.gunShiftX, t),
+      gunLift: lerp(a.gunLift, b.gunLift, t),
+      gunShiftZ: lerp(a.gunShiftZ, b.gunShiftZ, t),
+      gunYawOffset: lerp(a.gunYawOffset, b.gunYawOffset, t),
+      gunRoll: lerp(a.gunRoll, b.gunRoll, t),
+      gunPitch: lerp(a.gunPitch, b.gunPitch, t),
+    });
+
+    function poseAssembly(opts = {}) {
+      activePose = opts;
+      const {
+        gunShiftX = 0, gunLift = 0, gunShiftZ = 0,
+        gunPitch = 0, gunYawOffset = 0, gunRoll = 0, recoil = 0,
+        cylSpin: spinOpt = cylSpin, swingOut = 0, hammerCock = 0,
+        plateAngle = currentPlateTilt, standKick = 0, explode = 0,
+        bulletOffsets = null,
+      } = opts;
+      const { k } = getCombo();
+      const { gunPos, gunYaw, basePitch, baseRoll, targetPos, targetYaw } = layoutCoords();
+
+      standMesh.visible = viewMode === 'side';
+      standMesh.position = [gunPos[0], 0, gunPos[2]];
+      standMesh.q = qAxis([0, 1, 0], gunYaw);
+
+      const gPos = [
+        gunPos[0] + gunShiftX - Math.cos(gunYaw) * recoil - explode * 0.18,
+        gunPos[1] + gunLift + explode * 0.22,
+        gunPos[2] + gunShiftZ + Math.sin(gunYaw) * recoil,
+      ];
+      const gQ = qFromChain(
+        qAxis([0, 1, 0], gunYaw + gunYawOffset),
+        qAxis([1, 0, 0], baseRoll + gunRoll),
+        qAxis([0, 0, 1], basePitch + gunPitch)
+      );
+      const gm = modelMatrix(gQ, gPos);
+
+      frameMesh.position = gPos;
+      frameMesh.q = gQ;
+
+      barrelMesh.position = transformPoint(gm, [explode * 0.26, explode * 0.08, 0]);
+      barrelMesh.q = gQ;
+
+      gripMesh.position = transformPoint(gm, [-explode * 0.22, -explode * 0.24, 0]);
+      gripMesh.q = gQ;
+
+      hammerMesh.position = transformPoint(gm, [-0.46 - explode * 0.24, 0.19 + explode * 0.24, 0]);
+      hammerMesh.q = qMultiply(gQ, qAxis([0, 0, 1], hammerCock));
+
+      const swingAngle = -swingOut * 1.32;
+      yokeMesh.position = transformPoint(gm, [0, -explode * 0.22, -swingOut * 0.08]);
+      yokeMesh.q = qMultiply(gQ, qAxis([1, 0, 0], swingAngle * 0.65));
+
+      const cylOffset = [
+        0,
+        -0.28 + 0.28 * Math.cos(swingAngle) - 0.10 * Math.sin(swingAngle) + explode * 0.44,
+        -0.10 + 0.28 * Math.sin(swingAngle) + 0.10 * Math.cos(swingAngle) - swingOut * 0.12 - explode * 0.46,
+      ];
+      const cylPos = transformPoint(gm, cylOffset);
+      const cylQ = qMultiply(gQ, qAxis([1, 0, 0], spinOpt));
+      cylMesh.position = cylPos;
+      cylMesh.q = cylQ;
+
+      const cm = modelMatrix(cylQ, cylPos);
+      for (let i = 0; i < 6; i++) {
+        const bMesh = bulletMeshes[i];
+        let pullBack = 0;
+        let liftY = 0;
+        let liftZ = 0;
+        if (bulletOffsets) {
+          const bo = bulletOffsets[i];
+          if (bo == null) { bMesh.visible = false; continue; }
+          bMesh.visible = true;
+          if (typeof bo === 'number') pullBack = bo;
+          else {
+            pullBack = bo.pullBack || 0;
+            liftY = bo.liftY || 0;
+            liftZ = bo.liftZ || 0;
+          }
+        } else {
+          bMesh.visible = chamberMask ? !!chamberMask[i] : i < k;
+          if (!bMesh.visible) continue;
+          pullBack = explode * (0.42 + (i % 2) * 0.14);
+        }
+        const ang = i * (TAU / 6);
+        const ly = CYL_ORBIT * Math.cos(ang);
+        const lz = CYL_ORBIT * Math.sin(ang);
+        bMesh.position = transformPoint(cm, [-pullBack, ly + liftY, lz + liftZ]);
+        bMesh.q = cylQ;
+      }
+
+      gunShadow.x = gPos[0];
+      gunShadow.z = gPos[2];
+      gunShadow.y = Math.max(0.2, gPos[1] * 0.45);
+      gunShadow.angle = -gunYaw;
+
+      const tPos = [targetPos[0] + explode * 0.28, 0, targetPos[2] - standKick * 0.20];
+      const tQ = qMultiply(qAxis([0, 1, 0], targetYaw), qAxis([1, 0, 0], -standKick * 0.14));
+      const tm = modelMatrix(tQ, tPos);
+      uStandMesh.position = tPos;
+      uStandMesh.q = tQ;
+
+      flipPlateMesh.position = transformPoint(tm, [0, TARGET_PIVOT_Y + explode * 0.45, 0]);
+      flipPlateMesh.q = qMultiply(tQ, qAxis([1, 0, 0], plateAngle));
+
+      targetShadow.x = tPos[0];
+      targetShadow.z = tPos[2];
+      targetShadow.angle = -targetYaw;
+    }
+
+    function hideEffects() {
+      flashCoreMesh.visible = false;
+      flashOuterMesh.visible = false;
+      smokeRingMesh.visible = false;
+      tracerMesh.visible = false;
+      for (const sp of sparkMeshes) sp.visible = false;
+      stage.setShakeOffset(0, 0, 0);
+    }
+
+    function resetRoundState(redraw = true) {
+      roundActive = false;
+      roundFinished = false;
+      chamberMask = null;
+      shotsFired = 0;
+      if (frontHits !== 0) {
+        frontHits = 0;
+        refreshTextures();
+      }
+      currentPlateTilt = 0;
+      hideEffects();
+      poseAssembly({ cylSpin });
+      const combo = getCombo();
+      updateUI(combo.ruleLine, combo.buttonLabel, '', false);
+      updateHint();
+      if (redraw) stage.draw();
+    }
+
+    function applyIdle() {
+      animId++;
+      busy = false;
+      cancelSpinInertia();
+      resetRoundState(true);
+    }
+
+    function applyLoad() {
+      animId++;
+      busy = false;
+      cancelSpinInertia();
+      roundActive = false;
+      roundFinished = false;
+      chamberMask = null;
+      hideEffects();
+      currentPlateTilt = 0;
+      const combo = getCombo();
+      poseAssembly({
+        ...getLoadPose(),
+        swingOut: 1.0, hammerCock: 0.12,
+      });
+      updateHint();
+      updateUI(`摆出弹巢 · 已装 ${combo.k} / 6 发实弹`, combo.buttonLabel, '', false);
+      stage.draw();
+    }
+
+    function getReloadTimings(fromAim, k) {
+      const T_OUT = fromAim ? 260 : 0;
+      const T_OPEN = 300;
+      const T_EACH = 200;
+      const T_LOAD = k > 0 ? k * T_EACH : 260;
+      const T_SPIN = 210;
+      const T_CLOSE = 230;
+      const T_IN = 520;
+      return {
+        T_OUT, T_OPEN, T_EACH, T_LOAD, T_SPIN, T_CLOSE, T_IN,
+        TOTAL: T_OUT + T_OPEN + T_LOAD + T_SPIN + T_CLOSE + T_IN,
+      };
+    }
+
+    function renderReloadAt(el, fromAim, k, snapStart) {
+      const tm = getReloadTimings(fromAim, k);
+      const lp = getLoadPose();
+      const baseSpin = snapStart - 0.35;
+      const spinEndLoad = k > 0 ? baseSpin - (k - 1) * (TAU / 6) : baseSpin;
+      const spinEndSpin = spinEndLoad + TAU * 1.15;
+      const spinDetent = Math.round(spinEndSpin / (TAU / 6)) * (TAU / 6);
+      const allEmpty = [null, null, null, null, null, null];
+
+      if (el < tm.T_OUT) {
+        const p = easeInOut(clamp(el / tm.T_OUT, 0, 1));
+        cylSpin = snapStart;
+        poseAssembly({
+          ...lerpPose(AIM_POSE, lp, p),
+          cylSpin, swingOut: 0, hammerCock: 0, bulletOffsets: allEmpty,
+        });
+        return { msg: '拿远左轮 · 准备打开转轮…', spinDetent, done: false };
+      }
+
+      if (el < tm.T_OUT + tm.T_OPEN) {
+        const p = easeOut(clamp((el - tm.T_OUT) / tm.T_OPEN, 0, 1));
+        cylSpin = lerp(snapStart, baseSpin, p);
+        poseAssembly({
+          ...lp,
+          cylSpin, swingOut: p, hammerCock: 0.08 * p, bulletOffsets: allEmpty,
+        });
+        return {
+          msg: k > 0 ? `摆出弹巢 · 准备装填 ${k} 发实弹…` : '摆出弹巢 · 检查 6 个空仓…',
+          spinDetent,
+          done: false,
+        };
+      }
+
+      if (el < tm.T_OUT + tm.T_OPEN + tm.T_LOAD) {
+        const tL = el - tm.T_OUT - tm.T_OPEN;
+        if (k === 0) {
+          cylSpin = baseSpin;
+          poseAssembly({ ...lp, cylSpin, swingOut: 1.0, hammerCock: 0.08, bulletOffsets: allEmpty });
+          return { msg: '确认空仓 · 0 / 6 发', spinDetent, done: false };
+        }
+        const idx = Math.min(k - 1, Math.floor(tL / tm.T_EACH));
+        const p = clamp((tL - idx * tm.T_EACH) / tm.T_EACH, 0, 1);
+        const turnP = idx === 0 ? 1 : easeOut(clamp(p / 0.32, 0, 1));
+        const insertP = idx === 0 ? easeOut(p) : easeOut(clamp((p - 0.24) / 0.76, 0, 1));
+        cylSpin = idx === 0 ? baseSpin : baseSpin - ((idx - 1) + turnP) * (TAU / 6);
+        const bulletOffsets = allEmpty.slice();
+        for (let i = 0; i < idx; i++) bulletOffsets[i] = 0;
+        bulletOffsets[idx] = {
+          pullBack: 0.84 * (1 - insertP),
+          liftY: 0.14 * (1 - insertP),
+        };
+        const bumpRoll = Math.sin(p * Math.PI) * 0.028;
+        poseAssembly({
+          ...lp,
+          gunRoll: lp.gunRoll + bumpRoll,
+          cylSpin, swingOut: 1.0, hammerCock: 0.08,
+          bulletOffsets,
+        });
+        return { msg: `逐发填入实弹 (${idx + 1} / ${k})…`, spinDetent, done: false };
+      }
+
+      const seated = Array.from({ length: 6 }, (_, i) => (i < k ? 0 : null));
+
+      if (el < tm.T_OUT + tm.T_OPEN + tm.T_LOAD + tm.T_SPIN) {
+        const p = clamp((el - tm.T_OUT - tm.T_OPEN - tm.T_LOAD) / tm.T_SPIN, 0, 1);
+        cylSpin = lerp(spinEndLoad, spinEndSpin, easeOut(p));
+        poseAssembly({
+          ...lp,
+          cylSpin, swingOut: 1.0, hammerCock: 0.08,
+          bulletOffsets: seated,
+        });
+        return { msg: '拨转弹鼓 · 打乱实弹位置…', spinDetent, done: false };
+      }
+
+      if (el < tm.T_OUT + tm.T_OPEN + tm.T_LOAD + tm.T_SPIN + tm.T_CLOSE) {
+        const p = clamp((el - tm.T_OUT - tm.T_OPEN - tm.T_LOAD - tm.T_SPIN) / tm.T_CLOSE, 0, 1);
+        const swingOut = 1 - easeInOut(p);
+        const wristFlick = Math.sin(p * Math.PI) * 0.18;
+        cylSpin = lerp(spinEndSpin, spinDetent, easeOut(p));
+        poseAssembly({
+          ...lp,
+          gunRoll: lp.gunRoll - wristFlick,
+          cylSpin, swingOut, hammerCock: 0.08,
+          bulletOffsets: seated,
+        });
+        return { msg: '甩合转轮 · 锁紧弹鼓…', spinDetent, done: false };
+      }
+
+      if (el < tm.TOTAL) {
+        const tInStart = tm.TOTAL - tm.T_IN;
+        const p = easeInOut(clamp((el - tInStart) / tm.T_IN, 0, 1));
+        cylSpin = spinDetent;
+        poseAssembly({
+          ...lerpPose(lp, AIM_POSE, p),
+          cylSpin, swingOut: 0, hammerCock: 0.08 * (1 - p),
+          bulletOffsets: seated,
+        });
+        return { msg: '平滑移入持枪瞄准视角…', spinDetent, done: false };
+      }
+
+      cylSpin = spinDetent;
+      poseAssembly({ ...AIM_POSE, cylSpin });
+      return { msg: getCombo().ruleLine, spinDetent, done: true };
+    }
+
+    function playReloadIntro({ fromAim = true } = {}) {
+      animId++;
+      cancelSpinInertia();
+      roundActive = false;
+      roundFinished = false;
+      chamberMask = null;
+      shotsFired = 0;
+      if (frontHits !== 0) {
+        frontHits = 0;
+        stage.updateTextureFromCanvas(texAtlas, makeFlipAtlasTexture(getExcuse(), 0));
+      }
+      currentPlateTilt = 0;
+      hideEffects();
+
+      const combo = getCombo();
+      if (reducedMotion.matches) {
+        busy = false;
+        poseAssembly({ ...AIM_POSE, cylSpin });
+        updateUI(combo.ruleLine, combo.buttonLabel, '', false);
+        updateHint();
+        stage.draw();
+        return;
+      }
+
+      const id = animId;
+      const snapStart = Math.round(cylSpin / (TAU / 6)) * (TAU / 6);
+      const tm = getReloadTimings(fromAim, combo.k);
+      const t0 = performance.now();
+      busy = true;
+      const st0 = renderReloadAt(0, fromAim, combo.k, snapStart);
+      updateUI(st0.msg, '装弹中…', '', true);
+      updateHint();
+      stage.draw();
+
+      const tick = now => {
+        if (id !== animId) return;
+        const el = now - t0;
+        const st = renderReloadAt(el, fromAim, combo.k, snapStart);
+        stage.draw();
+        if (st.done || el >= tm.TOTAL) {
+          busy = false;
+          cylSpin = st.spinDetent;
+          poseAssembly({ ...AIM_POSE, cylSpin });
+          updateUI(combo.ruleLine, combo.buttonLabel, '', false);
+          updateHint();
+          stage.draw();
+          return;
+        }
+        const resEl = document.getElementById(`result-${schemeKey}`);
+        if (resEl && resEl.textContent !== st.msg) resEl.textContent = st.msg;
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    function snapReloadMid() {
+      animId++;
+      busy = false;
+      cancelSpinInertia();
+      roundActive = false;
+      roundFinished = false;
+      chamberMask = null;
+      shotsFired = 0;
+      if (frontHits !== 0) {
+        frontHits = 0;
+        stage.updateTextureFromCanvas(texAtlas, makeFlipAtlasTexture(getExcuse(), 0));
+      }
+      currentPlateTilt = 0;
+      hideEffects();
+      const combo = getCombo();
+      const tm = getReloadTimings(false, combo.k);
+      const targetIdx = combo.k > 1 ? 1 : 0;
+      const el = combo.k > 0
+        ? tm.T_OPEN + targetIdx * tm.T_EACH + tm.T_EACH * 0.38
+        : tm.T_OPEN + tm.T_LOAD * 0.5;
+      const st = renderReloadAt(el, false, combo.k, 0);
+      updateHint();
+      updateUI(st.msg, combo.buttonLabel, '', false);
+      stage.draw();
+    }
+
+    function applyExplode() {
+      animId++;
+      busy = false;
+      cancelSpinInertia();
+      hideEffects();
+      poseAssembly({
+        gunLift: 0.16, swingOut: 1.0, hammerCock: 0.34,
+        plateAngle: -0.42, explode: 1.0,
+      });
+      updateUI('拆解视图 · 侧视可 360° 拖拽观察构件', getCombo().buttonLabel, '', false);
+      stage.draw();
+    }
+
+    function applyBlastSnapshot() {
+      animId++;
+      busy = false;
+      cancelSpinInertia();
+      const { gunPos, gunYaw, basePitch, baseRoll, targetPos } = layoutCoords();
+      const pitch = 0.36;
+      const rec = 0.24;
+      const gQ = qFromChain(
+        qAxis([0, 1, 0], gunYaw),
+        qAxis([1, 0, 0], baseRoll),
+        qAxis([0, 0, 1], basePitch + pitch)
+      );
+      const gm = modelMatrix(
+        gQ,
+        [gunPos[0] - Math.cos(gunYaw) * rec, gunPos[1] + 0.14, gunPos[2] + Math.sin(gunYaw) * rec]
+      );
+      const muzzle = transformPoint(gm, [1.38, BORE_Y, 0]);
+      const hitPt = [targetPos[0], TARGET_PIVOT_Y, targetPos[2]];
+
+      poseAssembly({
+        gunLift: 0.14, gunPitch: pitch, recoil: rec, hammerCock: -0.32,
+        plateAngle: -0.72, standKick: 0.8,
+      });
+
+      flashCoreMesh.visible = true;
+      flashCoreMesh.position = muzzle;
+      flashCoreMesh.q = gQ;
+      flashCoreMesh.scale = 1.2;
+
+      flashOuterMesh.visible = true;
+      flashOuterMesh.position = muzzle;
+      flashOuterMesh.q = qMultiply(gQ, qAxis([1, 0, 0], 0.4));
+      flashOuterMesh.scale = 1.35;
+
+      smokeRingMesh.visible = true;
+      smokeRingMesh.position = [
+        muzzle[0] + (hitPt[0] - muzzle[0]) * 0.30,
+        muzzle[1] + (hitPt[1] - muzzle[1]) * 0.30 + 0.06,
+        muzzle[2] + (hitPt[2] - muzzle[2]) * 0.30,
+      ];
+      smokeRingMesh.q = qAxis([0, 1, 0], gunYaw);
+      smokeRingMesh.scale = 1.45;
+
+      tracerMesh.visible = true;
+      tracerMesh.position = [
+        muzzle[0] + (hitPt[0] - muzzle[0]) * 0.72,
+        muzzle[1] + (hitPt[1] - muzzle[1]) * 0.72,
+        muzzle[2] + (hitPt[2] - muzzle[2]) * 0.72,
+      ];
+      tracerMesh.q = qAxis([0, 1, 0], gunYaw);
+      tracerMesh.scale = 1.35;
+
+      for (let i = 0; i < sparkMeshes.length; i++) {
+        const sp = sparkMeshes[i];
+        const dir = SPARK_DIRS[i];
+        sp.visible = true;
+        sp.position = [hitPt[0] + dir[0] * 0.46, hitPt[1] + dir[1] * 0.46, hitPt[2] + dir[2] * 0.46];
+        sp.q = qAxis([dir[1], dir[2], dir[0]], 0.9 + i * 0.4);
+        sp.scale = 1.35;
+      }
+
+      updateUI('砰！！重击命中借口牌！', '击发中…', 'answer', false);
+      stage.draw();
+    }
+
+    function applyRevealed(isTrain) {
+      animId++;
+      busy = false;
+      cancelSpinInertia();
+      roundActive = false;
+      roundFinished = true;
+      hideEffects();
+      const combo = getCombo();
+      const targetSlot = isTrain ? 0 : (combo.k < 6 ? combo.k : 0);
+      cylSpin = -targetSlot * (TAU / 6);
+      if (isTrain) {
+        currentPlateTilt = -Math.PI * 5;
+        poseAssembly({ cylSpin, hammerCock: -0.30, plateAngle: currentPlateTilt });
+        updateUI('走吧，练一点。', '再来一局', 'answer', false);
+      } else {
+        currentPlateTilt = 0;
+        poseAssembly({ cylSpin, hammerCock: -0.30, plateAngle: 0 });
+        updateUI('今天，歇一歇。', '再来一局', 'answer rest', false);
+      }
+      stage.draw();
+    }
+
+    function makeShuffledChambers(k, m, rule, forcedOutcome) {
+      const randMask = () => {
+        const arr = Array.from({ length: 6 }, (_, i) => i < k);
+        for (let i = 5; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+        }
+        return arr;
+      };
+      if (forcedOutcome == null) return randMask();
+      for (let attempt = 0; attempt < 200; attempt++) {
+        const c = randMask();
+        const sl = c.slice(0, m);
+        const ok = rule === 'all' ? sl.every(Boolean) : sl.some(Boolean);
+        if (ok === forcedOutcome) return c;
+      }
+      return Array.from({ length: 6 }, (_, i) => forcedOutcome ? i < k : i >= 6 - k);
+    }
+
+    function pullOneShot(forcedHit = null) {
+      if (busy) return;
+      if (roundFinished) resetRoundState(false);
+      cancelSpinInertia();
+      const combo = getCombo();
+
+      const isFirstShot = !roundActive;
+      if (isFirstShot) {
+        roundActive = true;
+        shotsFired = 0;
+        frontHits = 0;
+        currentPlateTilt = 0;
+        chamberMask = makeShuffledChambers(combo.k, combo.m, combo.rule, null);
+        if (forcedHit !== null) {
+          chamberMask[0] = !!forcedHit;
+          let count = chamberMask.filter(Boolean).length;
+          for (let i = 1; i < 6 && count !== combo.k; i++) {
+            if (count > combo.k && chamberMask[i]) { chamberMask[i] = false; count--; }
+            else if (count < combo.k && !chamberMask[i]) { chamberMask[i] = true; count++; }
+          }
+        }
+      } else if (forcedHit !== null) {
+        const slot = shotsFired;
+        if (chamberMask[slot] !== !!forcedHit) {
+          const swapIdx = chamberMask.findIndex((v, idx) => idx > slot && v === !!forcedHit);
+          if (swapIdx >= 0) {
+            const tmp = chamberMask[slot];
+            chamberMask[slot] = chamberMask[swapIdx];
+            chamberMask[swapIdx] = tmp;
+          } else {
+            chamberMask[slot] = !!forcedHit;
+          }
+        }
+      }
+
+      const shotIdx = shotsFired;
+      const isHit = !!chamberMask[shotIdx];
+      shotsFired++;
+
+      let outcomeAfterShot = null;
+      if (combo.rule === 'any') {
+        if (isHit) outcomeAfterShot = 'train';
+        else if (shotsFired >= combo.m) outcomeAfterShot = 'rest';
+      } else {
+        if (!isHit) outcomeAfterShot = 'rest';
+        else if (shotsFired >= combo.m) outcomeAfterShot = 'train';
+      }
+
+      busy = true;
+      const id = ++animId;
+      const { gunPos, gunYaw, basePitch, baseRoll, targetPos } = layoutCoords();
+      const hitCenter = [targetPos[0], TARGET_PIVOT_Y, targetPos[2]];
+
+      const startSpin = cylSpin;
+      const baseDetent = Math.round(startSpin / (TAU / 6)) * (TAU / 6);
+      const endSpin = isFirstShot ? baseDetent + TAU : baseDetent - (TAU / 6);
+
+      const COCK_MS = isFirstShot ? 340 : 240;
+      const FIRE_MS = isHit ? (outcomeAfterShot === 'train' ? 860 : 640) : 340;
+      const startPlate = currentPlateTilt;
+      const t0 = performance.now();
+      let holeStamped = false;
+
+      updateUI(
+        combo.m > 1 ? `扣第 ${shotIdx + 1} / ${combo.m} 枪…` : '击锤蓄力…',
+        '击发中…',
+        '',
+        true
+      );
+
+      const tick = now => {
+        if (id !== animId) return;
+        const el = now - t0;
+
+        if (el < COCK_MS) {
+          const p = el / COCK_MS;
+          const ep = easeOut(p);
+          cylSpin = startSpin + (endSpin - startSpin) * ep;
+          hideEffects();
+          poseAssembly({
+            cylSpin,
+            hammerCock: 0.36 * ep,
+            plateAngle: startPlate,
+          });
+        } else if (el < COCK_MS + FIRE_MS) {
+          cylSpin = endSpin;
+          const tFire = (el - COCK_MS) / FIRE_MS;
+          const hammer = tFire < 0.14 ? 0.36 - 0.68 * easeOut(tFire / 0.14) : -0.32;
+
+          if (isHit) {
+            const recoilEnv = Math.exp(-tFire * 5.8) * Math.sin(Math.min(1, tFire * 6) * Math.PI * 0.5);
+            const pitch = recoilEnv * 0.44;
+            const rec = recoilEnv * 0.28;
+            const gQNow = qFromChain(
+              qAxis([0, 1, 0], gunYaw),
+              qAxis([1, 0, 0], baseRoll),
+              qAxis([0, 0, 1], basePitch + pitch)
+            );
+            const gmNow = modelMatrix(
+              gQNow,
+              [gunPos[0] - Math.cos(gunYaw) * rec, gunPos[1] + recoilEnv * 0.14, gunPos[2] + Math.sin(gunYaw) * rec]
+            );
+            const muzzle = transformPoint(gmNow, [1.38, BORE_Y, 0]);
+
+            if (!reducedMotion.matches && tFire < 0.32) {
+              const sEnv = Math.exp(-tFire * 16) * (1 - tFire / 0.32);
+              stage.setShakeOffset(
+                Math.sin(tFire * 95) * 0.045 * sEnv,
+                Math.cos(tFire * 110) * 0.038 * sEnv,
+                0.08 * sEnv
+              );
+            } else {
+              stage.setShakeOffset(0, 0, 0);
+            }
+
+            flashCoreMesh.visible = tFire < 0.24;
+            flashOuterMesh.visible = tFire < 0.28;
+            if (flashCoreMesh.visible) {
+              flashCoreMesh.position = muzzle;
+              flashCoreMesh.q = gQNow;
+              flashCoreMesh.scale = 1.25 - tFire * 2.5;
+              flashOuterMesh.position = muzzle;
+              flashOuterMesh.q = qMultiply(gQNow, qAxis([1, 0, 0], tFire * 18));
+              flashOuterMesh.scale = 1.45 - tFire * 2.2;
+            }
+
+            smokeRingMesh.visible = tFire >= 0.02 && tFire < 0.60;
+            if (smokeRingMesh.visible) {
+              const smP = (tFire - 0.02) / 0.58;
+              smokeRingMesh.position = [
+                muzzle[0] + (hitCenter[0] - muzzle[0]) * (0.14 + smP * 0.52),
+                muzzle[1] + (hitCenter[1] - muzzle[1]) * (0.14 + smP * 0.52) + smP * 0.12,
+                muzzle[2] + (hitCenter[2] - muzzle[2]) * (0.14 + smP * 0.52),
+              ];
+              smokeRingMesh.q = qAxis([0, 1, 0], gunYaw);
+              smokeRingMesh.scale = 0.75 + smP * 2.4;
+            }
+
+            tracerMesh.visible = tFire >= 0.01 && tFire <= 0.16;
+            if (tracerMesh.visible) {
+              const sp = (tFire - 0.01) / 0.15;
+              tracerMesh.position = [
+                muzzle[0] + (hitCenter[0] - muzzle[0]) * sp,
+                muzzle[1] + (hitCenter[1] - muzzle[1]) * sp,
+                muzzle[2] + (hitCenter[2] - muzzle[2]) * sp,
+              ];
+              tracerMesh.q = qAxis([0, 1, 0], gunYaw);
+              tracerMesh.scale = 1.35;
+            }
+
+            if (tFire >= 0.12 && !holeStamped && outcomeAfterShot !== 'train') {
+              holeStamped = true;
+              frontHits++;
+              refreshTextures();
+            }
+
+            const sparkP = clamp((tFire - 0.12) / 0.72, 0, 1);
+            for (let i = 0; i < sparkMeshes.length; i++) {
+              const spM = sparkMeshes[i];
+              if (tFire >= 0.12 && sparkP < 1) {
+                const d = SPARK_DIRS[i];
+                spM.visible = true;
+                spM.position = [
+                  hitCenter[0] + d[0] * sparkP * 1.35,
+                  hitCenter[1] + d[1] * sparkP * 1.35 - 1.5 * sparkP * sparkP,
+                  hitCenter[2] + d[2] * sparkP * 1.35,
+                ];
+                spM.q = qAxis([d[1], d[2], d[0]], sparkP * 14 + i);
+                spM.scale = 1.55 * (1 - sparkP * 0.72);
+              } else {
+                spM.visible = false;
+              }
+            }
+
+            const impactP = clamp((tFire - 0.12) / 0.88, 0, 1);
+            const standKick = impactP > 0 ? Math.sin(impactP * Math.PI) * Math.exp(-impactP * 2.5) * 1.4 : 0;
+
+            if (outcomeAfterShot === 'train') {
+              const fp = easeOut(impactP);
+              const bounce = Math.sin(impactP * Math.PI * 2.2) * 0.06 * (1 - impactP);
+              currentPlateTilt = startPlate + (-Math.PI * 5 - startPlate) * (fp + bounce);
+            } else {
+              const w = Math.sin(impactP * Math.PI * 0.82);
+              currentPlateTilt = -1.08 * w * (1 - 0.55 * impactP) - 0.36 * easeOut(impactP);
+            }
+
+            poseAssembly({
+              gunLift: recoilEnv * 0.14,
+              gunPitch: pitch,
+              recoil: rec,
+              cylSpin,
+              hammerCock: hammer,
+              plateAngle: currentPlateTilt,
+              standKick,
+            });
+          } else {
+            hideEffects();
+            const tremor = Math.sin(tFire * Math.PI * 3) * (1 - tFire) * 0.025;
+            if (outcomeAfterShot === 'rest') {
+              currentPlateTilt = startPlate * (1 - easeOut(tFire));
+            }
+            poseAssembly({
+              gunPitch: tremor,
+              cylSpin,
+              hammerCock: hammer,
+              plateAngle: currentPlateTilt,
+            });
+          }
+        } else {
+          busy = false;
+          hideEffects();
+          if (outcomeAfterShot === 'train') {
+            roundActive = false;
+            roundFinished = true;
+            currentPlateTilt = -Math.PI * 5;
+            poseAssembly({ cylSpin, hammerCock: -0.30, plateAngle: currentPlateTilt });
+            updateUI('走吧，练一点。', '再来一局', 'answer', false);
+          } else if (outcomeAfterShot === 'rest') {
+            roundActive = false;
+            roundFinished = true;
+            currentPlateTilt = 0;
+            poseAssembly({ cylSpin, hammerCock: -0.30, plateAngle: 0 });
+            updateUI('今天，歇一歇。', '再来一局', 'answer rest', false);
+          } else {
+            const statusMsg = isHit
+              ? `第 ${shotsFired}/${combo.m} 枪命中！可转转轮，再扣下一枪`
+              : `第 ${shotsFired}/${combo.m} 枪 · 咔哒（空仓），可转转轮再扣`;
+            poseAssembly({ cylSpin, hammerCock: -0.30, plateAngle: currentPlateTilt });
+            updateUI(statusMsg, `扣第 ${shotsFired + 1} 枪 (${shotsFired + 1}/${combo.m})`, '', false);
+          }
+          stage.draw();
+          return;
+        }
+        stage.draw();
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    function playAutoComboSequence(forcedOutcome) {
+      if (busy) return;
+      resetRoundState(false);
+      const combo = getCombo();
+      const mask = makeShuffledChambers(combo.k, combo.m, combo.rule, forcedOutcome);
+      const runNext = () => {
+        if (roundFinished || (!roundActive && shotsFired > 0)) return;
+        const slot = shotsFired;
+        if (slot >= combo.m) return;
+        pullOneShot(mask[slot]);
+        const checkDone = () => {
+          if (busy) setTimeout(checkDone, 50);
+          else if (roundActive && !roundFinished && shotsFired < combo.m) runNext();
+        };
+        setTimeout(checkDone, 80);
+      };
+      runNext();
+    }
+
+    function updateUI(resText, btnText, cls, isBusy) {
+      const resEl = document.getElementById(`result-${schemeKey}`);
+      const btn = document.getElementById(`btn-${schemeKey}`);
+      const lbl = document.getElementById(`btn-label-${schemeKey}`);
+      const spinBtn = document.getElementById(`spin-${schemeKey}`);
+      resEl.textContent = resText;
+      resEl.className = 'result-line ' + cls;
+      lbl.textContent = btnText;
+      btn.disabled = isBusy;
+      if (spinBtn) spinBtn.disabled = isBusy;
+    }
+
+    function updateHint() {
+      const combo = getCombo();
+      const prefix = viewMode === 'fp' ? '拖动拨转弹鼓 · 点按扣扳机' : '拖动 360° 观察';
+      document.getElementById(`hint-${schemeKey}`).textContent =
+        `${prefix} · 装 ${combo.k} 发 ${combo.pct}%`;
+      const spinBtn = document.getElementById(`spin-${schemeKey}`);
+      if (spinBtn) {
+        spinBtn.hidden = viewMode !== 'fp';
+        spinBtn.disabled = busy;
+      }
+      if (!roundActive && !roundFinished && !busy) {
+        updateUI(combo.ruleLine, combo.buttonLabel, '', false);
+      }
+    }
+
+    const col = document.querySelector(`[data-scheme="${schemeKey}"]`);
+    col.querySelectorAll('[data-finish]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        col.querySelectorAll('[data-finish]').forEach(b => b.setAttribute('aria-pressed', 'false'));
+        btn.setAttribute('aria-pressed', 'true');
+        applyFinish(Number(btn.dataset.finish));
+      });
+    });
+
+    const sideBtn = col.querySelector('[data-toggle-side]');
+    sideBtn.addEventListener('click', () => {
+      const next = sideBtn.getAttribute('aria-pressed') !== 'true';
+      setViewMode(next ? 'side' : 'fp');
+    });
+
+    col.querySelector('[data-reset-view]').addEventListener('click', () => {
+      stage.resetView();
+    });
+
+    document.getElementById(`btn-${schemeKey}`).addEventListener('click', () => {
+      if (busy) return;
+      if (roundFinished) playReloadIntro({ fromAim: true });
+      else pullOneShot(null);
+    });
+
+    document.getElementById(`spin-${schemeKey}`).addEventListener('click', () => {
+      triggerFreeSpin();
+    });
+
+    function setViewMode(mode) {
+      viewMode = mode;
+      sideBtn.setAttribute('aria-pressed', mode === 'side' ? 'true' : 'false');
+      if (mode === 'side') stage.setSideCamera(0, null);
+      else stage.setFirstPersonCamera();
+      poseAssembly(activePose);
+      updateHint();
+      stage.draw();
+    }
+
+    applyIdle();
+
+    return {
+      setViewMode,
+      setMode(mode) {
+        if (mode === 'idle') applyIdle();
+        else if (mode === 'reload') playReloadIntro({ fromAim: true });
+        else if (mode === 'load') applyLoad();
+        else if (mode === 'blast') applyBlastSnapshot();
+        else if (mode === 'train') playAutoComboSequence(true);
+        else if (mode === 'rest') playAutoComboSequence(false);
+        else if (mode === 'explode') {
+          if (viewMode !== 'side') setViewMode('side');
+          applyExplode();
+        }
+      },
+      snapMode(mode) {
+        if (mode === 'idle') applyIdle();
+        else if (mode === 'reload') snapReloadMid();
+        else if (mode === 'load') applyLoad();
+        else if (mode === 'blast') applyBlastSnapshot();
+        else if (mode === 'train') applyRevealed(true);
+        else if (mode === 'rest') applyRevealed(false);
+        else if (mode === 'explode') {
+          if (viewMode !== 'side') setViewMode('side');
+          applyExplode();
+        }
+      },
+      playReload(opts = {}) {
+        playReloadIntro(opts);
+      },
+      snapReloadMid() {
+        snapReloadMid();
+      },
+      freeSpin() {
+        triggerFreeSpin();
+      },
+      pullTrigger(forcedHit = null) {
+        pullOneShot(forcedHit);
+      },
+      spinCylinder(rad) {
+        if (!busy) {
+          cancelSpinInertia();
+          cylSpin += rad;
+          if (roundActive) shuffleRemainingChambers();
+          poseAssembly({ ...activePose, cylSpin });
+          stage.draw();
+        }
+      },
+      getState() {
+        return { busy, roundActive, roundFinished, shotsFired, cylSpin, viewMode };
+      },
+      setFinish(idx) {
+        col.querySelectorAll('[data-finish]').forEach(b => b.setAttribute('aria-pressed', b.dataset.finish == idx ? 'true' : 'false'));
+        applyFinish(idx);
+      },
+      onComboChanged(opts = {}) {
+        if (opts.animateReload) {
+          playReloadIntro({ fromAim: opts.fromAim !== false });
+          return;
+        }
+        animId++;
+        busy = false;
+        cancelSpinInertia();
+        if (roundActive || roundFinished) resetRoundState(false);
+        updateHint();
+        poseAssembly({ ...AIM_POSE, cylSpin });
+        stage.draw();
+      },
+      refreshTextures,
+      stage,
+    };
+  }
+
+  // ---- Boot & Global State ----
+  let activeExcuseIdx = 0;
+  let activeK = 3;
+  let activeM = 1;
+  let activeRule = 'any';
+
+  const getExcuse = () => EXCUSES[activeExcuseIdx % EXCUSES.length];
+  const getCombo = () => calcCombo(activeK, activeM, activeRule);
+
+  const totalTri = Math.round((
+    GEOS.barrel.length + GEOS.frame.length + GEOS.hammer.length + GEOS.yoke.length +
+    GEOS.cyl.length + 6 * GEOS.bullet.length + GEOS.grip.length + GEOS.stand.length +
+    GEOS.uStand.length + GEOS.flipPlate.length
+  ) / 27);
+  document.getElementById('stats-revolver').textContent =
+    `单机主模型 ${totalTri.toLocaleString()} 个三角面 · 40° FPS 视场角 · 握把比例 2.1× 轮径`;
+
+  const customPhone = createPhoneScene('custom', 0, getExcuse, getCombo);
+  const classicPhone = createPhoneScene('classic', 2, getExcuse, getCombo);
+
+  const viewBtns = document.querySelectorAll('.global-controls .pill[data-view]');
+  const modeBtns = document.querySelectorAll('.global-controls .pill[data-mode]');
+  const presetBtns = document.querySelectorAll('.global-controls .pill[data-preset]');
+  const kBtns = document.querySelectorAll('.global-controls .pill[data-k]');
+  const mBtns = document.querySelectorAll('.global-controls .pill[data-m]');
+  const ruleBtns = document.querySelectorAll('.global-controls .pill[data-rule]');
+
+  function setViewUI(view) {
+    viewBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.view === view ? 'true' : 'false'));
+  }
+
+  function setView(view) {
+    setViewUI(view);
+    customPhone.setViewMode(view);
+    classicPhone.setViewMode(view);
+  }
+
+  function setModeUI(mode) {
+    modeBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === mode ? 'true' : 'false'));
+  }
+
+  function syncComboUI(opts = {}) {
+    const combo = getCombo();
+    document.getElementById('combo-readout').textContent = combo.readout;
+    kBtns.forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.k) === activeK ? 'true' : 'false'));
+    mBtns.forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.m) === activeM ? 'true' : 'false'));
+    ruleBtns.forEach(b => {
+      b.disabled = activeM === 1;
+      b.setAttribute('aria-pressed', b.dataset.rule === activeRule ? 'true' : 'false');
+    });
+    const currentKey = `${activeK}-${activeM}-${activeRule}`;
+    presetBtns.forEach(b => {
+      const match = b.dataset.preset === currentKey || (activeM === 1 && b.dataset.preset === `${activeK}-1-any`);
+      b.setAttribute('aria-pressed', match ? 'true' : 'false');
+    });
+
+    customPhone.onComboChanged(opts);
+    classicPhone.onComboChanged(opts);
+  }
+
+  function setConfig(k, m, rule, opts = {}) {
+    activeK = clamp(Math.round(k), 0, 6);
+    activeM = clamp(Math.round(m), 1, 3);
+    if (rule === 'any' || rule === 'all') activeRule = rule;
+    setModeUI(opts.animateReload ? 'reload' : 'idle');
+    syncComboUI(opts);
+  }
+
+  function setPreset(key, opts = {}) {
+    const [k, m, rule] = key.split('-');
+    setConfig(Number(k), Number(m), rule, opts);
+  }
+
+  function nextExcuse() {
+    activeExcuseIdx = (activeExcuseIdx + 1) % EXCUSES.length;
+    customPhone.refreshTextures();
+    classicPhone.refreshTextures();
+  }
+
+  viewBtns.forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
+
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.mode;
+      const combo = getCombo();
+      if (mode === 'train' && combo.hits === 0) {
+        setConfig(activeRule === 'all' ? activeM : 1, activeM, activeRule);
+      } else if (mode === 'rest' && combo.hits === combo.total) {
+        setConfig(activeRule === 'all' ? 5 : Math.max(0, 6 - activeM), activeM, activeRule);
+      }
+      if (mode === 'explode') setViewUI('side');
+      setModeUI(mode);
+      customPhone.setMode(mode);
+      classicPhone.setMode(mode);
+    });
+  });
+
+  presetBtns.forEach(btn => btn.addEventListener('click', () => setPreset(btn.dataset.preset, { animateReload: true })));
+  kBtns.forEach(btn => btn.addEventListener('click', () => setConfig(Number(btn.dataset.k), activeM, activeRule, { animateReload: true })));
+  mBtns.forEach(btn => btn.addEventListener('click', () => setConfig(activeK, Number(btn.dataset.m), activeRule)));
+  ruleBtns.forEach(btn => btn.addEventListener('click', () => setConfig(activeK, activeM, btn.dataset.rule)));
+  document.getElementById('btn-next-excuse').addEventListener('click', nextExcuse);
+
+  syncComboUI();
+  setModeUI('reload');
+  customPhone.playReload({ fromAim: false });
+  classicPhone.playReload({ fromAim: false });
+
+  window.__revolverDebug = {
+    setView,
+    snap(mode) {
+      const combo = getCombo();
+      if (mode === 'train' && combo.hits === 0) {
+        setConfig(activeRule === 'all' ? activeM : 1, activeM, activeRule);
+      } else if (mode === 'rest' && combo.hits === combo.total) {
+        setConfig(activeRule === 'all' ? 5 : Math.max(0, 6 - activeM), activeM, activeRule);
+      }
+      if (mode === 'explode') setViewUI('side');
+      setModeUI(mode);
+      customPhone.snapMode(mode);
+      classicPhone.snapMode(mode);
+    },
+    snapBlast() {
+      setModeUI('blast');
+      customPhone.snapMode('blast');
+      classicPhone.snapMode('blast');
+    },
+    playReload() {
+      setModeUI('reload');
+      customPhone.playReload({ fromAim: true });
+      classicPhone.playReload({ fromAim: true });
+    },
+    snapReloadMid() {
+      setModeUI('reload');
+      customPhone.snapReloadMid();
+      classicPhone.snapReloadMid();
+    },
+    freeSpin() {
+      customPhone.freeSpin();
+      classicPhone.freeSpin();
+    },
+    setPreset(key) {
+      setPreset(key, { animateReload: false });
+    },
+    setConfig(k, m, rule) {
+      setConfig(k, m, rule, { animateReload: false });
+    },
+    nextExcuse,
+    spinCylinder(rad) {
+      customPhone.spinCylinder(rad);
+      classicPhone.spinCylinder(rad);
+    },
+    pullTrigger(forcedHit = null) {
+      customPhone.pullTrigger(forcedHit);
+      classicPhone.pullTrigger(forcedHit);
+    },
+    getState() {
+      return { custom: customPhone.getState(), classic: classicPhone.getState() };
+    },
+    setFinish(scheme, idx) {
+      if (scheme === 'custom') customPhone.setFinish(idx);
+      else if (scheme === 'classic') classicPhone.setFinish(idx);
+      else {
+        customPhone.setFinish(idx);
+        classicPhone.setFinish(idx);
+      }
+    },
+    orbit(yawDelta, pitchAbs) {
+      setViewUI('side');
+      customPhone.stage.setOrbit(yawDelta, pitchAbs);
+      classicPhone.stage.setOrbit(yawDelta, pitchAbs);
+    },
+    resetView() {
+      customPhone.stage.resetView();
+      classicPhone.stage.resetView();
+    },
+  };
+})();
+</script>
+</body>
+</html>

@@ -10,4 +10,4 @@ captures/
 *.jks
 !debug.keystore
 dist/
-scratch/
+/scratch/

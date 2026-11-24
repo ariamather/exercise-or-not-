@@ -8,6 +8,7 @@ import com.exerciseornot.app.chance.ChancePreferences
 import com.exerciseornot.app.chance.ChanceResult
 import com.exerciseornot.app.chance.ChanceSettings
 import com.exerciseornot.app.chance.RevealPace
+import com.exerciseornot.app.chance.RevolverDraw
 import com.exerciseornot.app.chance.Stop
 import com.exerciseornot.app.chance.draw
 import com.exerciseornot.app.chance.snap
@@ -25,7 +26,7 @@ import java.time.Clock
 import java.time.LocalDate
 import kotlin.random.Random
 
-/** The game in use and the slider stop the user's probability snaps to in that game. */
+/** The game in use and the rule to use for the next draw. */
 data class ChanceSetup(val game: ChanceGame, val target: Double, val stop: Stop)
 
 data class ChanceAnimation(val id: Long, val result: ChanceResult, val pace: RevealPace = RevealPace.TIMED)
@@ -78,7 +79,7 @@ class ChanceViewModel(
                 // Draw exactly once, before any animation; the scene only reveals this value.
                 // Memory and result are read and written around one draw, so they stay in step.
                 val drawn = game.model.draw(stop, random, prefs.memory(game.model.id))
-                val result = ChanceResult(game.id, game.model.id, drawn.outcomeId, drawn.train, LocalDate.now(clock))
+                val result = ChanceResult(game.id, game.model.id, drawn.outcomeId, drawn.train, LocalDate.now(clock), stop.key)
                 prefs.saveResult(result, drawn.memory)
                 if (activeDrawId != id) return@launch
                 if (animated) {
@@ -132,10 +133,11 @@ class ChanceViewModel(
         _drawing.value = false
     }
 
-    /** Saves the slider position. Today's answer is kept: it was decided when drawn. */
+    /** Saves the selected rule. Today's answer was decided when drawn. */
     fun setStop(stop: Stop) {
+        val game = setup.value.game
         viewModelScope.launch {
-            runCatching { prefs.setTarget(stop.chance) }.onFailure { _error.value = "保存设置失败，请重试" }
+            runCatching { prefs.setStop(game, stop) }.onFailure { _error.value = "保存设置失败，请重试" }
         }
     }
 
@@ -149,7 +151,8 @@ class ChanceViewModel(
 
     private fun setupOf(s: ChanceSettings): ChanceSetup {
         val game = ChanceGames.resolve(s.gameId)
-        return ChanceSetup(game, s.target, game.model.snap(s.target))
+        val exact = if (game.model == RevolverDraw) RevolverDraw.stopForTarget(s.revolverStopKey, s.target) else null
+        return ChanceSetup(game, s.target, exact ?: game.model.snap(s.target))
     }
 
     companion object {

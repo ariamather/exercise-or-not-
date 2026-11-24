@@ -1,0 +1,20 @@
+.wheel-stage {
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.wheel-stage.is-dragging { cursor: grabbing; }
+
+.wheel-tip {
+  position: absolute;
+  right: 0;
+  bottom: 6px;
+  left: 0;
+  color: #6e7868;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  pointer-events: none;
+}
+
+.wheel-stage.is-dragging .wheel-tip { opacity: 0.4; }

@@ -14,6 +14,8 @@ import com.exerciseornot.app.data.db.WeightMode
 import com.exerciseornot.app.data.logSets
 import com.exerciseornot.app.chance.ChancePreferences
 import com.exerciseornot.app.chance.ChanceResult
+import com.exerciseornot.app.chance.ChanceSettings
+import com.exerciseornot.app.chance.RevolverDraw
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -122,6 +124,20 @@ class BackupServiceTest {
         dice.setMemories(mapOf("pot12" to "9", "other" to "z"))
         service.restore(service.preview(ByteArrayInputStream(bytes)))
         assertEquals(mapOf("pot12" to "1,2,3"), dice.memories.first())
+    }
+
+    @Test
+    fun exportRestoreAndUndo_keepExactRevolverRulesAtTheSameProbability() = runBlocking {
+        val first = ChanceSettings("revolver", 0.5, RevolverDraw.stopFor(1, 3).key)
+        val second = ChanceSettings("revolver", 0.5, RevolverDraw.stopFor(3, 1).key)
+        dice.setSettings(first)
+        val exported = service.preview(ByteArrayInputStream(exportBytes()))
+
+        dice.setSettings(second)
+        service.restore(exported)
+        assertEquals(first, dice.settings.first())
+        service.undoLastRestore()
+        assertEquals(second, dice.settings.first())
     }
 
     @Test

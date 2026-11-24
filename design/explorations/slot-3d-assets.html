@@ -1,0 +1,3320 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>练不练 · 老虎机三维资产双方案探索</title>
+<style>
+  :root {
+    color-scheme: light;
+    --desk: #e8eae3;
+    --paper: #f6f5f0;
+    --card: #fbfcf7;
+    --ink: #28392f;
+    --ink-2: #536052;
+    --muted: #7d847b;
+    --line: #dce0d4;
+    --soft: #e9eddf;
+    --accent: #365b43;
+    --accent-hover: #294b36;
+    --on-accent: #fafbf5;
+    --rest: #596e80;
+    --focus: #9dac67;
+    --shadow: 0 24px 70px rgba(40, 57, 47, 0.12);
+    font-family: -apple-system, BlinkMacSystemFont, "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--desk); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; border: 0; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  button:disabled { cursor: default; opacity: 0.45; }
+
+  .workspace {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 24px 24px 56px;
+  }
+
+  /* Top control header */
+  .topbar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .topbar-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px 24px;
+  }
+  .topbar-copy .eyebrow {
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    font-weight: 600;
+    color: #7c886b;
+    margin-bottom: 5px;
+  }
+  .topbar-copy h1 {
+    margin: 0;
+    font-size: 25px;
+    font-weight: 600;
+    letter-spacing: -0.6px;
+  }
+  .topbar-copy p {
+    margin: 5px 0 0;
+    font-size: 13px;
+    color: var(--ink-2);
+    line-height: 1.55;
+    max-width: 780px;
+  }
+
+  .controls-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 7px;
+  }
+  .global-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 7px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 15px;
+  }
+  .controls-label {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 0 6px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .divider-v {
+    width: 1px;
+    height: 18px;
+    background: var(--line);
+    margin: 0 4px;
+  }
+  .pill {
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-2);
+    transition: background 0.16s, color 0.16s;
+    white-space: nowrap;
+  }
+  .pill.sm {
+    padding: 5px 9px;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pill.preset {
+    padding: 4px 7px;
+    font-size: 11px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.24;
+    min-width: 52px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pill.preset small {
+    font-size: 9.5px;
+    opacity: 0.72;
+    font-weight: 400;
+  }
+  .pill:hover:not(:disabled) { background: var(--soft); color: var(--ink); }
+  .pill[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+  .pill[aria-pressed="true"] small { opacity: 0.88; }
+
+  .combo-readout {
+    margin-left: auto;
+    padding: 4px 10px;
+    border-radius: 9px;
+    background: var(--soft);
+    color: var(--accent);
+    font-size: 11.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* Two-column phone showcase */
+  .comparison {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 420px));
+    justify-content: center;
+    gap: 24px 32px;
+  }
+  @media (max-width: 860px) {
+    .comparison { grid-template-columns: minmax(0, 420px); }
+    .workspace { padding: 18px 14px 44px; }
+  }
+
+  .scheme-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .scheme-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    padding: 0 6px;
+  }
+  .scheme-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .scheme-title strong { font-size: 15px; font-weight: 600; }
+  .scheme-title span { font-size: 11px; color: var(--muted); }
+
+  .scheme-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .mini-chip {
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .mini-chip:hover { background: var(--soft); }
+  .mini-chip[aria-pressed="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--on-accent);
+  }
+
+  /* Phone frame matching 6-spatial shell.css */
+  .phone {
+    position: relative;
+    width: 100%;
+    background: var(--paper);
+    border-radius: 34px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(40, 57, 47, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 690px;
+  }
+  .gl-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  .phone header {
+    height: 66px;
+    padding: 10px 26px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: none;
+    position: relative;
+    z-index: 2;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .brand-mark {
+    width: 26px;
+    height: 26px;
+    background: var(--accent);
+    color: var(--paper);
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    margin-right: 9px;
+    font: 24px Georgia, serif;
+    line-height: 20px;
+    padding-bottom: 4px;
+    transform: rotate(-8deg);
+  }
+  .brand-dot { color: #8d9a67; margin-left: 2px; }
+  .icon-button {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--ink);
+  }
+  .icon-button:hover { background: var(--soft); }
+  .icon-button svg { width: 22px; height: 22px; }
+  .icon-button circle { fill: var(--paper); }
+
+  .phone main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-bottom: 18px;
+    position: relative;
+    z-index: 2;
+  }
+  .phone h2.hero-q {
+    margin: 10px 30px 0;
+    font-size: 44px;
+    line-height: 1.2;
+    letter-spacing: -2px;
+    font-weight: 550;
+  }
+  .phone h2.hero-q span { color: #8a9a72; font-weight: 350; }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 292px;
+    flex: none;
+    touch-action: none;
+    cursor: grab;
+    z-index: 5;
+  }
+  .stage.is-orbiting { cursor: grabbing; }
+  .stage.is-pulling { cursor: ns-resize; }
+  .stage canvas.shadow-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .stage-hint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 6px;
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    color: #929787;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .stage.is-orbiting .stage-hint { opacity: 0.25; }
+
+  .result-line {
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: 2px 18px 16px;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .result-line.answer { font-size: 24px; font-weight: 550; letter-spacing: 0.5px; }
+  .result-line.rest { color: var(--rest); }
+
+  .actions { padding: 0 30px; }
+  .primary {
+    width: 100%;
+    min-height: 53px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    background: var(--accent);
+    border-radius: 17px;
+    color: var(--on-accent);
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    transition: background 0.16s, transform 0.14s;
+  }
+  .primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .primary:active:not(:disabled) { transform: scale(0.985); }
+  .shortcut {
+    width: 100%;
+    min-height: 44px;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 10px 4px;
+  }
+
+  /* Specs & notes footer */
+  .specs {
+    max-width: 872px;
+    margin: 26px auto 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 28px;
+  }
+  @media (max-width: 720px) {
+    .specs { grid-template-columns: 1fr; padding: 18px; }
+  }
+  .spec-block h3 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .spec-block p, .spec-block li {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.75;
+    color: var(--ink-2);
+  }
+  .spec-block ul {
+    margin: 0;
+    padding-left: 16px;
+  }
+  .spec-block code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+    background: var(--soft);
+    padding: 1px 5px;
+    border-radius: 5px;
+    color: var(--ink);
+  }
+  .spec-stats {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+</head>
+<body>
+<div class="workspace">
+  <header class="topbar">
+    <div class="topbar-head">
+      <div class="topbar-copy">
+        <div class="eyebrow">EXERCISE OR NOT · 3D ASSET EXPLORATION · SLOT MACHINE</div>
+        <h1>老虎机玩法 · 三维资产双方案对比</h1>
+        <p>沿用 <code>6-spatial</code> 桌面质感与工作室金属着光：3 枚独立 6 格机械滚筒（每轮明示 k 格「练」与 6-k 格「歇」），支持直接下拉右侧 3D 拉杆开转、逐轮刹车过冲与第三轮悬念慢停。</p>
+      </div>
+    </div>
+
+    <div class="controls-stack">
+      <!-- Row 1: States & Camera -->
+      <div class="global-controls" role="group" aria-label="状态与视角切换">
+        <span class="controls-label">状态</span>
+        <button class="pill" data-mode="idle" aria-pressed="true">待命静置</button>
+        <button class="pill" data-mode="spin" aria-pressed="false">拉杆转动</button>
+        <button class="pill" data-mode="train" aria-pressed="false">停轮 · 练</button>
+        <button class="pill" data-mode="rest" aria-pressed="false">停轮 · 歇</button>
+        <button class="pill" data-mode="explode" aria-pressed="false">3D 拆解视图</button>
+        <span class="divider-v" aria-hidden="true"></span>
+        <button class="pill" id="btn-closeup" aria-pressed="false">特写</button>
+      </div>
+
+      <!-- Row 2: 13 Exact Rational Presets (0% .. 100%, symmetric around 50%) -->
+      <div class="global-controls" role="group" aria-label="三轮精确有理概率快捷档位">
+        <span class="controls-label">快捷档位</span>
+        <button class="pill preset" data-preset="0-majority" aria-pressed="false">0%<small>0练全歇</small></button>
+        <button class="pill preset" data-preset="1-majority" aria-pressed="false">7%<small>1练多数</small></button>
+        <button class="pill preset" data-preset="3-all" aria-pressed="false">13%<small>3练全练</small></button>
+        <button class="pill preset" data-preset="2-majority" aria-pressed="false">26%<small>2练多数</small></button>
+        <button class="pill preset" data-preset="4-all" aria-pressed="false">30%<small>4练全练</small></button>
+        <button class="pill preset" data-preset="1-any" aria-pressed="false">42%<small>1练任一</small></button>
+        <button class="pill preset" data-preset="3-majority" aria-pressed="true">50%<small>3练多数</small></button>
+        <button class="pill preset" data-preset="5-all" aria-pressed="false">58%<small>5练全练</small></button>
+        <button class="pill preset" data-preset="2-any" aria-pressed="false">70%<small>2练任一</small></button>
+        <button class="pill preset" data-preset="4-majority" aria-pressed="false">74%<small>4练多数</small></button>
+        <button class="pill preset" data-preset="3-any" aria-pressed="false">88%<small>3练任一</small></button>
+        <button class="pill preset" data-preset="5-majority" aria-pressed="false">93%<small>5练多数</small></button>
+        <button class="pill preset" data-preset="6-majority" aria-pressed="false">100%<small>6练必练</small></button>
+      </div>
+
+      <!-- Row 3: Custom k (0..6) x rule builder -->
+      <div class="global-controls" role="group" aria-label="自由配置单轮练格与判定规则">
+        <span class="controls-label">每轮练格</span>
+        <button class="pill sm" data-k="0" aria-pressed="false">0格</button>
+        <button class="pill sm" data-k="1" aria-pressed="false">1格</button>
+        <button class="pill sm" data-k="2" aria-pressed="false">2格</button>
+        <button class="pill sm" data-k="3" aria-pressed="true">3格</button>
+        <button class="pill sm" data-k="4" aria-pressed="false">4格</button>
+        <button class="pill sm" data-k="5" aria-pressed="false">5格</button>
+        <button class="pill sm" data-k="6" aria-pressed="false">6格</button>
+        <span class="divider-v" aria-hidden="true"></span>
+        <span class="controls-label">规则</span>
+        <button class="pill sm" data-rule="majority" aria-pressed="true">多数决 (≥2轮)</button>
+        <button class="pill sm" data-rule="any" aria-pressed="false">任一轮出练</button>
+        <button class="pill sm" data-rule="all" aria-pressed="false">三连全练</button>
+        <span class="combo-readout" id="combo-readout">每轮 3 练 / 6 格 · 多数决(≥2轮) → 108/216 = 50%</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="comparison" aria-label="两套老虎机三维方案实时对比">
+    <!-- Left Phone: Scheme A · Vintage Countertop Lever Slot Machine -->
+    <div class="scheme-col" data-scheme="retro">
+      <div class="scheme-meta">
+        <div class="scheme-title">
+          <strong>方案 A · 复古拉杆三轮桌面老虎机</strong>
+          <span>弧面金属机身 + 曲玻视窗 + 三联黄铜隔环 + 右侧可下拉镀铬拉杆</span>
+        </div>
+        <div class="scheme-tools">
+          <button class="mini-chip" data-finish="0" aria-pressed="true">墨绿珐琅 + 拉丝黄铜</button>
+          <button class="mini-chip" data-finish="1" aria-pressed="false">奶油象牙 + 玫瑰古铜</button>
+          <button class="mini-chip" data-toggle-closeup aria-pressed="false">特写</button>
+          <button class="mini-chip" data-reset-view>复位视角</button>
+        </div>
+      </div>
+
+      <article class="phone" id="phone-retro">
+        <canvas class="gl-overlay" id="gl-retro" aria-hidden="true"></canvas>
+        <header>
+          <div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
+          <button class="icon-button" aria-label="设置训练概率">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg>
+          </button>
+        </header>
+        <main>
+          <h2 class="hero-q">今天，<br>练不练<span>？</span></h2>
+          <div class="stage" id="stage-retro" role="img" aria-label="方案 A 复古拉杆三轮桌面老虎机三维舞台">
+            <canvas class="shadow-canvas" id="shadow-retro" aria-hidden="true"></canvas>
+            <div class="stage-hint" id="hint-retro">下拉右侧球头拉杆开转 · 拖拽其余区域 360° 观察</div>
+          </div>
+          <div class="result-line" id="result-retro">每轮 3 练 / 6 格 · 多数决(≥2轮) · 50%</div>
+          <div class="actions">
+            <button class="primary" id="btn-retro"><span id="btn-label-retro">拉下拉杆</span><span aria-hidden="true">→</span></button>
+            <button class="shortcut">已经决定了，直接记录 ↗</button>
+          </div>
+        </main>
+      </article>
+    </div>
+
+    <!-- Right Phone: Scheme B · Bauhaus Minimalist Triple-Drum Mechanical Object -->
+    <div class="scheme-col" data-scheme="bauhaus">
+      <div class="scheme-meta">
+        <div class="scheme-title">
+          <strong>方案 B · 包豪斯极简三联机械滚筒器</strong>
+          <span>低矮斜切一体壳 + 30° 宽幅机械翻页滚筒 + 顶部按压条与滚花推杆</span>
+        </div>
+        <div class="scheme-tools">
+          <button class="mini-chip" data-finish="0" aria-pressed="true">阳极墨绿铝 + 暖白滚筒</button>
+          <button class="mini-chip" data-finish="1" aria-pressed="false">胡桃木壳 + 哑光钛灰</button>
+          <button class="mini-chip" data-toggle-closeup aria-pressed="false">特写</button>
+          <button class="mini-chip" data-reset-view>复位视角</button>
+        </div>
+      </div>
+
+      <article class="phone" id="phone-bauhaus">
+        <canvas class="gl-overlay" id="gl-bauhaus" aria-hidden="true"></canvas>
+        <header>
+          <div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
+          <button class="icon-button" aria-label="设置训练概率">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg>
+          </button>
+        </header>
+        <main>
+          <h2 class="hero-q">今天，<br>练不练<span>？</span></h2>
+          <div class="stage" id="stage-bauhaus" role="img" aria-label="方案 B 包豪斯极简三联机械滚筒器三维舞台">
+            <canvas class="shadow-canvas" id="shadow-bauhaus" aria-hidden="true"></canvas>
+            <div class="stage-hint" id="hint-bauhaus">下拉右侧滚花推杆开转 · 拖拽其余区域 360° 观察</div>
+          </div>
+          <div class="result-line" id="result-bauhaus">每轮 3 练 / 6 格 · 多数决(≥2轮) · 50%</div>
+          <div class="actions">
+            <button class="primary" id="btn-bauhaus"><span id="btn-label-bauhaus">拉下拉杆</span><span aria-hidden="true">→</span></button>
+            <button class="shortcut">已经决定了，直接记录 ↗</button>
+          </div>
+        </main>
+      </article>
+    </div>
+  </section>
+
+  <section class="specs" aria-label="三维几何与 Kotlin OutcomeModel 集成说明">
+    <div class="spec-block">
+      <h3>三维工艺、贴图方向与拉杆交互</h3>
+      <ul>
+        <li><strong>工作室多材质着光</strong>：按反射向量合成顶棚柔光箱、暗色地平线反射带、米白桌面回光与轮廓光；新增半透明 Fresnel 曲玻视窗与动态指示灯珠，零霓虹刺眼反光。</li>
+        <li><strong>高清 512×2048 滚筒贴图</strong>：每枚 72 段圆筒独立映射 6 格「练（哑铃/能量图标）」与「歇（暖茶/弯月图标）」，严格正向 UV（非镜像、不倒置）并启用 Mipmap 抗锯齿。</li>
+        <li><strong>直接拖拽拉杆 + 悬念逐轮停顿</strong>：按住右侧 3D 球头拉杆（或包豪斯滚花推杆）向下拖拉超过阈值即回弹开转；三轮依次过冲回正，当 1–2 轮形成胜负悬念时，第 3 轮自动延长慢停蓄力。</li>
+      </ul>
+      <div class="spec-stats" id="stats-slot">几何体统计计算中…</div>
+    </div>
+    <div class="spec-block">
+      <h3>Kotlin <code>OutcomeModel</code> 与精确有理概率透明性</h3>
+      <ul>
+        <li><strong>三轮联合模型</strong>：使用 <code>combine(Reel6, Reel6, Reel6)</code> 生成 <code>6³ = 216</code> 个等权结果（id 形如 <code>"0,3,5"</code>），抽签在动画前由 Kotlin 完成并落盘，前端严格按 <code>partsOf(outcomeId)</code> 停在对应格位。</li>
+        <li><strong>三规则精确分母 216</strong>：多数决 <code>k²(18-2k)/216</code>（0%·7%·26%·50%·74%·93%·100%）、任一轮 <code>(216-(6-k)³)/216</code>（42%·70%·88%·96%·99.5%）、三连全练 <code>k³/216</code>（0.5%·4%·13%·30%·58%）。</li>
+        <li><strong>零暗箱承诺</strong>：<code>k=0</code> 时三轮全「歇」绝不出练（0/216），<code>k=6</code> 时三轮全「练」必定出练（216/216）；非极端档位绝不四舍五入冒充 0% 或 100%，完全贴合 <code>prd.md</code> 概率透明原则。</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  window.__errors = [];
+  window.addEventListener('error', e => window.__errors.push(e.message || String(e)));
+  window.addEventListener('unhandledrejection', e => window.__errors.push(String(e.reason)));
+
+  const TAU = Math.PI * 2;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+  const easeInOut = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+  // ---- Vector & Matrix Math ----
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const scale = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+  const normalize = a => {
+    const l = Math.hypot(a[0], a[1], a[2]) || 1;
+    return [a[0] / l, a[1] / l, a[2] / l];
+  };
+
+  function multiply(a, b) {
+    const o = new Float32Array(16);
+    for (let c = 0; c < 4; c++) {
+      for (let r = 0; r < 4; r++) {
+        let s = 0;
+        for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k];
+        o[c * 4 + r] = s;
+      }
+    }
+    return o;
+  }
+
+  function qAxis(axis, angle) {
+    const u = normalize(axis);
+    const s = Math.sin(angle / 2);
+    return [u[0] * s, u[1] * s, u[2] * s, Math.cos(angle / 2)];
+  }
+
+  function qMultiply(a, b) {
+    const ax = a[0], ay = a[1], az = a[2], aw = a[3];
+    const bx = b[0], by = b[1], bz = b[2], bw = b[3];
+    return [
+      aw * bx + ax * bw + ay * bz - az * by,
+      aw * by - ax * bz + ay * bw + az * bx,
+      aw * bz + ax * by - ay * bx + az * bw,
+      aw * bw - ax * bx - ay * by - az * bz,
+    ];
+  }
+
+  function modelMatrix(q, p, s = 1) {
+    const [x, y, z, w] = q;
+    const xx = x * x, yy = y * y, zz = z * z;
+    return new Float32Array([
+      (1 - 2 * (yy + zz)) * s, (2 * (x * y + z * w)) * s, (2 * (x * z - y * w)) * s, 0,
+      (2 * (x * y - z * w)) * s, (1 - 2 * (xx + zz)) * s, (2 * (y * z + x * w)) * s, 0,
+      (2 * (x * z + y * w)) * s, (2 * (y * z - x * w)) * s, (1 - 2 * (xx + yy)) * s, 0,
+      p[0], p[1], p[2], 1,
+    ]);
+  }
+
+  function cameraMatrix(eye, target) {
+    const z = normalize(add(eye, scale(target, -1)));
+    const x = normalize(cross([0, 1, 0], z));
+    const y = cross(z, x);
+    return new Float32Array([
+      x[0], y[0], z[0], 0,
+      x[1], y[1], z[1], 0,
+      x[2], y[2], z[2], 0,
+      -dot(x, eye), -dot(y, eye), -dot(z, eye), 1,
+    ]);
+  }
+
+  function perspective(aspect) {
+    const f = 1 / Math.tan((30 * Math.PI) / 360);
+    const n = 0.1, far = 60;
+    return new Float32Array([
+      f / aspect, 0, 0, 0,
+      0, f, 0, 0,
+      0, 0, (far + n) / (n - far), -1,
+      0, 0, (2 * far * n) / (n - far), 0,
+    ]);
+  }
+
+  // ---- WebGL Studio Shader (PBR-lite Metal + Glass Fresnel + Soft Emissive) ----
+  const VERTEX_SRC = `
+    attribute vec3 aPosition;
+    attribute vec3 aNormal;
+    attribute vec2 aUv;
+    attribute float aFlag;
+    uniform mat4 uModel;
+    uniform mat4 uVP;
+    varying vec3 vNormal;
+    varying vec3 vWorld;
+    varying vec2 vUv;
+    varying float vFlag;
+    void main() {
+      vec4 p = uModel * vec4(aPosition, 1.0);
+      vWorld = p.xyz;
+      vNormal = mat3(uModel) * aNormal;
+      vUv = aUv;
+      vFlag = aFlag;
+      gl_Position = uVP * p;
+    }
+  `;
+
+  const FRAGMENT_SRC = `
+    precision highp float;
+    varying vec3 vNormal;
+    varying vec3 vWorld;
+    varying vec2 vUv;
+    varying float vFlag;
+    uniform vec3 uEye;
+    uniform vec3 uColor;
+    uniform vec3 uAccentColor;
+    uniform vec3 uTrimColor;
+    uniform vec3 uCavityColor;
+    uniform vec3 uMatMeta;
+    uniform vec3 uMatRough;
+    uniform sampler2D uTex;
+    uniform float uTextured;
+    uniform float uGrain;
+    uniform float uAlpha;
+    uniform float uEmissive;
+    void main() {
+      vec3 n = normalize(vNormal);
+      if (!gl_FrontFacing) n = -n;
+      vec3 keyDir = normalize(vec3(-2.6, 6.8, 5.4));
+      vec3 fillDir = normalize(vec3(5.0, 1.4, 2.5));
+      vec3 rimDir = normalize(vec3(-4.0, 4.2, -5.2));
+      vec3 viewDir = normalize(uEye - vWorld);
+      vec3 R = reflect(-viewDir, n);
+
+      float key = max(dot(n, keyDir), 0.0);
+      float fill = max(dot(n, fillDir), 0.0);
+      float rim = max(dot(n, rimDir), 0.0);
+      float ndv = max(dot(n, viewDir), 0.0);
+
+      if (vFlag > 0.5 && vFlag < 1.5) {
+        float depthShade = mix(0.58, 1.0, clamp(vUv.y, 0.0, 1.0));
+        vec3 cav = uCavityColor * (0.26 + key * 0.14 + fill * 0.07) * depthShade;
+        gl_FragColor = vec4(cav, uAlpha);
+        return;
+      }
+
+      vec3 base = uColor;
+      float metal = uMatMeta.x;
+      float rough = uMatRough.x;
+
+      if (vFlag < 0.5 && uTextured > 0.5) {
+        base = texture2D(uTex, vUv).rgb;
+      } else if (vFlag > 1.5 && vFlag < 2.5) {
+        base = uAccentColor;
+        metal = uMatMeta.y;
+        rough = uMatRough.y;
+      } else if (vFlag > 2.5) {
+        base = uTrimColor;
+        metal = uMatMeta.z;
+        rough = uMatRough.z;
+      }
+
+      if (uGrain > 0.5 && vFlag < 0.5 && uTextured < 0.5) {
+        float g = sin(vUv.x * 84.0 + sin(vUv.y * 12.0) * 1.4) * 0.016
+                + sin(vUv.y * 38.0) * 0.008;
+        base *= (1.0 + g);
+      }
+
+      metal = clamp(metal, 0.0, 0.95);
+      rough = clamp(rough, 0.12, 0.92);
+
+      // Analytic studio reflection map
+      float topBox = smoothstep(0.20, 0.84, R.y);
+      float horizonBand = exp(-pow((R.y - 0.03) * 5.0, 2.0));
+      float floorBounce = smoothstep(-0.05, -0.65, R.y);
+      vec3 env = mix(vec3(0.52, 0.54, 0.50), vec3(1.06, 1.04, 1.00), topBox);
+      env = mix(env, vec3(0.14, 0.17, 0.16), horizonBand * 0.84);
+      env = mix(env, vec3(0.80, 0.81, 0.75), floorBounce * 0.74);
+
+      float diffuseScale = mix(1.0, 0.36, metal);
+      vec3 diffuse = base * diffuseScale * (0.50 + key * 0.42 + fill * 0.12);
+
+      vec3 specTint = mix(vec3(1.0), base * 1.22, metal);
+      float fresnel = metal + (1.0 - metal) * pow(1.0 - ndv, 4.0) * 0.55;
+      float envWeight = (0.08 + metal * 0.70) * (1.0 - rough * 0.62) * (0.55 + 0.45 * fresnel);
+
+      vec3 H = normalize(keyDir + viewDir);
+      float ndh = max(dot(n, H), 0.0);
+      float tightSpec = pow(ndh, mix(110.0, 14.0, rough)) * mix(0.66, 0.09, rough);
+      float broadSpec = pow(ndh, mix(18.0, 6.0, rough)) * mix(0.24, 0.06, rough);
+      float rimSpec = pow(rim, 1.8) * pow(1.0 - ndv, 2.2) * (0.12 + metal * 0.34);
+
+      if (uAlpha < 0.99) {
+        // Crystal-clear architectural curved glass visor with subtle corner softbox reflection
+        float gFres = pow(1.0 - ndv, 3.2);
+        float diagSweep = exp(-pow((vUv.x * 0.92 + vUv.y * 0.72 - 1.18) * 6.8, 2.0)) * 0.24;
+        float topEdge = smoothstep(0.76, 1.0, vUv.y) * 0.14;
+        vec3 glassCol = mix(base, vec3(0.99, 0.99, 0.97), 0.78) * (0.88 + 0.30 * topBox)
+                      + vec3(1.0) * (tightSpec * 1.25 + diagSweep + topEdge);
+        float glassA = clamp(uAlpha + gFres * 0.18 + tightSpec * 0.32 + diagSweep * 0.38 + topEdge, 0.025, 0.44);
+        gl_FragColor = vec4(glassCol, glassA);
+        return;
+      }
+
+      vec3 lit = diffuse + env * specTint * envWeight + specTint * (tightSpec + broadSpec + rimSpec);
+      lit += base * uEmissive;
+      gl_FragColor = vec4(lit, 1.0);
+    }
+  `;
+
+  // Studio 3/4 camera tuned for desktop tabletop machines
+  const DEFAULT_EYE = [2.1, 5.4, 9.5];
+  const DEFAULT_TARGET = [0.06, 0.92, 0.02];
+  const BASE_REL = sub(DEFAULT_EYE, DEFAULT_TARGET);
+  const BASE_DIST = Math.hypot(...BASE_REL);
+  const BASE_YAW = Math.atan2(BASE_REL[0], BASE_REL[2]);
+  const BASE_PITCH = Math.asin(BASE_REL[1] / BASE_DIST);
+
+  class Stage3D {
+    constructor(phoneEl, stageEl, glCanvas, shadowCanvas) {
+      this.phoneEl = phoneEl;
+      this.stage = stageEl;
+      this.canvas = glCanvas;
+      this.shadow = shadowCanvas;
+      this.ctx = shadowCanvas.getContext('2d');
+      this.gl = glCanvas.getContext('webgl', { alpha: true, antialias: true, premultipliedAlpha: false });
+      if (!this.gl) throw new Error('WebGL unavailable');
+
+      const gl = this.gl;
+      const compile = (type, src) => {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+        return s;
+      };
+      this.program = gl.createProgram();
+      gl.attachShader(this.program, compile(gl.VERTEX_SHADER, VERTEX_SRC));
+      gl.attachShader(this.program, compile(gl.FRAGMENT_SHADER, FRAGMENT_SRC));
+      gl.linkProgram(this.program);
+      if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(this.program));
+      gl.useProgram(this.program);
+
+      this.attribs = [['aPosition', 3, 0], ['aNormal', 3, 3], ['aUv', 2, 6], ['aFlag', 1, 8]]
+        .map(([name, size, offset]) => {
+          const loc = gl.getAttribLocation(this.program, name);
+          gl.enableVertexAttribArray(loc);
+          return [loc, size, offset];
+        });
+      const uNames = [
+        'uModel', 'uVP', 'uEye', 'uColor', 'uAccentColor', 'uTrimColor', 'uCavityColor',
+        'uMatMeta', 'uMatRough', 'uTex', 'uTextured', 'uGrain', 'uAlpha', 'uEmissive',
+      ];
+      this.uniforms = Object.fromEntries(uNames.map(n => [n, gl.getUniformLocation(this.program, n)]));
+
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.CULL_FACE);
+      gl.clearColor(0, 0, 0, 0);
+
+      this.meshes = [];
+      this.shadows = [];
+      this.tray = { halfX: 2.72, halfZ: 2.22, corner: 0.42 };
+      this.target = DEFAULT_TARGET.slice();
+      this.camYaw = BASE_YAW;
+      this.camPitch = BASE_PITCH;
+      this.camDist = BASE_DIST;
+      this.closeupPreset = { target: [0.02, 1.05, 0.14], yaw: 0.08, pitch: 0.23, dist: 5.85 };
+      this.leverHandler = null;
+      this.updateCamera();
+
+      this.observer = new ResizeObserver(() => this.resize());
+      this.observer.observe(this.phoneEl);
+      this.observer.observe(this.stage);
+      window.addEventListener('resize', () => this.resize(), { passive: true });
+      this.bindInteraction();
+      this.resize();
+    }
+
+    updateCamera() {
+      const cp = Math.cos(this.camPitch);
+      this.eye = [
+        this.target[0] + this.camDist * cp * Math.sin(this.camYaw),
+        this.target[1] + this.camDist * Math.sin(this.camPitch),
+        this.target[2] + this.camDist * cp * Math.cos(this.camYaw),
+      ];
+      this.view = cameraMatrix(this.eye, this.target);
+      if (this.stageW && this.stageH) {
+        this.vp = multiply(perspective(this.stageW / this.stageH), this.view);
+      }
+    }
+
+    resetView() {
+      this.target = DEFAULT_TARGET.slice();
+      this.camYaw = BASE_YAW;
+      this.camPitch = BASE_PITCH;
+      this.camDist = BASE_DIST;
+      this.updateCamera();
+      this.draw();
+    }
+
+    setCloseupView(enabled) {
+      if (enabled) {
+        const p = this.closeupPreset;
+        this.target = p.target.slice();
+        this.camYaw = p.yaw;
+        this.camPitch = p.pitch;
+        this.camDist = p.dist;
+      } else {
+        this.target = DEFAULT_TARGET.slice();
+        this.camYaw = BASE_YAW;
+        this.camPitch = BASE_PITCH;
+        this.camDist = BASE_DIST;
+      }
+      this.updateCamera();
+      this.draw();
+    }
+
+    setOrbit(yawDelta, pitchAbs) {
+      this.camYaw = BASE_YAW + yawDelta;
+      if (pitchAbs != null) this.camPitch = clamp(pitchAbs, 0.08, 1.42);
+      this.updateCamera();
+      this.draw();
+    }
+
+    bindInteraction() {
+      let drag = null;
+      this.stage.addEventListener('pointerdown', e => {
+        if (drag) return;
+        e.preventDefault();
+        this.stage.setPointerCapture(e.pointerId);
+        const rect = this.stage.getBoundingClientRect();
+        const lx = e.clientX - rect.left;
+        const ly = e.clientY - rect.top;
+
+        if (this.leverHandler && this.leverHandler.hitTest(lx, ly)) {
+          drag = { mode: 'lever', id: e.pointerId, startY: e.clientY, lastPull: 0 };
+          this.stage.classList.add('is-pulling');
+          this.leverHandler.onStart();
+        } else {
+          drag = { mode: 'orbit', id: e.pointerId, x: e.clientX, y: e.clientY };
+          this.stage.classList.add('is-orbiting');
+        }
+      });
+
+      this.stage.addEventListener('pointermove', e => {
+        if (!drag || e.pointerId !== drag.id) return;
+        if (drag.mode === 'lever') {
+          const dy = e.clientY - drag.startY;
+          const pull = clamp(dy / 84, 0, 1);
+          drag.lastPull = pull;
+          this.leverHandler.onPull(pull);
+        } else {
+          const dx = e.clientX - drag.x;
+          const dy = e.clientY - drag.y;
+          drag.x = e.clientX;
+          drag.y = e.clientY;
+          this.camYaw -= dx * 0.011;
+          this.camPitch = clamp(this.camPitch + dy * 0.0085, 0.08, 1.42);
+          this.updateCamera();
+          this.draw();
+        }
+      });
+
+      const stop = e => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const finished = drag;
+        drag = null;
+        this.stage.classList.remove('is-orbiting', 'is-pulling');
+        if (finished.mode === 'lever' && this.leverHandler) {
+          this.leverHandler.onRelease(finished.lastPull);
+        }
+      };
+      this.stage.addEventListener('pointerup', stop);
+      this.stage.addEventListener('pointercancel', stop);
+    }
+
+    addMesh(data, opts = {}) {
+      const gl = this.gl;
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+      const mDef = opts.metallic ?? 0.0;
+      const rDef = opts.roughness ?? 0.55;
+      const mesh = {
+        buffer,
+        count: data.length / 9,
+        color: opts.color || [0.3, 0.45, 0.35],
+        accent: opts.accent || [0.78, 0.65, 0.36],
+        trim: opts.trim || [0.46, 0.32, 0.22],
+        cavity: opts.cavity || [0.06, 0.08, 0.07],
+        matMeta: opts.matMeta || [mDef, mDef, mDef],
+        matRough: opts.matRough || [rDef, rDef, rDef],
+        texture: opts.texture || null,
+        grain: opts.grain ? 1 : 0,
+        alpha: opts.alpha ?? 1.0,
+        emissive: opts.emissive ?? 0.0,
+        q: [0, 0, 0, 1],
+        position: [0, 0, 0],
+        scale: opts.scale || 1,
+        visible: opts.visible !== false,
+        doubleSided: !!opts.doubleSided,
+      };
+      this.meshes.push(mesh);
+      return mesh;
+    }
+
+    createTextureFromCanvas(cnv, repeatT = false) {
+      const gl = this.gl;
+      const t = gl.createTexture();
+      this.updateTextureFromCanvas(t, cnv, repeatT);
+      return t;
+    }
+
+    updateTextureFromCanvas(tex, cnv, repeatT = false) {
+      const gl = this.gl;
+      const isPot = n => (n & (n - 1)) === 0;
+      const pot = isPot(cnv.width) && isPot(cnv.height);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cnv);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      if (pot) {
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      } else {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      }
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, (repeatT && pot) ? gl.REPEAT : gl.CLAMP_TO_EDGE);
+    }
+
+    resize() {
+      const sr = this.stage.getBoundingClientRect();
+      const pr = this.phoneEl.getBoundingClientRect();
+      if (sr.width < 1 || sr.height < 1 || pr.width < 1 || pr.height < 1) return;
+      this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      this.stageW = sr.width;
+      this.stageH = sr.height;
+      this.phoneW = pr.width;
+      this.phoneH = pr.height;
+      this.stageOffsetX = sr.left - pr.left;
+      this.stageOffsetY = sr.top - pr.top;
+
+      this.shadow.width = Math.round(sr.width * this.dpr);
+      this.shadow.height = Math.round(sr.height * this.dpr);
+      this.canvas.width = Math.round(pr.width * this.dpr);
+      this.canvas.height = Math.round(pr.height * this.dpr);
+
+      this.vp = multiply(perspective(this.stageW / this.stageH), this.view);
+      this.draw();
+    }
+
+    overlayProjection() {
+      const w = this.phoneW, h = this.phoneH;
+      const sx = this.stageW / w;
+      const sy = this.stageH / h;
+      const tx = (this.stageOffsetX * 2 + this.stageW) / w - 1;
+      const ty = 1 - (this.stageOffsetY * 2 + this.stageH) / h;
+      const remap = new Float32Array([
+        sx, 0, 0, 0,
+        0, sy, 0, 0,
+        0, 0, 1, 0,
+        tx, ty, 0, 1,
+      ]);
+      return multiply(remap, this.vp);
+    }
+
+    project(p) {
+      const m = this.vp;
+      const w = m[3] * p[0] + m[7] * p[1] + m[11] * p[2] + m[15];
+      return [
+        ((m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12]) / w) * (this.stageW / 2) + this.stageW / 2,
+        (-(m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13]) / w + 1) * (this.stageH / 2),
+      ];
+    }
+
+    floorPath(y = 0) {
+      const ctx = this.ctx, rx = this.tray.halfX, rz = this.tray.halfZ, r = this.tray.corner;
+      ctx.beginPath();
+      const corners = [
+        [-rx + r, -rz + r, Math.PI],
+        [rx - r, -rz + r, -Math.PI / 2],
+        [rx - r, rz - r, 0],
+        [-rx + r, rz - r, Math.PI / 2],
+      ];
+      let first = true;
+      for (const [cx, cz, angle] of corners) {
+        for (let i = 0; i <= 8; i++) {
+          const a = angle + (i * Math.PI) / 16;
+          const pt = this.project([cx + r * Math.cos(a), y, cz + r * Math.sin(a)]);
+          if (first) { ctx.moveTo(pt[0], pt[1]); first = false; }
+          else ctx.lineTo(pt[0], pt[1]);
+        }
+      }
+      ctx.closePath();
+    }
+
+    drawBlob(x3, z3, radiusFrac, opacity, air, stretchX = 1, stretchY = 0.44, angleRad = 0) {
+      const ctx = this.ctx;
+      const [sx, sy] = this.project([x3, 0, z3]);
+      const size = this.stageH * radiusFrac * (1 + air * 0.12);
+      ctx.save();
+      ctx.translate(sx + 6 + air * 8, sy + 3 + air * 3);
+      if (angleRad) ctx.rotate(angleRad);
+      ctx.scale(stretchX, stretchY);
+      const g = ctx.createRadialGradient(0, 0, size * 0.12, 0, 0, size);
+      g.addColorStop(0, `rgba(40, 56, 35, ${opacity})`);
+      g.addColorStop(0.45, `rgba(40, 56, 35, ${opacity * 0.52})`);
+      g.addColorStop(1, 'rgba(40, 56, 35, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, size, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    drawFloor() {
+      const ctx = this.ctx;
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      ctx.clearRect(0, 0, this.stageW, this.stageH);
+
+      this.floorPath(-0.065);
+      ctx.fillStyle = '#d7dccd';
+      ctx.fill();
+
+      this.floorPath(0);
+      const surface = ctx.createLinearGradient(0, this.stageH * 0.18, this.stageW, this.stageH * 0.92);
+      surface.addColorStop(0, '#f0f1e8');
+      surface.addColorStop(1, '#e6eadc');
+      ctx.fillStyle = surface;
+      ctx.fill();
+      ctx.strokeStyle = '#dce1d1';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.clip();
+      for (const s of this.shadows) {
+        if (!s.visible) continue;
+        const lift = Math.max(0, s.y);
+        const op = s.opacity / (1 + lift * 1.25);
+        this.drawBlob(s.x, s.z, s.radius, op, lift, s.stretchX || 1, s.stretchY || 0.46, s.angle || 0);
+      }
+      ctx.restore();
+    }
+
+    drawMeshList(list) {
+      const gl = this.gl, u = this.uniforms;
+      for (const m of list) {
+        if (!m.visible) continue;
+        if (m.doubleSided) gl.disable(gl.CULL_FACE);
+        else gl.enable(gl.CULL_FACE);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, m.buffer);
+        for (const [loc, size, offset] of this.attribs) {
+          gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 36, offset * 4);
+        }
+        gl.uniform3fv(u.uColor, m.color);
+        gl.uniform3fv(u.uAccentColor, m.accent);
+        gl.uniform3fv(u.uTrimColor, m.trim);
+        gl.uniform3fv(u.uCavityColor, m.cavity);
+        gl.uniform3fv(u.uMatMeta, m.matMeta);
+        gl.uniform3fv(u.uMatRough, m.matRough);
+        gl.uniform1f(u.uGrain, m.grain);
+        gl.uniform1f(u.uAlpha, m.alpha);
+        gl.uniform1f(u.uEmissive, m.emissive);
+        gl.uniform1f(u.uTextured, m.texture ? 1 : 0);
+        if (m.texture) {
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, m.texture);
+          gl.uniform1i(u.uTex, 0);
+        }
+        gl.uniformMatrix4fv(u.uModel, false, modelMatrix(m.q, m.position, m.scale));
+        gl.drawArrays(gl.TRIANGLES, 0, m.count);
+      }
+    }
+
+    draw() {
+      if (!this.vp) return;
+      const gl = this.gl, u = this.uniforms;
+      gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(this.program);
+      gl.uniformMatrix4fv(u.uVP, false, this.overlayProjection());
+      gl.uniform3fv(u.uEye, this.eye);
+
+      const opaque = [];
+      const translucent = [];
+      for (const m of this.meshes) {
+        if (m.alpha < 0.99) translucent.push(m);
+        else opaque.push(m);
+      }
+
+      gl.disable(gl.BLEND);
+      gl.depthMask(true);
+      this.drawMeshList(opaque);
+
+      if (translucent.length) {
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.depthMask(false);
+        this.drawMeshList(translucent);
+        gl.depthMask(true);
+        gl.disable(gl.BLEND);
+      }
+      this.drawFloor();
+    }
+  }
+
+  // ---- Geometry Builders (Outward CCW enforced) ----
+  function pushTri(out, p0, p1, p2, n, uv0, uv1, uv2, flag = 0) {
+    const cr = cross(sub(p1, p0), sub(p2, p0));
+    if (dot(cr, n) < 0) {
+      out.push(
+        p0[0], p0[1], p0[2], n[0], n[1], n[2], uv0[0], uv0[1], flag,
+        p2[0], p2[1], p2[2], n[0], n[1], n[2], uv2[0], uv2[1], flag,
+        p1[0], p1[1], p1[2], n[0], n[1], n[2], uv1[0], uv1[1], flag
+      );
+    } else {
+      out.push(
+        p0[0], p0[1], p0[2], n[0], n[1], n[2], uv0[0], uv0[1], flag,
+        p1[0], p1[1], p1[2], n[0], n[1], n[2], uv1[0], uv1[1], flag,
+        p2[0], p2[1], p2[2], n[0], n[1], n[2], uv2[0], uv2[1], flag
+      );
+    }
+  }
+
+  function pushTriSmooth(out, p0, p1, p2, n0, n1, n2, uv0, uv1, uv2, f0, f1, f2) {
+    const avgN = add(add(n0, n1), n2);
+    const cr = cross(sub(p1, p0), sub(p2, p0));
+    if (dot(cr, avgN) < 0) {
+      out.push(
+        p0[0], p0[1], p0[2], n0[0], n0[1], n0[2], uv0[0], uv0[1], f0,
+        p2[0], p2[1], p2[2], n2[0], n2[1], n2[2], uv2[0], uv2[1], f2,
+        p1[0], p1[1], p1[2], n1[0], n1[1], n1[2], uv1[0], uv1[1], f1
+      );
+    } else {
+      out.push(
+        p0[0], p0[1], p0[2], n0[0], n0[1], n0[2], uv0[0], uv0[1], f0,
+        p1[0], p1[1], p1[2], n1[0], n1[1], n1[2], uv1[0], uv1[1], f1,
+        p2[0], p2[1], p2[2], n2[0], n2[1], n2[2], uv2[0], uv2[1], f2
+      );
+    }
+  }
+
+  function pushQuad(out, p0, p1, p2, p3, n, uv0, uv1, uv2, uv3, flag = 0) {
+    pushTri(out, p0, p1, p2, n, uv0, uv1, uv2, flag);
+    pushTri(out, p0, p2, p3, n, uv0, uv2, uv3, flag);
+  }
+
+  function pushQuadSmooth(out, p0, p1, p2, p3, n0, n1, n2, n3, uv0, uv1, uv2, uv3, f0, f1, f2, f3) {
+    pushTriSmooth(out, p0, p1, p2, n0, n1, n2, uv0, uv1, uv2, f0, f1, f2);
+    pushTriSmooth(out, p0, p2, p3, n0, n2, n3, uv0, uv2, uv3, f0, f2, f3);
+  }
+
+  function appendBeveledBox(out, x0, x1, y0, y1, z0, z1, bevel = 0.02, flag = 0) {
+    const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+    const b = Math.min(bevel, dx * 0.28, dy * 0.28, dz * 0.28);
+    const uvXY = p => [clamp((p[0] + 1.5) / 3.0, 0, 1), clamp(p[1] / 2.2, 0, 1)];
+    const uvZY = p => [clamp((p[2] + 1.2) / 2.4, 0, 1), clamp(p[1] / 2.2, 0, 1)];
+    const uvXZ = p => [clamp((p[0] + 1.5) / 3.0, 0, 1), clamp((p[2] + 1.2) / 2.4, 0, 1)];
+    const pq = (a, bp, c, d, n, uvFn) => pushQuad(out, a, bp, c, d, n, uvFn(a), uvFn(bp), uvFn(c), uvFn(d), flag);
+
+    if (b <= 1e-5) {
+      pq([x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [0, 0, 1], uvXY);
+      pq([x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [0, 0, -1], uvXY);
+      pq([x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [1, 0, 0], uvZY);
+      pq([x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [-1, 0, 0], uvZY);
+      pq([x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0], [0, 1, 0], uvXZ);
+      pq([x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, -1, 0], uvXZ);
+      return;
+    }
+    const xi0 = x0 + b, xi1 = x1 - b, yi0 = y0 + b, yi1 = y1 - b, zi0 = z0 + b, zi1 = z1 - b;
+    pq([xi0, yi0, z1], [xi1, yi0, z1], [xi1, yi1, z1], [xi0, yi1, z1], [0, 0, 1], uvXY);
+    pq([xi1, yi0, z0], [xi0, yi0, z0], [xi0, yi1, z0], [xi1, yi1, z0], [0, 0, -1], uvXY);
+    pq([x1, yi0, zi1], [x1, yi0, zi0], [x1, yi1, zi0], [x1, yi1, zi1], [1, 0, 0], uvZY);
+    pq([x0, yi0, zi0], [x0, yi0, zi1], [x0, yi1, zi1], [x0, yi1, zi0], [-1, 0, 0], uvZY);
+    pq([xi0, y1, zi1], [xi1, y1, zi1], [xi1, y1, zi0], [xi0, y1, zi0], [0, 1, 0], uvXZ);
+    pq([xi0, y0, zi0], [xi1, y0, zi0], [xi1, y0, zi1], [xi0, y0, zi1], [0, -1, 0], uvXZ);
+
+    const s2 = Math.SQRT1_2;
+    pq([xi1, yi1, z1], [x1, yi1, zi1], [x1, yi0, zi1], [xi1, yi0, z1], [s2, 0, s2], uvXY);
+    pq([x0, yi1, zi1], [xi0, yi1, z1], [xi0, yi0, z1], [x0, yi0, zi1], [-s2, 0, s2], uvXY);
+    pq([x1, yi1, zi0], [xi1, yi1, z0], [xi1, yi0, z0], [x1, yi0, zi0], [s2, 0, -s2], uvXY);
+    pq([xi0, yi1, z0], [x0, yi1, zi0], [x0, yi0, zi0], [xi0, yi0, z0], [-s2, 0, -s2], uvXY);
+    pq([xi0, yi1, z1], [xi1, yi1, z1], [xi1, y1, zi1], [xi0, y1, zi1], [0, s2, s2], uvXY);
+    pq([xi0, y0, zi1], [xi1, y0, zi1], [xi1, yi0, z1], [xi0, yi0, z1], [0, -s2, s2], uvXY);
+    pq([xi1, yi1, z0], [xi0, yi1, z0], [xi0, y1, zi0], [xi1, y1, zi0], [0, s2, -s2], uvXY);
+    pq([xi1, y0, zi0], [xi0, y0, zi0], [xi0, yi0, z0], [xi1, yi0, z0], [0, -s2, -s2], uvXY);
+    pq([xi1, y1, zi1], [x1, yi1, zi1], [x1, yi1, zi0], [xi1, y1, zi0], [s2, s2, 0], uvXZ);
+    pq([x0, yi1, zi1], [xi0, y1, zi1], [xi0, y1, zi0], [x0, yi1, zi0], [-s2, s2, 0], uvXZ);
+    pq([x1, yi0, zi1], [xi1, y0, zi1], [xi1, y0, zi0], [x1, yi0, zi0], [s2, -s2, 0], uvXZ);
+    pq([xi0, y0, zi1], [x0, yi0, zi1], [x0, yi0, zi0], [xi0, y0, zi0], [-s2, -s2, 0], uvXZ);
+
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+          const px = sx > 0 ? [x1, xi1] : [x0, xi0];
+          const py = sy > 0 ? [y1, yi1] : [y0, yi0];
+          const pz = sz > 0 ? [z1, zi1] : [z0, zi0];
+          const a = [px[0], py[1], pz[1]], bp = [px[1], py[0], pz[1]], c = [px[1], py[1], pz[0]];
+          pushTri(out, a, bp, c, normalize([sx, sy, sz]), uvXY(a), uvXY(bp), uvXY(c), flag);
+        }
+      }
+    }
+  }
+
+  function signedArea2D(pts) {
+    let s = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      s += a[0] * b[1] - b[0] * a[1];
+    }
+    return s * 0.5;
+  }
+
+  function pointInTri2D(p, a, b, c) {
+    const c1 = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+    const c2 = (c[0] - b[0]) * (p[1] - b[1]) - (c[1] - b[1]) * (p[0] - b[0]);
+    const c3 = (a[0] - c[0]) * (p[1] - c[1]) - (a[1] - c[1]) * (p[0] - c[0]);
+    return c1 >= -1e-6 && c2 >= -1e-6 && c3 >= -1e-6;
+  }
+
+  function triangulateCCW(poly) {
+    const idx = poly.map((_, i) => i);
+    const tris = [];
+    let guard = 0;
+    while (idx.length > 3 && guard++ < poly.length * poly.length) {
+      let clipped = false;
+      for (let i = 0; i < idx.length; i++) {
+        const ia = idx[(i + idx.length - 1) % idx.length];
+        const ib = idx[i];
+        const ic = idx[(i + 1) % idx.length];
+        const a = poly[ia], b = poly[ib], c = poly[ic];
+        if ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) <= 1e-6) continue;
+        let hasInside = false;
+        for (let k = 0; k < idx.length; k++) {
+          const id = idx[k];
+          if (id === ia || id === ib || id === ic) continue;
+          if (pointInTri2D(poly[id], a, b, c)) { hasInside = true; break; }
+        }
+        if (!hasInside) {
+          tris.push([ia, ib, ic]);
+          idx.splice(i, 1);
+          clipped = true;
+          break;
+        }
+      }
+      if (!clipped) break;
+    }
+    if (idx.length === 3) tris.push([idx[0], idx[1], idx[2]]);
+    return tris;
+  }
+
+  function insetPoly2D(poly, d) {
+    const N = poly.length;
+    return poly.map((_, i) => {
+      const pPrev = poly[(i + N - 1) % N], pCurr = poly[i], pNext = poly[(i + 1) % N];
+      const e1 = normalize([pCurr[0] - pPrev[0], pCurr[1] - pPrev[1], 0]);
+      const e2 = normalize([pNext[0] - pCurr[0], pNext[1] - pCurr[1], 0]);
+      const nIn1 = [-e1[1], e1[0]];
+      const nIn2 = [-e2[1], e2[0]];
+      const bx = nIn1[0] + nIn2[0], by = nIn1[1] + nIn2[1];
+      const bl = Math.hypot(bx, by) || 1;
+      return [pCurr[0] + (bx / bl) * d, pCurr[1] + (by / bl) * d];
+    });
+  }
+
+  /** Extrudes a 2D (z, y) profile along X from x0..x1 with crisp side bevels. */
+  function appendExtrudedX(out, rawPolyZY, x0, x1, bevel = 0.024, flag = 0) {
+    const poly = signedArea2D(rawPolyZY) >= 0 ? rawPolyZY.slice() : rawPolyZY.slice().reverse();
+    const N = poly.length;
+    const b = Math.min(bevel, (x1 - x0) * 0.36);
+    const xR = x1, xRB = x1 - b, xLB = x0 + b, xL = x0;
+    const inner = insetPoly2D(poly, Math.min(b * 0.78, 0.032));
+    const tris = triangulateCCW(inner);
+    const uvCap = pt => [clamp((pt[0] + 1.2) / 2.4, 0, 1), clamp(pt[1] / 2.4, 0, 1)];
+    const uvSide = (x, pt) => [clamp((x + 1.5) / 3.0, 0, 1), clamp((pt[0] + pt[1] + 1.2) / 3.6, 0, 1)];
+
+    for (const [ia, ib, ic] of tris) {
+      const a = inner[ia], bp = inner[ib], c = inner[ic];
+      pushTri(out, [xR, a[1], a[0]], [xR, bp[1], bp[0]], [xR, c[1], c[0]], [1, 0, 0], uvCap(a), uvCap(bp), uvCap(c), flag);
+      pushTri(out, [xL, c[1], c[0]], [xL, bp[1], bp[0]], [xL, a[1], a[0]], [-1, 0, 0], uvCap(c), uvCap(bp), uvCap(a), flag);
+    }
+
+    for (let i = 0; i < N; i++) {
+      const j = (i + 1) % N;
+      const o0 = poly[i], o1 = poly[j];
+      const i0 = inner[i], i1 = inner[j];
+      const dz = o1[0] - o0[0], dy = o1[1] - o0[1];
+      const ns = normalize([0, -dz, dy]);
+      const nr = normalize([0.70, ns[1] * 0.71, ns[2] * 0.71]);
+      const nl = normalize([-0.70, ns[1] * 0.71, ns[2] * 0.71]);
+
+      pushQuad(out, [xRB, o0[1], o0[0]], [xRB, o1[1], o1[0]], [xR, i1[1], i1[0]], [xR, i0[1], i0[0]], nr,
+        uvSide(xRB, o0), uvSide(xRB, o1), uvSide(xR, i1), uvSide(xR, i0), flag);
+      pushQuad(out, [xLB, o0[1], o0[0]], [xLB, o1[1], o1[0]], [xRB, o1[1], o1[0]], [xRB, o0[1], o0[0]], ns,
+        uvSide(xLB, o0), uvSide(xLB, o1), uvSide(xRB, o1), uvSide(xRB, o0), flag);
+      pushQuad(out, [xL, i0[1], i0[0]], [xL, i1[1], i1[0]], [xLB, o1[1], o1[0]], [xLB, o0[1], o0[0]], nl,
+        uvSide(xL, i0), uvSide(xL, i1), uvSide(xLB, o1), uvSide(xLB, o0), flag);
+    }
+  }
+
+  /** Extrudes a 2D (x, y) profile along Z from z0..z1 with bevels. */
+  function appendExtrudedXY(out, rawPolyXY, z0, z1, bevel = 0.02, flag = 0) {
+    const poly = signedArea2D(rawPolyXY) >= 0 ? rawPolyXY.slice() : rawPolyXY.slice().reverse();
+    const N = poly.length;
+    const b = Math.min(bevel, (z1 - z0) * 0.36);
+    const zF = z1, zFB = z1 - b, zBB = z0 + b, zB = z0;
+    const inner = insetPoly2D(poly, Math.min(b * 0.75, 0.028));
+    const tris = triangulateCCW(inner);
+    const uvXY = pt => [clamp((pt[0] + 1.2) / 2.4, 0, 1), clamp(pt[1] / 2.4, 0, 1)];
+
+    for (const [ia, ib, ic] of tris) {
+      const a = inner[ia], bp = inner[ib], c = inner[ic];
+      pushTri(out, [a[0], a[1], zF], [bp[0], bp[1], zF], [c[0], c[1], zF], [0, 0, 1], uvXY(a), uvXY(bp), uvXY(c), flag);
+      pushTri(out, [c[0], c[1], zB], [bp[0], bp[1], zB], [a[0], a[1], zB], [0, 0, -1], uvXY(c), uvXY(bp), uvXY(a), flag);
+    }
+
+    for (let i = 0; i < N; i++) {
+      const j = (i + 1) % N;
+      const o0 = poly[i], o1 = poly[j];
+      const i0 = inner[i], i1 = inner[j];
+      const ex = o1[0] - o0[0], ey = o1[1] - o0[1];
+      const ns = normalize([ey, -ex, 0]);
+      const nf = normalize([ns[0] * 0.70, ns[1] * 0.70, 0.71]);
+      const nb = normalize([ns[0] * 0.70, ns[1] * 0.70, -0.71]);
+
+      pushQuad(out, [o0[0], o0[1], zFB], [o1[0], o1[1], zFB], [i1[0], i1[1], zF], [i0[0], i0[1], zF], nf, [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [o0[0], o0[1], zBB], [o1[0], o1[1], zBB], [o1[0], o1[1], zFB], [o0[0], o0[1], zFB], ns, [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [i0[0], i0[1], zB], [i1[0], i1[1], zB], [o1[0], o1[1], zBB], [o0[0], o0[1], zBB], nb, [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    }
+  }
+
+  /** Lathe along X axis: rings are { x, r, flag, sharp? }. */
+  function appendLatheX(out, rings, segs, offset = [0, 0, 0]) {
+    const runs = [];
+    let cur = [rings[0]];
+    for (let i = 1; i < rings.length; i++) {
+      cur.push(rings[i]);
+      if (rings[i].sharp && i < rings.length - 1) {
+        runs.push(cur);
+        cur = [rings[i]];
+      }
+    }
+    runs.push(cur);
+
+    for (const prof of runs) {
+      const segNorms = [];
+      for (let i = 0; i < prof.length - 1; i++) {
+        const dx = prof[i + 1].x - prof[i].x;
+        const dr = prof[i + 1].r - prof[i].r;
+        const l = Math.hypot(dx, dr) || 1;
+        segNorms.push([-dr / l, dx / l]);
+      }
+      const pNorms = prof.map((_, i) => {
+        const a = segNorms[Math.max(0, i - 1)];
+        const b = segNorms[Math.min(segNorms.length - 1, i)];
+        const nx = a[0] + b[0], nr = a[1] + b[1];
+        const l = Math.hypot(nx, nr) || 1;
+        return [nx / l, nr / l];
+      });
+      const vert = (j, s) => {
+        const t = (s / segs) * TAU;
+        const rr = prof[j].r;
+        const ny = Math.cos(t), nz = Math.sin(t);
+        const [nx, nr] = pNorms[j];
+        return {
+          p: [prof[j].x + offset[0], rr * ny + offset[1], rr * nz + offset[2]],
+          n: normalize([nx, nr * ny, nr * nz]),
+          uv: [s / segs, (prof[j].x + 1) * 0.5],
+          f: prof[j].flag,
+        };
+      };
+      for (let s = 0; s < segs; s++) {
+        for (let j = 0; j < prof.length - 1; j++) {
+          const a = vert(j, s), b = vert(j, s + 1), c = vert(j + 1, s + 1), d = vert(j + 1, s);
+          if (prof[j].r > 1e-4 || prof[j + 1].r > 1e-4) {
+            pushQuadSmooth(out, a.p, b.p, c.p, d.p, a.n, b.n, c.n, d.n, a.uv, b.uv, c.uv, d.uv, a.f, b.f, c.f, d.f);
+          }
+        }
+      }
+    }
+  }
+
+  /** Lathe along Y axis: rings are { y, r, flag, sharp? }. */
+  function appendLatheY(out, rings, segs, offset = [0, 0, 0]) {
+    const runs = [];
+    let cur = [rings[0]];
+    for (let i = 1; i < rings.length; i++) {
+      cur.push(rings[i]);
+      if (rings[i].sharp && i < rings.length - 1) {
+        runs.push(cur);
+        cur = [rings[i]];
+      }
+    }
+    runs.push(cur);
+
+    for (const prof of runs) {
+      const segNorms = [];
+      for (let i = 0; i < prof.length - 1; i++) {
+        const dy = prof[i + 1].y - prof[i].y;
+        const dr = prof[i + 1].r - prof[i].r;
+        const l = Math.hypot(dy, dr) || 1;
+        segNorms.push([-dr / l, dy / l]);
+      }
+      const pNorms = prof.map((_, i) => {
+        const a = segNorms[Math.max(0, i - 1)];
+        const b = segNorms[Math.min(segNorms.length - 1, i)];
+        const ny = a[0] + b[0], nr = a[1] + b[1];
+        const l = Math.hypot(ny, nr) || 1;
+        return [ny / l, nr / l];
+      });
+      const vert = (j, s) => {
+        const t = (s / segs) * TAU;
+        const rr = prof[j].r;
+        const nx = Math.cos(t), nz = Math.sin(t);
+        const [ny, nr] = pNorms[j];
+        return {
+          p: [rr * nx + offset[0], prof[j].y + offset[1], rr * nz + offset[2]],
+          n: normalize([nr * nx, ny, nr * nz]),
+          uv: [s / segs, (prof[j].y + 1) * 0.5],
+          f: prof[j].flag,
+        };
+      };
+      for (let s = 0; s < segs; s++) {
+        for (let j = 0; j < prof.length - 1; j++) {
+          const a = vert(j, s), b = vert(j, s + 1), c = vert(j + 1, s + 1), d = vert(j + 1, s);
+          if (prof[j].r > 1e-4 || prof[j + 1].r > 1e-4) {
+            pushQuadSmooth(out, a.p, b.p, c.p, d.p, a.n, b.n, c.n, d.n, a.uv, b.uv, c.uv, d.uv, a.f, b.f, c.f, d.f);
+          }
+        }
+      }
+    }
+  }
+
+  /** Sweeps a smooth circular tube along a 3D spine using parallel transport frames. */
+  function appendTube3D(out, spine, radii, segs = 18, flag = 2) {
+    const S = spine.length;
+    const tangents = [];
+    for (let i = 0; i < S; i++) {
+      const prev = spine[Math.max(0, i - 1)];
+      const next = spine[Math.min(S - 1, i + 1)];
+      tangents.push(normalize(sub(next, prev)));
+    }
+    let up = Math.abs(tangents[0][1]) < 0.85 ? [0, 1, 0] : [0, 0, 1];
+    let normal = normalize(cross(tangents[0], up));
+    let binormal = cross(tangents[0], normal);
+
+    const rings = [];
+    for (let i = 0; i < S; i++) {
+      if (i > 0) {
+        const t = tangents[i];
+        const proj = sub(normal, scale(t, dot(normal, t)));
+        if (Math.hypot(...proj) > 1e-4) normal = normalize(proj);
+        binormal = normalize(cross(t, normal));
+      }
+      const r = Array.isArray(radii) ? radii[i] : radii;
+      const ring = [];
+      for (let j = 0; j < segs; j++) {
+        const a = (j / segs) * TAU;
+        const dir = add(scale(normal, Math.cos(a)), scale(binormal, Math.sin(a)));
+        ring.push({
+          p: add(spine[i], scale(dir, r)),
+          n: normalize(dir),
+          uv: [j / segs, i / Math.max(1, S - 1)],
+        });
+      }
+      rings.push(ring);
+    }
+
+    for (let i = 0; i < S - 1; i++) {
+      const r0 = rings[i], r1 = rings[i + 1];
+      for (let j = 0; j < segs; j++) {
+        const jn = (j + 1) % segs;
+        const a = r0[j], b = r0[jn], c = r1[jn], d = r1[j];
+        pushQuadSmooth(out, a.p, b.p, c.p, d.p, a.n, b.n, c.n, d.n, a.uv, b.uv, c.uv, d.uv, flag, flag, flag, flag);
+      }
+    }
+    const t0 = scale(tangents[0], -1), t1 = tangents[S - 1];
+    for (let j = 0; j < segs; j++) {
+      const jn = (j + 1) % segs;
+      pushTri(out, spine[0], rings[0][j].p, rings[0][jn].p, t0, [0.5, 0.5], [0, 0], [1, 0], flag);
+      pushTri(out, spine[S - 1], rings[S - 1][j].p, rings[S - 1][jn].p, t1, [0.5, 0.5], [0, 0], [1, 0], flag);
+    }
+  }
+
+  /** Helper: curved cylindrical arc plate/ring around an X-parallel axis at (0, cy, cz). */
+  function appendArcRibbon(out, x0, x1, cy, cz, rIn, rOut, phi0, phi1, segs, flag = 2) {
+    for (let i = 0; i < segs; i++) {
+      const a0 = lerp(phi0, phi1, i / segs);
+      const a1 = lerp(phi0, phi1, (i + 1) / segs);
+      const s0 = Math.sin(a0), c0 = Math.cos(a0);
+      const s1 = Math.sin(a1), c1 = Math.cos(a1);
+      const oL0 = [x0, cy + rOut * s0, cz + rOut * c0], oR0 = [x1, cy + rOut * s0, cz + rOut * c0];
+      const oL1 = [x0, cy + rOut * s1, cz + rOut * c1], oR1 = [x1, cy + rOut * s1, cz + rOut * c1];
+      const iL0 = [x0, cy + rIn * s0, cz + rIn * c0], iR0 = [x1, cy + rIn * s0, cz + rIn * c0];
+      const iL1 = [x0, cy + rIn * s1, cz + rIn * c1], iR1 = [x1, cy + rIn * s1, cz + rIn * c1];
+      const n0 = [0, s0, c0], n1 = [0, s1, c1];
+      const ni0 = [0, -s0, -c0], ni1 = [0, -s1, -c1];
+      // Outer & inner arc surfaces
+      pushQuadSmooth(out, oL0, oR0, oR1, oL1, n0, n0, n1, n1, [0, 0], [1, 0], [1, 1], [0, 1], flag, flag, flag, flag);
+      pushQuadSmooth(out, iL1, iR1, iR0, iL0, ni1, ni1, ni0, ni0, [0, 0], [1, 0], [1, 1], [0, 1], flag, flag, flag, flag);
+      // Left & right side walls
+      pushQuad(out, oL0, oL1, iL1, iL0, [-1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, oR1, oR0, iR0, iR1, [1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    }
+    // End caps at phi0 and phi1
+    const cap = (phi, dir) => {
+      const s = Math.sin(phi), c = Math.cos(phi);
+      const n = [0, dir * c, -dir * s];
+      pushQuad(out,
+        [x0, cy + rIn * s, cz + rIn * c], [x1, cy + rIn * s, cz + rIn * c],
+        [x1, cy + rOut * s, cz + rOut * c], [x0, cy + rOut * s, cz + rOut * c],
+        n, [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    };
+    cap(phi0, -1);
+    cap(phi1, 1);
+  }
+
+  /**
+   * Builds a precision 72-segment cylindrical slot drum centered at (0,0,0) along X.
+   * UV mapping verified:
+   *  - u = 0 at -halfW (left), u = 1 at +halfW (right)  => NOT mirrored
+   *  - v = phi / TAU increases with +phi (+Y on +Z front) => 100% upright with UNPACK_FLIP_Y_WEBGL=true
+   */
+  function buildReelDrumGeo(R, halfW, segs = 72) {
+    const out = [];
+    const rimW = 0.022;
+    const stripW = halfW - rimW;
+
+    // Textured central strip (flag = 0)
+    for (let s = 0; s < segs; s++) {
+      const v0 = s / segs, v1 = (s + 1) / segs;
+      const a0 = v0 * TAU, a1 = v1 * TAU;
+      const y0 = R * Math.sin(a0), z0 = R * Math.cos(a0);
+      const y1 = R * Math.sin(a1), z1 = R * Math.cos(a1);
+      const n0 = [0, Math.sin(a0), Math.cos(a0)];
+      const n1 = [0, Math.sin(a1), Math.cos(a1)];
+      pushQuadSmooth(
+        out,
+        [-stripW, y0, z0], [stripW, y0, z0], [stripW, y1, z1], [-stripW, y1, z1],
+        n0, n0, n1, n1,
+        [0, v0], [1, v0], [1, v1], [0, v1],
+        0, 0, 0, 0
+      );
+    }
+
+    // Machined metallic end collars + solid end caps + center bore boss (flag = 2)
+    for (const side of [-1, 1]) {
+      const xIn = side * stripW;
+      const xOut = side * halfW;
+      const rings = side > 0
+        ? [
+            { x: xIn, r: R, flag: 2, sharp: true },
+            { x: xOut - 0.008, r: R + 0.004, flag: 2 },
+            { x: xOut, r: R - 0.012, flag: 2, sharp: true },
+            { x: xOut, r: 0.14, flag: 2, sharp: true },
+            { x: xOut + 0.028, r: 0.12, flag: 2, sharp: true },
+            { x: xOut + 0.028, r: 0.001, flag: 2 },
+          ]
+        : [
+            { x: xOut - 0.028, r: 0.001, flag: 2 },
+            { x: xOut - 0.028, r: 0.12, flag: 2, sharp: true },
+            { x: xOut, r: 0.14, flag: 2, sharp: true },
+            { x: xOut, r: R - 0.012, flag: 2, sharp: true },
+            { x: xOut + 0.008, r: R + 0.004, flag: 2 },
+            { x: xIn, r: R, flag: 2, sharp: true },
+          ];
+      appendLatheX(out, rings, 48);
+    }
+
+    return new Float32Array(out);
+  }
+
+  function buildJewelGeo(r = 0.068) {
+    const out = [];
+    const rings = [];
+    const steps = 10;
+    rings.push({ y: -0.02, r: 0.001, flag: 2 });
+    rings.push({ y: -0.02, r: r * 1.18, flag: 2, sharp: true });
+    rings.push({ y: 0.018, r: r * 1.18, flag: 2, sharp: true });
+    rings.push({ y: 0.024, r: r * 0.96, flag: 0, sharp: true });
+    for (let i = 1; i <= steps; i++) {
+      const a = (i / steps) * (Math.PI * 0.5);
+      rings.push({ y: 0.024 + Math.sin(a) * r * 0.62, r: Math.max(0.001, Math.cos(a) * r * 0.96), flag: 0 });
+    }
+    appendLatheY(out, rings, 24);
+    return new Float32Array(out);
+  }
+
+  // ---- Scheme A (Retro Lever Desktop Slot Machine) Geometries ----
+  const RETRO_REEL_Y = 1.16;
+  const RETRO_REEL_Z = 0.12;
+  const RETRO_REEL_R = 0.50;
+  const RETRO_REEL_XS = [-0.56, 0.0, 0.56];
+  const RETRO_PHI_VIEW = 0.16; // slightly angled upward for natural tabletop viewing
+  const RETRO_LEVER_PIVOT = [1.14, 0.88, 0.10];
+
+  function buildRetroBaseGeo() {
+    const out = [];
+    // Stepped cast-metal plinth sitting cleanly on y = 0
+    appendBeveledBox(out, -1.16, 1.16, 0.0, 0.12, -0.88, 0.92, 0.032, 0);
+    // Brass perimeter plinth accent molding
+    appendBeveledBox(out, -1.10, 1.10, 0.10, 0.165, -0.82, 0.86, 0.018, 2);
+    // Forward coin tray dish extending to z = 1.16
+    appendBeveledBox(out, -0.84, 0.84, 0.02, 0.15, 0.66, 1.16, 0.030, 0);
+    // Coin tray raised brass lip (front + left + right)
+    appendBeveledBox(out, -0.82, 0.82, 0.12, 0.25, 1.07, 1.17, 0.024, 2);
+    appendBeveledBox(out, -0.84, -0.74, 0.12, 0.27, 0.68, 1.15, 0.020, 2);
+    appendBeveledBox(out, 0.74, 0.84, 0.12, 0.27, 0.68, 1.15, 0.020, 2);
+    // Dark recessed coin tray floor well
+    appendBeveledBox(out, -0.75, 0.75, 0.12, 0.16, 0.68, 1.08, 0.008, 1);
+    // 3 miniature turned brass tokens resting inside the coin tray
+    const tokenRings = [
+      { y: 0.0, r: 0.001, flag: 2 },
+      { y: 0.0, r: 0.105, flag: 2, sharp: true },
+      { y: 0.026, r: 0.105, flag: 2, sharp: true },
+      { y: 0.032, r: 0.088, flag: 2 },
+      { y: 0.032, r: 0.001, flag: 2 },
+    ];
+    appendLatheY(out, tokenRings, 24, [-0.28, 0.158, 0.92]);
+    appendLatheY(out, tokenRings, 24, [-0.14, 0.158, 0.97]);
+    appendLatheY(out, tokenRings, 24, [-0.20, 0.188, 0.94]);
+    return new Float32Array(out);
+  }
+
+  function buildRetroCabinetGeo() {
+    const out = [];
+    // Sculpted arched vintage side silhouette in (z, y)
+    const sideProfile = [
+      [-0.78, 0.15],
+      [0.82, 0.15],
+      [0.84, 0.42],
+      [0.74, 0.66],
+      [0.64, 0.74],
+      [0.62, 1.56],
+      [0.54, 1.82],
+      [0.34, 1.98],
+      [-0.12, 2.02],
+      [-0.56, 1.94],
+      [-0.74, 1.72],
+      [-0.80, 1.24],
+    ];
+    // Left and right cast-enamel side cheeks
+    appendExtrudedX(out, sideProfile, -1.04, -0.84, 0.038, 0);
+    appendExtrudedX(out, sideProfile, 0.84, 1.04, 0.038, 0);
+
+    // Solid rear & arched upper body shell (behind reels, z <= -0.36; top roof y >= 1.66)
+    const rearShell = [
+      [-0.78, 0.15],
+      [-0.36, 0.15],
+      [-0.36, 1.64],
+      [0.54, 1.66],
+      [0.48, 1.84],
+      [0.28, 1.98],
+      [-0.12, 2.01],
+      [-0.54, 1.93],
+      [-0.72, 1.70],
+      [-0.78, 1.24],
+    ];
+    appendExtrudedX(out, rearShell, -0.88, 0.88, 0.020, 0);
+
+    // Lower front belly panel below viewport (y: 0.15..0.68)
+    const lowerBelly = [
+      [-0.40, 0.15],
+      [0.82, 0.15],
+      [0.84, 0.42],
+      [0.73, 0.68],
+      [-0.40, 0.68],
+    ];
+    appendExtrudedX(out, lowerBelly, -0.88, 0.88, 0.022, 0);
+
+    // Dark recessed interior cavity backing behind the 3 drums
+    appendBeveledBox(out, -0.86, 0.86, 0.62, 1.70, -0.44, -0.32, 0.008, 1);
+
+    // Lower belly decorative brass trim plate & coin chute escutcheon
+    appendBeveledBox(out, -0.74, 0.74, 0.34, 0.56, 0.72, 0.82, 0.016, 2);
+    appendBeveledBox(out, -0.58, 0.58, 0.38, 0.52, 0.79, 0.845, 0.010, 0);
+    // Vertical coin slot plate on right-front belly
+    appendBeveledBox(out, 0.52, 0.68, 0.37, 0.53, 0.80, 0.865, 0.010, 2);
+    appendBeveledBox(out, 0.585, 0.615, 0.40, 0.50, 0.85, 0.875, 0.002, 1);
+    // Decorative brass chute arch above coin tray
+    appendBeveledBox(out, -0.44, 0.44, 0.18, 0.31, 0.76, 0.86, 0.015, 2);
+    appendBeveledBox(out, -0.34, 0.34, 0.18, 0.27, 0.82, 0.875, 0.004, 1);
+
+    // Decorative side fluted accents on cabinet flanks
+    for (const s of [-1, 1]) {
+      const x0 = s < 0 ? -1.065 : 1.015;
+      const x1 = s < 0 ? -1.015 : 1.065;
+      appendBeveledBox(out, x0, x1, 0.48, 1.56, -0.42, -0.32, 0.012, 2);
+      appendBeveledBox(out, x0, x1, 0.56, 1.48, -0.58, -0.50, 0.012, 2);
+    }
+
+    return new Float32Array(out);
+  }
+
+  function buildRetroBezelGeo() {
+    const out = [];
+    const cy = RETRO_REEL_Y, cz = RETRO_REEL_Z, rVis = RETRO_REEL_R + 0.055;
+    const phiBot = RETRO_PHI_VIEW - 0.74;
+    const phiTop = RETRO_PHI_VIEW + 0.74;
+
+    // Curved top visor brow & bottom sill
+    appendArcRibbon(out, -0.90, 0.90, cy, cz, rVis - 0.02, rVis + 0.08, phiTop - 0.05, phiTop + 0.16, 10, 2);
+    appendArcRibbon(out, -0.90, 0.90, cy, cz, rVis - 0.02, rVis + 0.08, phiBot - 0.14, phiBot + 0.05, 10, 2);
+
+    // Left & right curved vertical jamb pillars
+    appendArcRibbon(out, -0.90, -0.82, cy, cz, rVis - 0.06, rVis + 0.08, phiBot - 0.10, phiTop + 0.12, 20, 2);
+    appendArcRibbon(out, 0.82, 0.90, cy, cz, rVis - 0.06, rVis + 0.08, phiBot - 0.10, phiTop + 0.12, 20, 2);
+
+    // Two sculpted brass divider rings separating the 3 drums
+    for (const dx of [-0.28, 0.28]) {
+      appendArcRibbon(out, dx - 0.026, dx + 0.026, cy, cz, RETRO_REEL_R - 0.03, RETRO_REEL_R + 0.034, phiBot - 0.06, phiTop + 0.06, 26, 2);
+    }
+
+    // Center payline pointer triangles on inner left and right edges (pointing at exact phiView)
+    const py = cy + (RETRO_REEL_R + 0.035) * Math.sin(RETRO_PHI_VIEW);
+    const pz = cz + (RETRO_REEL_R + 0.035) * Math.cos(RETRO_PHI_VIEW);
+    appendExtrudedXY(out, [[-0.84, py - 0.055], [-0.75, py], [-0.84, py + 0.055]], pz - 0.03, pz + 0.04, 0.008, 3);
+    appendExtrudedXY(out, [[0.84, py - 0.055], [0.84, py + 0.055], [0.75, py]], pz - 0.03, pz + 0.04, 0.008, 3);
+
+    return new Float32Array(out);
+  }
+
+  function buildRetroGlassGeo() {
+    const out = [];
+    const cy = RETRO_REEL_Y, cz = RETRO_REEL_Z, rG = RETRO_REEL_R + 0.048;
+    const phi0 = RETRO_PHI_VIEW - 0.73;
+    const phi1 = RETRO_PHI_VIEW + 0.73;
+    const segs = 24;
+    for (let i = 0; i < segs; i++) {
+      const t0 = i / segs, t1 = (i + 1) / segs;
+      const a0 = lerp(phi0, phi1, t0), a1 = lerp(phi0, phi1, t1);
+      const y0 = cy + rG * Math.sin(a0), z0 = cz + rG * Math.cos(a0);
+      const y1 = cy + rG * Math.sin(a1), z1 = cz + rG * Math.cos(a1);
+      const n0 = [0, Math.sin(a0), Math.cos(a0)], n1 = [0, Math.sin(a1), Math.cos(a1)];
+      pushQuadSmooth(
+        out,
+        [-0.83, y0, z0], [0.83, y0, z0], [0.83, y1, z1], [-0.83, y1, z1],
+        n0, n0, n1, n1,
+        [0, t0], [1, t0], [1, t1], [0, t1],
+        0, 0, 0, 0
+      );
+    }
+    return new Float32Array(out);
+  }
+
+  function buildRetroMarqueeGeo() {
+    const out = [];
+    // Sculpted arched crown crest above the cabinet
+    const archPts = [];
+    const A_SEG = 20;
+    archPts.push([-0.82, 1.94]);
+    archPts.push([0.82, 1.94]);
+    for (let i = 0; i <= A_SEG; i++) {
+      const t = i / A_SEG;
+      const a = lerp(0.18, Math.PI - 0.18, t);
+      archPts.push([0.82 * Math.cos(a), 1.96 + 0.36 * Math.sin(a)]);
+    }
+    appendExtrudedXY(out, archPts, -0.18, 0.42, 0.032, 0);
+
+    // Brass arched crown bezel molding
+    const innerArch = [];
+    innerArch.push([-0.72, 1.97]);
+    innerArch.push([0.72, 1.97]);
+    for (let i = 0; i <= 16; i++) {
+      const a = lerp(0.22, Math.PI - 0.22, i / 16);
+      innerArch.push([0.72 * Math.cos(a), 1.98 + 0.28 * Math.sin(a)]);
+    }
+    appendExtrudedXY(out, innerArch, 0.36, 0.46, 0.016, 2);
+
+    // Recessed enamel medallion center strip
+    appendBeveledBox(out, -0.64, 0.64, 2.00, 2.18, 0.41, 0.475, 0.012, 0);
+
+    return new Float32Array(out);
+  }
+
+  function buildRetroLeverMountGeo() {
+    const out = [];
+    // Stepped turned brass + chrome side pivot housing attached at x = 1.02..1.20
+    appendLatheX(out, [
+      { x: 1.00, r: 0.001, flag: 2 },
+      { x: 1.00, r: 0.27, flag: 2, sharp: true },
+      { x: 1.06, r: 0.27, flag: 2 },
+      { x: 1.09, r: 0.22, flag: 2, sharp: true },
+      { x: 1.15, r: 0.20, flag: 3, sharp: true },
+      { x: 1.21, r: 0.15, flag: 3 },
+      { x: 1.24, r: 0.11, flag: 2, sharp: true },
+      { x: 1.25, r: 0.001, flag: 2 },
+    ], 32, [0, RETRO_LEVER_PIVOT[1], RETRO_LEVER_PIVOT[2]]);
+    return new Float32Array(out);
+  }
+
+  function buildRetroLeverArmGeo() {
+    const out = [];
+    // Local origin = RETRO_LEVER_PIVOT (1.14, 0.88, 0.10)
+    // Pivot collar drum
+    appendLatheX(out, [
+      { x: 0.02, r: 0.001, flag: 3 },
+      { x: 0.02, r: 0.115, flag: 3, sharp: true },
+      { x: 0.16, r: 0.115, flag: 3, sharp: true },
+      { x: 0.18, r: 0.085, flag: 2, sharp: true },
+      { x: 0.19, r: 0.001, flag: 2 },
+    ], 24);
+
+    // Swept chrome S-curve arm rising cleanly up to the ball knob (flag = 3 chrome)
+    const spine = [
+      [0.09, 0.00, 0.00],
+      [0.18, 0.04, 0.01],
+      [0.25, 0.16, 0.02],
+      [0.27, 0.36, 0.01],
+      [0.26, 0.62, -0.02],
+      [0.24, 0.88, -0.01],
+      [0.23, 1.08, 0.03],
+      [0.23, 1.20, 0.05],
+    ];
+    const radii = [0.056, 0.050, 0.044, 0.040, 0.037, 0.035, 0.036, 0.040];
+    appendTube3D(out, spine, radii, 20, 3);
+
+    // Turned brass ferrule collar + glossy lathe-turned spherical ball knob (flag = 0)
+    const knobRings = [
+      { y: 1.15, r: 0.001, flag: 2 },
+      { y: 1.15, r: 0.068, flag: 2, sharp: true },
+      { y: 1.21, r: 0.078, flag: 2, sharp: true },
+      { y: 1.22, r: 0.065, flag: 0 },
+    ];
+    const Rk = 0.185;
+    const cy = 1.22 + Rk * 0.90;
+    const kSteps = 18;
+    for (let i = 0; i <= kSteps; i++) {
+      const a = lerp(-Math.PI * 0.38, Math.PI * 0.5, i / kSteps);
+      knobRings.push({
+        y: cy + Rk * Math.sin(a),
+        r: Math.max(0.001, Rk * Math.cos(a)),
+        flag: 0,
+      });
+    }
+    appendLatheY(out, knobRings, 32, [0.23, 0, 0.05]);
+    return new Float32Array(out);
+  }
+
+  // ---- Scheme B (Bauhaus Minimalist Triple-Drum Mechanical Object) Geometries ----
+  const BAU_REEL_Y = 0.78;
+  const BAU_REEL_Z = 0.08;
+  const BAU_REEL_R = 0.54;
+  const BAU_REEL_XS = [-0.66, 0.0, 0.66];
+  const BAU_SLOPE = 0.54; // ~31° tilted architectural display angle
+  const BAU_PHI_VIEW = BAU_SLOPE;
+
+  // Compute exact faceplate plane tangent point for clean alignment
+  const BAU_COS = Math.cos(BAU_SLOPE);
+  const BAU_SIN = Math.sin(BAU_SLOPE);
+
+  function buildBauhausBodyGeo() {
+    const out = [];
+    // 4 low-profile precision feet (y: 0..0.05, flag = 1 dark rubberized)
+    for (const fx of [-1.06, 1.06]) {
+      for (const fz of [-0.72, 0.74]) {
+        appendLatheY(out, [
+          { y: 0.0, r: 0.001, flag: 1 },
+          { y: 0.0, r: 0.12, flag: 1, sharp: true },
+          { y: 0.048, r: 0.135, flag: 1, sharp: true },
+          { y: 0.048, r: 0.001, flag: 1 },
+        ], 20, [fx, 0, fz]);
+      }
+    }
+
+    // Crisp Dieter Rams wedge-sloped side walls in (z, y)
+    const sideWedge = [
+      [-0.92, 0.045],
+      [0.92, 0.045],
+      [0.98, 0.14],
+      [0.98, 0.52],
+      [0.88, 0.64],
+      [0.02, 1.48],
+      [-0.14, 1.56],
+      [-0.84, 1.56],
+      [-0.96, 1.44],
+      [-0.96, 0.14],
+    ];
+    // Left and right monoblock flanks
+    appendExtrudedX(out, sideWedge, -1.26, -1.00, 0.034, 0);
+    appendExtrudedX(out, sideWedge, 1.00, 1.26, 0.034, 0);
+
+    // Solid rear & base chassis block behind/underneath drums (flush with angled faceplate chin)
+    const rearBlock = [
+      [-0.92, 0.045],
+      [0.92, 0.045],
+      [0.98, 0.14],
+      [0.98, 0.52],
+      [0.88, 0.64],
+      [0.64, 0.56],
+      [0.44, 0.24],
+      [-0.48, 0.24],
+      [-0.48, 1.38],
+      [-0.14, 1.56],
+      [-0.84, 1.56],
+      [-0.96, 1.44],
+      [-0.96, 0.14],
+    ];
+    appendExtrudedX(out, rearBlock, -1.04, 1.04, 0.024, 0);
+
+    // Dark recessed interior trough beneath/behind reels (flag = 1)
+    appendBeveledBox(out, -1.01, 1.01, 0.20, 1.36, -0.52, -0.44, 0.008, 1);
+    appendBeveledBox(out, -1.01, 1.01, 0.19, 0.24, -0.46, 0.62, 0.008, 1);
+
+    // Braun-inspired machined top acoustic louver grooves (flag = 1 recessed slats on rear horizontal deck)
+    for (let i = 0; i < 6; i++) {
+      const gz = -0.80 + i * 0.068;
+      appendBeveledBox(out, -0.82, 0.82, 1.545, 1.572, gz - 0.014, gz + 0.014, 0.003, 1);
+    }
+
+    // Subtle right-side recessed slide track slot for the knurled actuator (x = 1.24..1.28)
+    appendBeveledBox(out, 1.23, 1.275, 0.36, 1.18, -0.02, 0.18, 0.008, 1);
+    appendBeveledBox(out, 1.24, 1.285, 0.32, 1.22, -0.05, 0.21, 0.010, 2);
+    appendBeveledBox(out, 1.255, 1.292, 0.38, 1.16, 0.01, 0.15, 0.004, 1);
+
+    // Continuous machined steel drum axle shaft (visible in exploded view!)
+    appendLatheX(out, [
+      { x: -1.06, r: 0.001, flag: 2 },
+      { x: -1.06, r: 0.055, flag: 2, sharp: true },
+      { x: 1.06, r: 0.055, flag: 2, sharp: true },
+      { x: 1.06, r: 0.001, flag: 2 },
+    ], 24, [0, BAU_REEL_Y, BAU_REEL_Z]);
+
+    return new Float32Array(out);
+  }
+
+  /** Helper: builds a beveled box in faceplate local coords (u=x, v=up-slope, w=out-normal) and transforms to world. */
+  function appendSlopedBox(out, u0, u1, v0, v1, w0, w1, bevel, flag, origin) {
+    const tmp = [];
+    appendBeveledBox(tmp, u0, u1, v0, v1, w0, w1, bevel, flag);
+    // Local +v points along (0, cos(s), -sin(s)); local +w points along (0, sin(s), cos(s))
+    for (let i = 0; i < tmp.length; i += 9) {
+      const lx = tmp[i], ly = tmp[i + 1], lz = tmp[i + 2];
+      const nx = tmp[i + 3], ny = tmp[i + 4], nz = tmp[i + 5];
+      tmp[i] = lx + origin[0];
+      tmp[i + 1] = origin[1] + ly * BAU_COS + lz * BAU_SIN;
+      tmp[i + 2] = origin[2] - ly * BAU_SIN + lz * BAU_COS;
+      tmp[i + 3] = nx;
+      tmp[i + 4] = ny * BAU_COS + nz * BAU_SIN;
+      tmp[i + 5] = -ny * BAU_SIN + nz * BAU_COS;
+      out.push(tmp[i], tmp[i + 1], tmp[i + 2], tmp[i + 3], tmp[i + 4], tmp[i + 5], tmp[i + 6], tmp[i + 7], tmp[i + 8]);
+    }
+  }
+
+  function buildBauhausFaceplateGeo() {
+    const out = [];
+    const orig = [0, BAU_REEL_Y + (BAU_REEL_R + 0.04) * BAU_SIN, BAU_REEL_Z + (BAU_REEL_R + 0.04) * BAU_COS];
+    // Top bezel frame bar (v: +0.35..+0.62) — houses the 3 status dots
+    appendSlopedBox(out, -1.04, 1.04, 0.35, 0.62, -0.05, 0.055, 0.016, 0, orig);
+    // Bottom bezel chin bar (v: -0.60..-0.35) meeting lower chassis deck flush
+    appendSlopedBox(out, -1.04, 1.04, -0.60, -0.35, -0.06, 0.055, 0.016, 0, orig);
+    // Left & right vertical bezel stiles
+    appendSlopedBox(out, -1.04, -0.955, -0.39, 0.39, -0.05, 0.055, 0.014, 0, orig);
+    appendSlopedBox(out, 0.955, 1.04, -0.39, 0.39, -0.05, 0.055, 0.014, 0, orig);
+
+    // Thin machined metallic inner perimeter trim frame (flag = 2)
+    appendSlopedBox(out, -0.97, 0.97, 0.335, 0.365, -0.02, 0.062, 0.008, 2, orig);
+    appendSlopedBox(out, -0.97, 0.97, -0.365, -0.335, -0.02, 0.062, 0.008, 2, orig);
+
+    // 2 crisp architectural divider bridges separating the 3 wide reels (flag = 2)
+    for (const dx of [-0.33, 0.33]) {
+      appendSlopedBox(out, dx - 0.024, dx + 0.024, -0.36, 0.36, -0.04, 0.052, 0.008, 2, orig);
+    }
+
+    // Flush payline center indicator ticks (flag = 3 accent) on inner left/right bezel edges
+    appendSlopedBox(out, -0.96, -0.89, -0.018, 0.018, 0.02, 0.072, 0.005, 3, orig);
+    appendSlopedBox(out, 0.89, 0.96, -0.018, 0.018, 0.02, 0.072, 0.005, 3, orig);
+
+    // 4 precision machined corner pins on the faceplate (flag = 2)
+    for (const px of [-0.96, 0.96]) {
+      for (const py of [-0.47, 0.50]) {
+        appendSlopedBox(out, px - 0.024, px + 0.024, py - 0.024, py + 0.024, 0.04, 0.068, 0.008, 2, orig);
+      }
+    }
+
+    return new Float32Array(out);
+  }
+
+  function buildBauhausGlassGeo() {
+    const out = [];
+    const orig = [0, BAU_REEL_Y + (BAU_REEL_R + 0.058) * BAU_SIN, BAU_REEL_Z + (BAU_REEL_R + 0.058) * BAU_COS];
+    const hw = 0.955, hh = 0.345;
+    const toWorld = (u, v) => [
+      orig[0] + u,
+      orig[1] + v * BAU_COS,
+      orig[2] - v * BAU_SIN,
+    ];
+    const n = [0, BAU_SIN, BAU_COS];
+    pushQuad(out, toWorld(-hw, -hh), toWorld(hw, -hh), toWorld(hw, hh), toWorld(-hw, hh), n, [0, 0], [1, 0], [1, 1], [0, 1], 0);
+    return new Float32Array(out);
+  }
+
+  function buildBauhausPressBarGeo() {
+    const out = [];
+    // Wide Dieter Rams tactile trigger bar seated cleanly along top-front deck
+    appendBeveledBox(out, -0.82, 0.82, 1.52, 1.65, -0.44, -0.18, 0.032, 0);
+    // Subtle center tactile rib on press bar (flag = 2)
+    appendBeveledBox(out, -0.34, 0.34, 1.635, 1.665, -0.33, -0.29, 0.008, 2);
+    return new Float32Array(out);
+  }
+
+  function buildBauhausActuatorGeo() {
+    const out = [];
+    // Machined knurled cylindrical pull-down slide actuator mounted on right flank
+    // Local origin = [1.26, 0.98, 0.08]
+    const rings = [
+      { x: -0.02, r: 0.001, flag: 2 },
+      { x: -0.02, r: 0.075, flag: 2, sharp: true },
+      { x: 0.08, r: 0.075, flag: 2, sharp: true },
+      { x: 0.09, r: 0.118, flag: 3, sharp: true },
+    ];
+    // Tactile knurling grooves along cylindrical grip
+    const grooves = 7;
+    for (let i = 0; i < grooves; i++) {
+      const gx = 0.105 + i * 0.036;
+      rings.push({ x: gx, r: 0.124, flag: 3, sharp: true });
+      rings.push({ x: gx + 0.016, r: 0.108, flag: 2, sharp: true });
+      rings.push({ x: gx + 0.028, r: 0.124, flag: 3, sharp: true });
+    }
+    rings.push({ x: 0.37, r: 0.112, flag: 3, sharp: true });
+    rings.push({ x: 0.39, r: 0.082, flag: 2, sharp: true });
+    rings.push({ x: 0.39, r: 0.001, flag: 2 });
+    appendLatheX(out, rings, 28);
+    return new Float32Array(out);
+  }
+
+  // ---- Probability & Reel Layout Math (Exact 216-outcome model) ----
+  const REEL_PATTERNS = [
+    [false, false, false, false, false, false], // k=0
+    [true,  false, false, false, false, false], // k=1
+    [true,  false, false, true,  false, false], // k=2
+    [true,  false, true,  false, true,  false], // k=3
+    [true,  true,  false, true,  true,  false], // k=4
+    [true,  true,  true,  true,  true,  false], // k=5
+    [true,  true,  true,  true,  true,  true],  // k=6
+  ];
+
+  const RULE_META = {
+    majority: { label: '多数决(≥2轮)', short: '多数决', desc: '≥2轮出练' },
+    any:      { label: '任一轮出练',   short: '任一轮', desc: '≥1轮出练' },
+    all:      { label: '三连全练',     short: '三连全', desc: '3轮全练' },
+  };
+
+  function calcSlotProb(k, rule) {
+    const total = 216;
+    const r = 6 - k;
+    let hits;
+    if (rule === 'majority') hits = 3 * k * k * r + k * k * k;
+    else if (rule === 'any') hits = total - r * r * r;
+    else hits = k * k * k;
+
+    const prob = hits / total;
+    const pctExact = prob * 100;
+    let pctText;
+    if (hits === 0) pctText = '0%';
+    else if (hits === total) pctText = '100%';
+    else {
+      const rounded = Math.round(pctExact);
+      if (rounded === 0) pctText = '0.5%';
+      else if (rounded === 100) pctText = '99.5%';
+      else pctText = `${rounded}%`;
+    }
+
+    let exactSuffix;
+    if (hits === 0) exactSuffix = '= 0%';
+    else if (hits === total) exactSuffix = '= 100%';
+    else if (Math.abs(pctExact - Math.round(pctExact)) < 1e-6) exactSuffix = `= ${Math.round(pctExact)}%`;
+    else if (Math.abs(pctExact * 2 - Math.round(pctExact * 2)) < 1e-6) exactSuffix = `= ${pctExact.toFixed(1)}%`;
+    else exactSuffix = `≈ ${pctExact.toFixed(1)}%`;
+
+    const rm = RULE_META[rule];
+    const readout = `每轮 ${k} 练 / 6 格 · ${rm.label} → ${hits}/216 ${exactSuffix}`;
+    let ruleLine;
+    if (hits === 0) ruleLine = `每轮 0 练 / 6 格 · 怎么拉都歇 · 0%`;
+    else if (hits === total) ruleLine = `每轮 6 练 / 6 格 · 必定开练 · 100%`;
+    else ruleLine = `每轮 ${k} 练 / 6 格 · ${rm.label} · ${pctText}`;
+
+    return { k, rule, hits, total, prob, pctText, readout, ruleLine, ruleLabel: rm.label, ruleShort: rm.short };
+  }
+
+  function evaluateTuple(stops, k, rule) {
+    const pat = REEL_PATTERNS[k];
+    const flags = stops.map(s => pat[s]);
+    const count = (flags[0] ? 1 : 0) + (flags[1] ? 1 : 0) + (flags[2] ? 1 : 0);
+    const trains = rule === 'majority' ? count >= 2 : (rule === 'any' ? count >= 1 : count === 3);
+    return { flags, count, trains };
+  }
+
+  function isCliffhangerPair(f0, f1, rule) {
+    if (rule === 'majority') return f0 !== f1;
+    if (rule === 'any') return !f0 && !f1;
+    return f0 && f1;
+  }
+
+  /**
+   * Draws an exact uniform outcome from the 216-state space (3 independent 6-stop reels),
+   * or selects an expressive valid tuple matching `forcedOutcome` for UI preview modes.
+   */
+  function drawStops(k, rule, forcedOutcome) {
+    const pat = REEL_PATTERNS[k];
+    const trainStops = [];
+    const restStops = [];
+    for (let i = 0; i < 6; i++) (pat[i] ? trainStops : restStops).push(i);
+
+    if (forcedOutcome == null) {
+      const s = [
+        Math.floor(Math.random() * 6),
+        Math.floor(Math.random() * 6),
+        Math.floor(Math.random() * 6),
+      ];
+      return { stops: s, ...evaluateTuple(s, k, rule) };
+    }
+
+    const pickT = idx => trainStops[idx % trainStops.length];
+    const pickR = idx => restStops[idx % restStops.length];
+
+    let stops;
+    if (forcedOutcome === true) {
+      if (rule === 'all' || restStops.length === 0) {
+        stops = [pickT(0), pickT(1), pickT(2)];
+      } else if (rule === 'majority') {
+        // Show 2 train + 1 rest (e.g. [练, 歇, 练]) to clearly illustrate majority rule & cliffhanger!
+        stops = [pickT(0), pickR(0), pickT(1)];
+      } else {
+        // any rule: [歇, 歇, 练] or [练, 歇, 歇]
+        stops = [pickR(0), pickT(0), pickR(1)];
+      }
+    } else {
+      if (trainStops.length === 0) {
+        stops = [pickR(0), pickR(1), pickR(2)];
+      } else if (rule === 'all') {
+        // Show [练, 练, 歇] -> visually demonstrates 2/3 train still rests under "all" rule!
+        stops = [pickT(0), pickT(1), pickR(0)];
+      } else if (rule === 'majority') {
+        // Show [练, 歇, 歇] -> 1/3 train rests under majority rule!
+        stops = [pickT(0), pickR(0), pickR(1)];
+      } else {
+        // any rule rest MUST be all 3 rest!
+        stops = [pickR(0), pickR(1), pickR(2)];
+      }
+    }
+    return { stops, ...evaluateTuple(stops, k, rule) };
+  }
+
+  // ---- Offscreen High-Res Canvas Textures ----
+
+  /**
+   * Generates a 512x2048 6-stop reel drum texture.
+   * Cell `s` (0..5) occupies y in [s * H/6, (s+1) * H/6].
+   * With UNPACK_FLIP_Y_WEBGL=true, cell center maps to cylinder angle phi_s = ((5.5 - s) / 6) * TAU.
+   */
+  function makeReelStripTexture(k, style) {
+    const W = 512, H = 2048;
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    const ctx = c.getContext('2d');
+    const cellH = H / 6;
+    const pat = REEL_PATTERNS[k];
+    const isBauhaus = style === 'bauhaus';
+
+    // Base strip background
+    ctx.fillStyle = isBauhaus ? '#f9f9f5' : '#f7f3e6';
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle mechanical roller shading along left/right margins
+    const sideShade = ctx.createLinearGradient(0, 0, W, 0);
+    sideShade.addColorStop(0, 'rgba(40, 52, 42, 0.14)');
+    sideShade.addColorStop(0.09, 'rgba(40, 52, 42, 0.0)');
+    sideShade.addColorStop(0.91, 'rgba(40, 52, 42, 0.0)');
+    sideShade.addColorStop(1, 'rgba(40, 52, 42, 0.14)');
+    ctx.fillStyle = sideShade;
+    ctx.fillRect(0, 0, W, H);
+
+    const drawDumbbell = (cx, cy, sc, mainCol, accentCol) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(sc, sc);
+      ctx.fillStyle = accentCol;
+      ctx.beginPath();
+      ctx.roundRect(-52, -7, 104, 14, 6);
+      ctx.fill();
+      ctx.fillStyle = mainCol;
+      // Outer & inner plates
+      ctx.beginPath(); ctx.roundRect(-78, -32, 20, 64, 7); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(-54, -42, 22, 84, 8); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(32, -42, 22, 84, 8); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(58, -32, 20, 64, 7); ctx.fill();
+      // Crisp top highlight sheen on plates
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+      ctx.fillRect(-50, -35, 6, 36);
+      ctx.fillRect(36, -35, 6, 36);
+      ctx.restore();
+    };
+
+    const drawTeacup = (cx, cy, sc, mainCol, softCol) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(sc, sc);
+      // Warm steam wisps
+      ctx.strokeStyle = softCol;
+      ctx.lineWidth = 6.5;
+      ctx.lineCap = 'round';
+      for (const sx of [-20, 0, 20]) {
+        ctx.beginPath();
+        ctx.moveTo(sx, -24);
+        ctx.bezierCurveTo(sx - 8, -38, sx + 8, -46, sx, -58);
+        ctx.stroke();
+      }
+      // Cup handle
+      ctx.strokeStyle = mainCol;
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.arc(46, 6, 20, -Math.PI * 0.45, Math.PI * 0.45);
+      ctx.stroke();
+      // Cup bowl
+      ctx.fillStyle = mainCol;
+      ctx.beginPath();
+      ctx.moveTo(-48, -14);
+      ctx.lineTo(48, -14);
+      ctx.quadraticCurveTo(46, 40, 0, 42);
+      ctx.quadraticCurveTo(-46, 40, -48, -14);
+      ctx.closePath();
+      ctx.fill();
+      // Saucer
+      ctx.fillStyle = softCol;
+      ctx.beginPath();
+      ctx.roundRect(-58, 44, 116, 10, 5);
+      ctx.fill();
+      ctx.restore();
+    };
+
+    const drawCrescent = (cx, cy, sc, mainCol) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(sc, sc);
+      ctx.fillStyle = mainCol;
+      ctx.beginPath();
+      ctx.arc(0, 0, 42, 0.35 * Math.PI, 1.68 * Math.PI, false);
+      ctx.arc(16, -8, 33, 1.56 * Math.PI, 0.44 * Math.PI, true);
+      ctx.closePath();
+      ctx.fill();
+      // Minimalist star dot
+      ctx.beginPath();
+      ctx.arc(34, -22, 6, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    };
+
+    const drawLightningBadge = (cx, cy, sc, badgeCol, boltCol) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(sc, sc);
+      ctx.fillStyle = badgeCol;
+      ctx.beginPath();
+      ctx.arc(0, 0, 46, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = boltCol;
+      ctx.beginPath();
+      ctx.moveTo(6, -30);
+      ctx.lineTo(-22, 4);
+      ctx.lineTo(-2, 4);
+      ctx.lineTo(-8, 30);
+      ctx.lineTo(22, -4);
+      ctx.lineTo(2, -4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    };
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (let s = 0; s < 6; s++) {
+      const y0 = s * cellH;
+      const cy = y0 + cellH * 0.5;
+      const isTrain = pat[s];
+
+      if (isBauhaus) {
+        // Crisp architectural cell fill contrasting 「练」 (soft sage) vs 「歇」 (cool mist)
+        ctx.fillStyle = isTrain ? '#ebf2e7' : '#eef2f5';
+        ctx.fillRect(24, y0 + 18, W - 48, cellH - 36);
+
+        // Crisp hairline top divider (split-flap drum feel)
+        ctx.fillStyle = 'rgba(40, 57, 47, 0.28)';
+        ctx.fillRect(0, y0, W, 6);
+        // Side precision index ticks
+        ctx.fillStyle = isTrain ? '#2d563d' : '#657b8e';
+        ctx.fillRect(14, cy - 22, 14, 44);
+        ctx.fillRect(W - 28, cy - 22, 14, 44);
+
+        // Tiny Swiss tabular index in top-right corner
+        ctx.fillStyle = 'rgba(40, 57, 47, 0.44)';
+        ctx.font = '700 24px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText(`0${s + 1}`, W - 62, y0 + 48);
+
+        if (isTrain) {
+          drawLightningBadge(W * 0.5, cy - 72, 1.12, '#2d573e', '#fafbf5');
+          ctx.fillStyle = '#1c402a';
+          ctx.font = '700 144px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+          ctx.fillText('练', W * 0.5, cy + 62);
+        } else {
+          drawCrescent(W * 0.5, cy - 74, 1.08, '#4d6579');
+          ctx.fillStyle = '#475f73';
+          ctx.font = '700 136px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+          ctx.fillText('歇', W * 0.5, cy + 62);
+        }
+      } else {
+        // Retro collector enamel reel cell with distinct warm sage vs calm slate-ivory ground
+        ctx.fillStyle = isTrain ? '#ebf1e4' : '#edf0f2';
+        ctx.beginPath();
+        ctx.roundRect(32, y0 + 22, W - 64, cellH - 44, 28);
+        ctx.fill();
+
+        // Vintage double frame line
+        ctx.strokeStyle = isTrain ? 'rgba(45, 86, 61, 0.48)' : 'rgba(79, 102, 121, 0.36)';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.roundRect(32, y0 + 22, W - 64, cellH - 44, 28);
+        ctx.stroke();
+
+        // Horizontal brass band between stops
+        ctx.fillStyle = '#c5a55e';
+        ctx.fillRect(0, y0, W, 7);
+
+        if (isTrain) {
+          drawDumbbell(W * 0.5, cy - 76, 1.14, '#264d36', '#c69d44');
+          ctx.fillStyle = '#1d402b';
+          ctx.font = '700 146px "Songti SC", "STSong", "Noto Serif CJK SC", serif';
+          ctx.fillText('练', W * 0.5, cy + 60);
+        } else {
+          drawTeacup(W * 0.5, cy - 70, 1.05, '#4d6579', '#7d93a4');
+          ctx.fillStyle = '#445c70';
+          ctx.font = '700 136px "Songti SC", "STSong", "Noto Serif CJK SC", serif';
+          ctx.fillText('歇', W * 0.5, cy + 60);
+        }
+      }
+    }
+
+    return c;
+  }
+
+  function makeWalnutShellTexture() {
+    const W = 512, H = 512;
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    const ctx = c.getContext('2d');
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#855838');
+    g.addColorStop(0.5, '#684127');
+    g.addColorStop(1, '#4a2c19');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    for (let i = 0; i < 72; i++) {
+      const y = (i / 72) * H;
+      ctx.strokeStyle = i % 3 === 0 ? 'rgba(26, 13, 6, 0.28)' : 'rgba(208, 152, 102, 0.14)';
+      ctx.lineWidth = 2.0 + (i % 4);
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.bezierCurveTo(W * 0.33, y + Math.sin(i * 0.7) * 16, W * 0.66, y - Math.cos(i * 0.6) * 16, W, y);
+      ctx.stroke();
+    }
+    return c;
+  }
+
+  // ---- Build Shared Geometries Once ----
+  const GEOS = {
+    retroBase: buildRetroBaseGeo(),
+    retroCabinet: buildRetroCabinetGeo(),
+    retroBezel: buildRetroBezelGeo(),
+    retroGlass: buildRetroGlassGeo(),
+    retroMarquee: buildRetroMarqueeGeo(),
+    retroLeverMount: buildRetroLeverMountGeo(),
+    retroLeverArm: buildRetroLeverArmGeo(),
+    retroReel: buildReelDrumGeo(RETRO_REEL_R, 0.242, 72),
+    retroJewel: buildJewelGeo(0.068),
+
+    bauBody: buildBauhausBodyGeo(),
+    bauFaceplate: buildBauhausFaceplateGeo(),
+    bauGlass: buildBauhausGlassGeo(),
+    bauPressBar: buildBauhausPressBarGeo(),
+    bauActuator: buildBauhausActuatorGeo(),
+    bauReel: buildReelDrumGeo(BAU_REEL_R, 0.292, 72),
+    bauJewel: buildJewelGeo(0.056),
+  };
+
+  // Compute live triangle & vertex counts for Specs card
+  function countGeo(arrs) {
+    let floats = 0;
+    for (const a of arrs) floats += a.length;
+    const verts = Math.round(floats / 9);
+    return { verts, tris: Math.round(verts / 3) };
+  }
+  const retroStats = countGeo([
+    GEOS.retroBase, GEOS.retroCabinet, GEOS.retroBezel, GEOS.retroGlass,
+    GEOS.retroMarquee, GEOS.retroLeverMount, GEOS.retroLeverArm,
+    GEOS.retroReel, GEOS.retroReel, GEOS.retroReel,
+    GEOS.retroJewel, GEOS.retroJewel, GEOS.retroJewel,
+  ]);
+  const bauStats = countGeo([
+    GEOS.bauBody, GEOS.bauFaceplate, GEOS.bauGlass,
+    GEOS.bauPressBar, GEOS.bauActuator,
+    GEOS.bauReel, GEOS.bauReel, GEOS.bauReel,
+    GEOS.bauJewel, GEOS.bauJewel, GEOS.bauJewel,
+  ]);
+  document.getElementById('stats-slot').textContent =
+    `方案 A（复古拉杆）：${retroStats.tris.toLocaleString()} 三角面 / ${retroStats.verts.toLocaleString()} 顶点（13 构件） · ` +
+    `方案 B（包豪斯滚筒）：${bauStats.tris.toLocaleString()} 三角面 / ${bauStats.verts.toLocaleString()} 顶点（11 构件）`;
+
+  // ---- Material Palettes (2 Curated Finishes per Scheme) ----
+  const RETRO_FINISHES = [
+    {
+      name: '墨绿珐琅 + 拉丝黄铜',
+      cabinet: {
+        color: [0.20, 0.36, 0.27], accent: [0.81, 0.67, 0.37], trim: [0.85, 0.87, 0.86], cavity: [0.05, 0.08, 0.06],
+        matMeta: [0.30, 0.88, 0.90], matRough: [0.24, 0.24, 0.18],
+      },
+      bezel: {
+        color: [0.81, 0.67, 0.37], accent: [0.81, 0.67, 0.37], trim: [0.21, 0.38, 0.28], cavity: [0.05, 0.08, 0.06],
+        matMeta: [0.88, 0.88, 0.30], matRough: [0.24, 0.24, 0.28],
+      },
+      lever: {
+        color: [0.22, 0.39, 0.29], accent: [0.81, 0.67, 0.37], trim: [0.84, 0.86, 0.86], cavity: [0.06, 0.08, 0.07],
+        matMeta: [0.22, 0.88, 0.92], matRough: [0.18, 0.22, 0.16],
+      },
+      reel: {
+        color: [0.96, 0.94, 0.88], accent: [0.80, 0.67, 0.38], trim: [0.76, 0.78, 0.76],
+        matMeta: [0.03, 0.88, 0.86], matRough: [0.58, 0.24, 0.24],
+      },
+    },
+    {
+      name: '奶油象牙 + 玫瑰古铜',
+      cabinet: {
+        color: [0.93, 0.90, 0.84], accent: [0.76, 0.51, 0.40], trim: [0.88, 0.82, 0.76], cavity: [0.08, 0.07, 0.07],
+        matMeta: [0.14, 0.86, 0.88], matRough: [0.26, 0.25, 0.20],
+      },
+      bezel: {
+        color: [0.76, 0.51, 0.40], accent: [0.76, 0.51, 0.40], trim: [0.46, 0.26, 0.24], cavity: [0.08, 0.07, 0.07],
+        matMeta: [0.86, 0.86, 0.32], matRough: [0.25, 0.25, 0.30],
+      },
+      lever: {
+        color: [0.58, 0.32, 0.27], accent: [0.76, 0.51, 0.40], trim: [0.87, 0.81, 0.75], cavity: [0.08, 0.07, 0.07],
+        matMeta: [0.18, 0.86, 0.90], matRough: [0.18, 0.24, 0.18],
+      },
+      reel: {
+        color: [0.96, 0.94, 0.88], accent: [0.76, 0.51, 0.40], trim: [0.82, 0.76, 0.70],
+        matMeta: [0.03, 0.86, 0.85], matRough: [0.58, 0.25, 0.25],
+      },
+    },
+  ];
+
+  const BAUHAUS_FINISHES = [
+    {
+      name: '阳极墨绿铝 + 暖白滚筒',
+      useWoodTex: false,
+      body: {
+        color: [0.23, 0.37, 0.29], accent: [0.81, 0.83, 0.80], trim: [0.64, 0.70, 0.45], cavity: [0.05, 0.07, 0.06],
+        matMeta: [0.56, 0.84, 0.42], matRough: [0.36, 0.28, 0.34],
+      },
+      face: {
+        color: [0.25, 0.40, 0.31], accent: [0.82, 0.84, 0.81], trim: [0.64, 0.72, 0.46], cavity: [0.05, 0.07, 0.06],
+        matMeta: [0.58, 0.86, 0.30], matRough: [0.34, 0.26, 0.32],
+      },
+      pressBar: {
+        color: [0.62, 0.70, 0.45], accent: [0.85, 0.87, 0.82], trim: [0.62, 0.70, 0.45],
+        matMeta: [0.20, 0.82, 0.20], matRough: [0.34, 0.26, 0.34],
+      },
+      actuator: {
+        color: [0.81, 0.83, 0.80], accent: [0.74, 0.76, 0.74], trim: [0.85, 0.87, 0.84],
+        matMeta: [0.86, 0.86, 0.88], matRough: [0.26, 0.34, 0.22],
+      },
+      reel: {
+        color: [0.97, 0.97, 0.95], accent: [0.80, 0.82, 0.79], trim: [0.76, 0.78, 0.76],
+        matMeta: [0.02, 0.84, 0.84], matRough: [0.60, 0.28, 0.28],
+      },
+    },
+    {
+      name: '胡桃木壳 + 哑光钛灰',
+      useWoodTex: true,
+      body: {
+        color: [0.46, 0.30, 0.19], accent: [0.75, 0.74, 0.70], trim: [0.75, 0.74, 0.70], cavity: [0.06, 0.06, 0.06],
+        matMeta: [0.06, 0.82, 0.80], matRough: [0.50, 0.32, 0.32],
+      },
+      face: {
+        color: [0.33, 0.35, 0.36], accent: [0.76, 0.74, 0.69], trim: [0.66, 0.73, 0.48], cavity: [0.05, 0.06, 0.06],
+        matMeta: [0.68, 0.84, 0.30], matRough: [0.38, 0.28, 0.32],
+      },
+      pressBar: {
+        color: [0.76, 0.74, 0.69], accent: [0.34, 0.36, 0.37], trim: [0.76, 0.74, 0.69],
+        matMeta: [0.78, 0.60, 0.78], matRough: [0.30, 0.38, 0.30],
+      },
+      actuator: {
+        color: [0.76, 0.74, 0.69], accent: [0.48, 0.49, 0.50], trim: [0.80, 0.78, 0.73],
+        matMeta: [0.82, 0.72, 0.86], matRough: [0.28, 0.38, 0.24],
+      },
+      reel: {
+        color: [0.97, 0.96, 0.93], accent: [0.72, 0.71, 0.68], trim: [0.66, 0.67, 0.66],
+        matMeta: [0.02, 0.82, 0.82], matRough: [0.60, 0.30, 0.30],
+      },
+    },
+  ];
+
+  // ---- Stop Angle Helper ----
+  function stopToAngle(stopIdx, phiView) {
+    // Cell s center sits at phi_s = ((5.5 - s) / 6) * TAU
+    // Rotating drum by theta = phi_s - phiView places cell s dead center at phiView!
+    const phiS = ((5.5 - stopIdx) / 6) * TAU;
+    let theta = phiS - phiView;
+    theta = ((theta % TAU) + TAU) % TAU;
+    return theta;
+  }
+
+  // Status Jewel Colors (refined botanical/slate illumination, zero garish neon)
+  const LED_IDLE  = { color: [0.88, 0.85, 0.72], emissive: 0.08 };
+  const LED_SPIN  = { color: [0.95, 0.76, 0.38], emissive: 0.40 };
+  const LED_TRAIN = { color: [0.40, 0.78, 0.48], emissive: 0.46 };
+  const LED_REST  = { color: [0.54, 0.68, 0.80], emissive: 0.28 };
+
+  // ---- Scheme Instance Factory ----
+  function createSlotScene(schemeKey, getConfig) {
+    const isRetro = schemeKey === 'retro';
+    const stage = new Stage3D(
+      document.getElementById(`phone-${schemeKey}`),
+      document.getElementById(`stage-${schemeKey}`),
+      document.getElementById(`gl-${schemeKey}`),
+      document.getElementById(`shadow-${schemeKey}`)
+    );
+
+    if (isRetro) {
+      stage.closeupPreset = { target: [0.06, 1.06, 0.14], yaw: 0.11, pitch: 0.22, dist: 6.45 };
+    } else {
+      stage.closeupPreset = { target: [0.06, 0.90, 0.18], yaw: 0.10, pitch: 0.37, dist: 5.85 };
+    }
+
+    let finishIdx = 0;
+    const texReel = stage.createTextureFromCanvas(makeReelStripTexture(getConfig().k, schemeKey), true);
+    const texWalnut = isRetro ? null : stage.createTextureFromCanvas(makeWalnutShellTexture(), false);
+
+    const meshes = {};
+    if (isRetro) {
+      const f = RETRO_FINISHES[0];
+      meshes.base = stage.addMesh(GEOS.retroBase, { ...f.cabinet });
+      meshes.cabinet = stage.addMesh(GEOS.retroCabinet, { ...f.cabinet });
+      meshes.bezel = stage.addMesh(GEOS.retroBezel, { ...f.bezel });
+      meshes.marquee = stage.addMesh(GEOS.retroMarquee, { ...f.cabinet });
+      meshes.leverMount = stage.addMesh(GEOS.retroLeverMount, { ...f.lever });
+      meshes.leverArm = stage.addMesh(GEOS.retroLeverArm, { ...f.lever });
+      meshes.reels = [0, 1, 2].map(() => stage.addMesh(GEOS.retroReel, { ...f.reel, texture: texReel }));
+      meshes.jewels = [0, 1, 2].map(() => stage.addMesh(GEOS.retroJewel, {
+        color: LED_IDLE.color, accent: f.bezel.accent,
+        matMeta: [0.10, 0.88, 0.88], matRough: [0.18, 0.24, 0.24], emissive: LED_IDLE.emissive,
+      }));
+      meshes.glass = stage.addMesh(GEOS.retroGlass, {
+        color: [0.95, 0.98, 0.96], metallic: 0.05, roughness: 0.10, alpha: 0.045, doubleSided: true,
+      });
+
+      stage.shadows.push(
+        { x: 0.0, y: 0, z: 0.06, radius: 0.34, opacity: 0.28, stretchX: 1.32, stretchY: 0.56, visible: true },
+        { x: 1.24, y: 0, z: 0.10, radius: 0.11, opacity: 0.16, stretchX: 0.9, stretchY: 0.45, visible: true }
+      );
+    } else {
+      const f = BAUHAUS_FINISHES[0];
+      meshes.body = stage.addMesh(GEOS.bauBody, { ...f.body, texture: null });
+      meshes.faceplate = stage.addMesh(GEOS.bauFaceplate, { ...f.face });
+      meshes.pressBar = stage.addMesh(GEOS.bauPressBar, { ...f.pressBar });
+      meshes.actuator = stage.addMesh(GEOS.bauActuator, { ...f.actuator });
+      meshes.reels = [0, 1, 2].map(() => stage.addMesh(GEOS.bauReel, { ...f.reel, texture: texReel }));
+      meshes.jewels = [0, 1, 2].map(() => stage.addMesh(GEOS.bauJewel, {
+        color: LED_IDLE.color, accent: f.face.accent,
+        matMeta: [0.10, 0.84, 0.84], matRough: [0.18, 0.26, 0.26], emissive: LED_IDLE.emissive,
+      }));
+      meshes.glass = stage.addMesh(GEOS.bauGlass, {
+        color: [0.96, 0.98, 0.96], metallic: 0.05, roughness: 0.10, alpha: 0.045, doubleSided: true,
+      });
+
+      stage.shadows.push(
+        { x: 0.0, y: 0, z: 0.04, radius: 0.36, opacity: 0.27, stretchX: 1.38, stretchY: 0.56, visible: true },
+        { x: 1.42, y: 0, z: 0.08, radius: 0.10, opacity: 0.14, stretchX: 0.85, stretchY: 0.42, visible: true }
+      );
+    }
+
+    const phiView = isRetro ? RETRO_PHI_VIEW : BAU_PHI_VIEW;
+    let animId = 0;
+    let currentStops = [0, 2, 4];
+    let currentAngles = currentStops.map(s => stopToAngle(s, phiView));
+    let currentMode = 'idle';
+    let lastOutcome = null;
+    let isSpinning = false;
+    let manualLeverPull = 0;
+
+    function applyFinish(idx) {
+      finishIdx = idx;
+      if (isRetro) {
+        const f = RETRO_FINISHES[idx];
+        Object.assign(meshes.base, f.cabinet);
+        Object.assign(meshes.cabinet, f.cabinet);
+        Object.assign(meshes.marquee, f.cabinet);
+        Object.assign(meshes.bezel, f.bezel);
+        Object.assign(meshes.leverMount, f.lever);
+        Object.assign(meshes.leverArm, f.lever);
+        for (const r of meshes.reels) Object.assign(r, f.reel);
+        for (const j of meshes.jewels) j.accent = f.bezel.accent;
+      } else {
+        const f = BAUHAUS_FINISHES[idx];
+        Object.assign(meshes.body, f.body);
+        meshes.body.texture = f.useWoodTex ? texWalnut : null;
+        Object.assign(meshes.faceplate, f.face);
+        Object.assign(meshes.pressBar, f.pressBar);
+        Object.assign(meshes.actuator, f.actuator);
+        for (const r of meshes.reels) Object.assign(r, f.reel);
+        for (const j of meshes.jewels) j.accent = f.face.accent;
+      }
+      stage.draw();
+    }
+
+    function setLedStates(states) {
+      for (let i = 0; i < 3; i++) {
+        const st = states[i] === 'train' ? LED_TRAIN
+                 : states[i] === 'rest'  ? LED_REST
+                 : states[i] === 'spin'  ? LED_SPIN
+                 : LED_IDLE;
+        meshes.jewels[i].color = st.color;
+        meshes.jewels[i].emissive = st.emissive;
+      }
+    }
+
+    function poseAssembly({ angles = currentAngles, leverPull = 0, pressDepress = 0, chassisDip = 0, explode = 0 }) {
+      if (isRetro) {
+        const backZ = -explode * 0.52;
+        meshes.base.position = [0, 0, backZ];
+        meshes.base.q = [0, 0, 0, 1];
+
+        meshes.cabinet.position = [0, -chassisDip + explode * 0.12, backZ];
+        meshes.cabinet.q = [0, 0, 0, 1];
+
+        meshes.marquee.position = [0, -chassisDip + explode * 0.62, backZ - explode * 0.04];
+        meshes.marquee.q = [0, 0, 0, 1];
+
+        // Drums pull cleanly forward & up out of the side cheek envelope (z_back = +0.24 > cheek +0.12, y_bot = +0.90 > belly +0.80)
+        for (let i = 0; i < 3; i++) {
+          const fanX = (i - 1) * explode * 0.15;
+          meshes.reels[i].position = [
+            RETRO_REEL_XS[i] + fanX,
+            RETRO_REEL_Y - chassisDip + explode * 0.24,
+            RETRO_REEL_Z + explode * 0.62,
+          ];
+          meshes.reels[i].q = qAxis([1, 0, 0], angles[i]);
+        }
+
+        // Bezel & curved glass float cleanly in front of the fanned drums (zero interpenetration)
+        meshes.bezel.position = [0, -chassisDip + explode * 0.24, explode * 1.08];
+        meshes.bezel.q = [0, 0, 0, 1];
+
+        meshes.glass.position = [0, -chassisDip + explode * 0.28, explode * 1.46];
+        meshes.glass.q = [0, 0, 0, 1];
+
+        meshes.leverMount.position = [explode * 0.34, -chassisDip + explode * 0.12, backZ];
+        meshes.leverMount.q = [0, 0, 0, 1];
+
+        const pullAngle = leverPull * 1.34;
+        meshes.leverArm.position = [
+          RETRO_LEVER_PIVOT[0] + explode * 0.54,
+          RETRO_LEVER_PIVOT[1] - chassisDip + explode * 0.12,
+          RETRO_LEVER_PIVOT[2] + backZ,
+        ];
+        meshes.leverArm.q = qAxis([1, 0, 0], pullAngle);
+
+        // 3 top status jewels mounted on front of marquee arch (+Z facing forward)
+        const qFront = qAxis([1, 0, 0], Math.PI * 0.5);
+        for (let i = 0; i < 3; i++) {
+          meshes.jewels[i].position = [
+            RETRO_REEL_XS[i] * 0.82,
+            2.09 - chassisDip + explode * 0.62,
+            0.475 + backZ - explode * 0.04,
+          ];
+          meshes.jewels[i].q = qFront;
+        }
+      } else {
+        const backZ = -explode * 0.58;
+        meshes.body.position = [0, -chassisDip * 0.6, backZ];
+        meshes.body.q = [0, 0, 0, 1];
+
+        // Lift 3 wide drums strictly along the 31° faceplate normal (d=1.24 -> f_min=1.170 > side-cheek max 1.108, zero clipping!)
+        const dDrums = explode * 1.24;
+        const dFace = explode * 1.44;
+        const dGlass = explode * 1.76;
+
+        for (let i = 0; i < 3; i++) {
+          const fanX = (i - 1) * explode * 0.12;
+          meshes.reels[i].position = [
+            BAU_REEL_XS[i] + fanX,
+            BAU_REEL_Y - chassisDip * 0.6 + dDrums * BAU_SIN,
+            BAU_REEL_Z + backZ + dDrums * BAU_COS,
+          ];
+          meshes.reels[i].q = qAxis([1, 0, 0], angles[i]);
+        }
+
+        const fnY = dFace * BAU_SIN;
+        const fnZ = backZ + dFace * BAU_COS;
+        meshes.faceplate.position = [0, -chassisDip * 0.6 + fnY, fnZ];
+        meshes.faceplate.q = [0, 0, 0, 1];
+
+        meshes.glass.position = [0, -chassisDip * 0.6 + dGlass * BAU_SIN, backZ + dGlass * BAU_COS];
+        meshes.glass.q = [0, 0, 0, 1];
+
+        const barPress = Math.max(pressDepress, leverPull * 0.78) * 0.085;
+        meshes.pressBar.position = [0, -chassisDip * 0.6 - barPress + explode * 0.44, backZ - explode * 0.06];
+        meshes.pressBar.q = [0, 0, 0, 1];
+
+        // Knurled side actuator slides cleanly down along right flank track
+        meshes.actuator.position = [
+          1.26 + explode * 0.42,
+          1.00 - leverPull * 0.54 - chassisDip * 0.6 + explode * 0.12,
+          0.08 + backZ,
+        ];
+        meshes.actuator.q = qAxis([1, 0, 0], leverPull * 0.60);
+
+        // 3 flush status jewels along upper sloped faceplate
+        const orig = [0, BAU_REEL_Y + (BAU_REEL_R + 0.04) * BAU_SIN, BAU_REEL_Z + (BAU_REEL_R + 0.04) * BAU_COS];
+        const vDot = 0.485, wDot = 0.048;
+        const qSlope = qAxis([1, 0, 0], Math.PI * 0.5 - BAU_SLOPE);
+        for (let i = 0; i < 3; i++) {
+          meshes.jewels[i].position = [
+            BAU_REEL_XS[i],
+            orig[1] + vDot * BAU_COS + wDot * BAU_SIN - chassisDip * 0.6 + fnY,
+            orig[2] - vDot * BAU_SIN + wDot * BAU_COS + fnZ,
+          ];
+          meshes.jewels[i].q = qSlope;
+        }
+      }
+    }
+
+    // ---- Direct Mouse/Touch Pull-Down Gesture on 3D Lever / Actuator ----
+    stage.leverHandler = {
+      hitTest(lx, ly) {
+        if (isSpinning || currentMode === 'explode') return false;
+        const pts = isRetro
+          ? [
+              [RETRO_LEVER_PIVOT[0] + 0.23, RETRO_LEVER_PIVOT[1] + 1.38, RETRO_LEVER_PIVOT[2] + 0.05],
+              [RETRO_LEVER_PIVOT[0] + 0.24, RETRO_LEVER_PIVOT[1] + 0.86, RETRO_LEVER_PIVOT[2]],
+              [RETRO_LEVER_PIVOT[0] + 0.24, RETRO_LEVER_PIVOT[1] + 0.40, RETRO_LEVER_PIVOT[2]],
+            ]
+          : [
+              [1.48, 1.00, 0.08],
+              [1.38, 0.86, 0.08],
+            ];
+        for (const p3 of pts) {
+          const [sx, sy] = stage.project(p3);
+          if (Math.hypot(lx - sx, ly - sy) < 44) return true;
+        }
+        return false;
+      },
+      onStart() {
+        manualLeverPull = 0;
+        document.getElementById(`hint-${schemeKey}`).textContent = '继续向下拖拉，松手即开转…';
+      },
+      onPull(pull) {
+        manualLeverPull = pull;
+        poseAssembly({ angles: currentAngles, leverPull: pull, pressDepress: pull * 0.7, chassisDip: pull * 0.022 });
+        document.getElementById(`hint-${schemeKey}`).textContent =
+          pull >= 0.35 ? '松手立即回弹开转！' : '继续向下拖拉拉杆…';
+        stage.draw();
+      },
+      onRelease(pull) {
+        if (pull >= 0.35) {
+          playSpinSequence(null, pull);
+        } else {
+          // Gentle spring return
+          const id = ++animId;
+          const startPull = pull;
+          const t0 = performance.now();
+          const tick = now => {
+            if (id !== animId) return;
+            const p = clamp((now - t0) / 180, 0, 1);
+            const lv = startPull * (1 - easeOut(p));
+            poseAssembly({ angles: currentAngles, leverPull: lv, pressDepress: lv * 0.7 });
+            stage.draw();
+            if (p < 1) requestAnimationFrame(tick);
+            else restoreHint();
+          };
+          requestAnimationFrame(tick);
+        }
+      },
+    };
+
+    function updateUI(resText, btnText, cls, busy) {
+      const resEl = document.getElementById(`result-${schemeKey}`);
+      const btn = document.getElementById(`btn-${schemeKey}`);
+      const lbl = document.getElementById(`btn-label-${schemeKey}`);
+      resEl.textContent = resText;
+      resEl.className = 'result-line ' + cls;
+      lbl.textContent = btnText;
+      btn.disabled = busy;
+    }
+
+    function restoreHint() {
+      const base = isRetro
+        ? '下拉右侧球头拉杆开转 · 拖拽其余区域 360° 观察'
+        : '下拉右侧滚花推杆开转 · 拖拽其余区域 360° 观察';
+      document.getElementById(`hint-${schemeKey}`).textContent = base;
+    }
+
+    function applyIdle() {
+      animId++;
+      isSpinning = false;
+      currentMode = 'idle';
+      lastOutcome = null;
+      const cfg = getConfig();
+      const pat = REEL_PATTERNS[cfg.k];
+      // Show representative mix on idle (first train stop + first rest stop when both exist)
+      const firstT = pat.indexOf(true);
+      const firstR = pat.indexOf(false);
+      if (firstT >= 0 && firstR >= 0) currentStops = [firstT, firstR, firstT];
+      else currentStops = [0, 2, 4];
+      currentAngles = currentStops.map(s => stopToAngle(s, phiView));
+      setLedStates(['idle', 'idle', 'idle']);
+      poseAssembly({ angles: currentAngles });
+      updateUI(cfg.ruleLine, '拉下拉杆', '', false);
+      restoreHint();
+      stage.draw();
+    }
+
+    function applyExplode() {
+      animId++;
+      isSpinning = false;
+      currentMode = 'explode';
+      setLedStates(['train', 'idle', 'rest']);
+      poseAssembly({ angles: currentAngles, leverPull: 0.25, explode: 1.0 });
+      updateUI('拆解视图 · 360° 拖拽检视壳体、曲玻与三联滚筒', '拉下拉杆', '', false);
+      stage.draw();
+    }
+
+    function applyRevealed(drawResult) {
+      animId++;
+      isSpinning = false;
+      currentMode = drawResult.trains ? 'train' : 'rest';
+      lastOutcome = currentMode;
+      currentStops = drawResult.stops.slice();
+      currentAngles = currentStops.map(s => stopToAngle(s, phiView));
+      setLedStates(drawResult.flags.map(f => (f ? 'train' : 'rest')));
+      poseAssembly({ angles: currentAngles });
+      const badges = drawResult.flags.map(f => (f ? '练' : '歇')).join(' · ');
+      if (drawResult.trains) {
+        updateUI(`走吧，练一点。（${badges}）`, '再拉一次', 'answer', false);
+      } else {
+        updateUI(`今天，歇一歇。（${badges}）`, '再拉一次', 'answer rest', false);
+      }
+      restoreHint();
+      stage.draw();
+    }
+
+    function snapMidSpin() {
+      animId++;
+      isSpinning = false;
+      currentMode = 'spin';
+      // Dynamic mid-spin snapshot: lever pulled down, reel 0 locked, reels 1 & 2 mid-rotation!
+      const cfg = getConfig();
+      const pat = REEL_PATTERNS[cfg.k];
+      const s0 = pat.indexOf(true) >= 0 ? pat.indexOf(true) : 0;
+      const a0 = stopToAngle(s0, phiView);
+      const a1 = stopToAngle(2, phiView) + 0.42;
+      const a2 = stopToAngle(4, phiView) + 0.78;
+      currentAngles = [a0, a1, a2];
+      setLedStates([pat[s0] ? 'train' : 'rest', 'spin', 'spin']);
+      poseAssembly({ angles: currentAngles, leverPull: 0.88, pressDepress: 0.92, chassisDip: 0.025 });
+      updateUI('拉杆回弹，三轮依次停格中…', '转动中…', '', true);
+      stage.draw();
+    }
+
+    function playSpinLoop() {
+      const id = ++animId;
+      isSpinning = true;
+      currentMode = 'spin';
+      setLedStates(['spin', 'spin', 'spin']);
+      updateUI('三联滚筒高速旋转中…', '转动中…', '', true);
+      const t0 = performance.now();
+      const baseAngles = currentAngles.slice();
+      const tick = now => {
+        if (id !== animId) return;
+        const sec = (now - t0) / 1000;
+        const leverWave = Math.max(0, Math.sin(sec * 3.4)) * 0.75;
+        currentAngles = [
+          baseAngles[0] + sec * 13.5,
+          baseAngles[1] + sec * 15.2,
+          baseAngles[2] + sec * 17.0,
+        ];
+        poseAssembly({
+          angles: currentAngles,
+          leverPull: leverWave,
+          pressDepress: leverWave,
+          chassisDip: leverWave * 0.02,
+        });
+        stage.draw();
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    /**
+     * Full sequential 3-reel spin with lever pull/rebound, spring detent overshoot,
+     * and dramatic cliffhanger extended slow-down on Reel 3 when Reels 1 & 2 leave the match hanging!
+     */
+    function playSpinSequence(forcedOutcome, initialLeverPull = 0) {
+      const id = ++animId;
+      isSpinning = true;
+      const cfg = getConfig();
+      const res = drawStops(cfg.k, cfg.rule, forcedOutcome);
+      const cliffhanger = isCliffhangerPair(res.flags[0], res.flags[1], cfg.rule);
+
+      const startAngles = currentAngles.slice();
+      const targetStops = res.stops;
+
+      // Guarantee each reel makes multiple crisp forward rotations (+theta) before landing on exact stop
+      const extraTurns = [3, 5, cliffhanger ? 8 : 6];
+      const targetAngles = targetStops.map((s, i) => {
+        const baseTarget = stopToAngle(s, phiView);
+        const curMod = ((startAngles[i] % TAU) + TAU) % TAU;
+        let delta = baseTarget - curMod;
+        if (delta < 0.3) delta += TAU;
+        return startAngles[i] + delta + extraTurns[i] * TAU;
+      });
+
+      const PULL_MS = initialLeverPull > 0.2 ? 90 : 280;
+      const REBOUND_MS = 240;
+      const STOP_MS = [980, 1480, cliffhanger ? 2420 : 1960];
+      const SETTLE_MS = 220;
+      const TOTAL_MS = STOP_MS[2] + SETTLE_MS;
+
+      updateUI('拉下拉杆，三轮起转…', '转动中…', '', true);
+      setLedStates(['spin', 'spin', 'spin']);
+
+      const t0 = performance.now();
+
+      const tick = now => {
+        if (id !== animId) return;
+        const el = now - t0;
+
+        // Lever & press-bar motion
+        let leverPull = 0;
+        let pressDepress = 0;
+        let chassisDip = 0;
+        if (el < PULL_MS) {
+          const p = el / PULL_MS;
+          leverPull = lerp(initialLeverPull, 1.0, easeInOut(p));
+          pressDepress = leverPull;
+          chassisDip = leverPull * 0.026;
+        } else if (el < PULL_MS + REBOUND_MS) {
+          const p = (el - PULL_MS) / REBOUND_MS;
+          const spring = Math.exp(-p * 5.2) * Math.cos(p * Math.PI * 1.5);
+          leverPull = Math.max(0, spring);
+          pressDepress = Math.max(0, 1 - easeOut(p));
+          chassisDip = leverPull * 0.018;
+        }
+
+        // Sequential drum trajectories with detent overshoot
+        const spinStart = PULL_MS * 0.55;
+        const angles = [0, 0, 0];
+        const ledStates = ['spin', 'spin', 'spin'];
+
+        for (let i = 0; i < 3; i++) {
+          const dur = STOP_MS[i] - spinStart;
+          if (el <= spinStart) {
+            angles[i] = startAngles[i];
+          } else if (el < STOP_MS[i]) {
+            const p = (el - spinStart) / dur;
+            let eased;
+            if (i === 2 && cliffhanger) {
+              // Dramatic cliffhanger curve: fast cruise then long suspenseful final creep!
+              eased = 1 - Math.pow(1 - p, 4.6);
+            } else {
+              eased = easeOutQuart(p);
+            }
+            // Add subtle overshoot right before locking
+            const over = p > 0.86 ? Math.sin(((p - 0.86) / 0.14) * Math.PI) * 0.12 : 0;
+            angles[i] = lerp(startAngles[i], targetAngles[i], eased) + over;
+          } else {
+            const dt = (el - STOP_MS[i]) / SETTLE_MS;
+            const bounce = dt < 1 ? Math.sin(dt * Math.PI * 2) * Math.exp(-dt * 4.5) * 0.065 : 0;
+            angles[i] = targetAngles[i] + bounce;
+            ledStates[i] = res.flags[i] ? 'train' : 'rest';
+          }
+        }
+
+        // Live suspense copy updates as reels lock sequentially
+        if (el >= STOP_MS[1] && el < STOP_MS[2]) {
+          const b0 = res.flags[0] ? '练' : '歇';
+          const b1 = res.flags[1] ? '练' : '歇';
+          if (cliffhanger) {
+            const cue = cfg.rule === 'majority' ? '第三轮定胜负…'
+                      : cfg.rule === 'all' ? '第三轮冲三连！'
+                      : '第三轮最后机会…';
+            updateUI(`${b0} · ${b1} · ？  ${cue}`, '悬念停轮…', '', true);
+          } else {
+            updateUI(`${b0} · ${b1} · 停轮中…`, '转动中…', '', true);
+          }
+        } else if (el >= STOP_MS[0] && el < STOP_MS[1]) {
+          const b0 = res.flags[0] ? '练' : '歇';
+          updateUI(`第一轮「${b0}」· 其余两轮减速中…`, '转动中…', '', true);
+        }
+
+        currentAngles = angles;
+        setLedStates(ledStates);
+        poseAssembly({ angles, leverPull, pressDepress, chassisDip });
+        stage.draw();
+
+        if (el < TOTAL_MS) {
+          requestAnimationFrame(tick);
+        } else {
+          applyRevealed(res);
+        }
+      };
+      requestAnimationFrame(tick);
+    }
+
+    function refreshStripTexture(topbarMode) {
+      const cfg = getConfig();
+      stage.updateTextureFromCanvas(texReel, makeReelStripTexture(cfg.k, schemeKey), true);
+      if (topbarMode === 'explode') {
+        applyExplode();
+        return 'explode';
+      }
+      if (topbarMode === 'train' && cfg.hits > 0) {
+        applyRevealed(drawStops(cfg.k, cfg.rule, true));
+        return 'train';
+      }
+      if (topbarMode === 'rest' && cfg.hits < cfg.total) {
+        applyRevealed(drawStops(cfg.k, cfg.rule, false));
+        return 'rest';
+      }
+      applyIdle();
+      return 'idle';
+    }
+
+    // Bind per-scheme controls
+    const col = document.querySelector(`[data-scheme="${schemeKey}"]`);
+    col.querySelectorAll('[data-finish]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        col.querySelectorAll('[data-finish]').forEach(b => b.setAttribute('aria-pressed', 'false'));
+        btn.setAttribute('aria-pressed', 'true');
+        applyFinish(Number(btn.dataset.finish));
+      });
+    });
+
+    const closeupBtn = col.querySelector('[data-toggle-closeup]');
+    closeupBtn.addEventListener('click', () => {
+      const next = closeupBtn.getAttribute('aria-pressed') !== 'true';
+      closeupBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
+      stage.setCloseupView(next);
+    });
+
+    col.querySelector('[data-reset-view]').addEventListener('click', () => {
+      closeupBtn.setAttribute('aria-pressed', 'false');
+      stage.resetView();
+    });
+
+    document.getElementById(`btn-${schemeKey}`).addEventListener('click', () => {
+      playSpinSequence(null, 0);
+    });
+
+    applyIdle();
+
+    return {
+      setMode(mode) {
+        if (mode === 'idle') applyIdle();
+        else if (mode === 'spin') playSpinLoop();
+        else if (mode === 'train') playSpinSequence(true, 0);
+        else if (mode === 'rest') playSpinSequence(false, 0);
+        else if (mode === 'explode') applyExplode();
+      },
+      snapMode(mode) {
+        const cfg = getConfig();
+        if (mode === 'idle') applyIdle();
+        else if (mode === 'spin') snapMidSpin();
+        else if (mode === 'train') applyRevealed(drawStops(cfg.k, cfg.rule, true));
+        else if (mode === 'rest') applyRevealed(drawStops(cfg.k, cfg.rule, false));
+        else if (mode === 'explode') applyExplode();
+      },
+      setFinish(idx) {
+        const clampedIdx = clamp(Math.round(idx), 0, 1);
+        col.querySelectorAll('[data-finish]').forEach(b =>
+          b.setAttribute('aria-pressed', Number(b.dataset.finish) === clampedIdx ? 'true' : 'false')
+        );
+        applyFinish(clampedIdx);
+      },
+      setCloseup(enabled) {
+        closeupBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+        stage.setCloseupView(enabled);
+      },
+      onConfigChanged(topbarMode) {
+        return refreshStripTexture(topbarMode);
+      },
+      getState() {
+        return { schemeKey, finishIdx, mode: currentMode, stops: currentStops.slice(), lastOutcome };
+      },
+      getLeverClientPos() {
+        const rect = stage.stage.getBoundingClientRect();
+        const pt3 = isRetro
+          ? [RETRO_LEVER_PIVOT[0] + 0.23, RETRO_LEVER_PIVOT[1] + 1.38, RETRO_LEVER_PIVOT[2] + 0.05]
+          : [1.48, 1.00, 0.08];
+        const [sx, sy] = stage.project(pt3);
+        return { x: rect.left + sx, y: rect.top + sy };
+      },
+      stage,
+    };
+  }
+
+  // ---- Global State & Topbar Binding ----
+  let activeK = 3;
+  let activeRule = 'majority';
+  const getConfig = () => calcSlotProb(activeK, activeRule);
+
+  const retroPhone = createSlotScene('retro', getConfig);
+  const bauhausPhone = createSlotScene('bauhaus', getConfig);
+
+  const modeBtns = document.querySelectorAll('.global-controls .pill[data-mode]');
+  const presetBtns = document.querySelectorAll('.global-controls .pill[data-preset]');
+  const kBtns = document.querySelectorAll('.global-controls .pill[data-k]');
+  const ruleBtns = document.querySelectorAll('.global-controls .pill[data-rule]');
+  const globalCloseupBtn = document.getElementById('btn-closeup');
+
+  function setModeUI(mode) {
+    modeBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === mode ? 'true' : 'false'));
+  }
+
+  function syncConfigUI() {
+    const cfg = getConfig();
+    document.getElementById('combo-readout').textContent = cfg.readout;
+    kBtns.forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.k) === activeK ? 'true' : 'false'));
+    ruleBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.rule === activeRule ? 'true' : 'false'));
+
+    const curKey = `${activeK}-${activeRule}`;
+    presetBtns.forEach(b => {
+      const match = b.dataset.preset === curKey
+        || (activeK === 0 && b.dataset.preset === '0-majority')
+        || (activeK === 6 && b.dataset.preset === '6-majority');
+      b.setAttribute('aria-pressed', match ? 'true' : 'false');
+    });
+
+    const activeModeBtn = Array.from(modeBtns).find(b => b.getAttribute('aria-pressed') === 'true');
+    const topbarMode = activeModeBtn ? activeModeBtn.dataset.mode : 'idle';
+    const nextMode = retroPhone.onConfigChanged(topbarMode);
+    bauhausPhone.onConfigChanged(topbarMode);
+    if (nextMode !== topbarMode) setModeUI(nextMode);
+  }
+
+  function setConfig(k, rule) {
+    activeK = clamp(Math.round(k), 0, 6);
+    if (rule === 'majority' || rule === 'any' || rule === 'all') activeRule = rule;
+    syncConfigUI();
+  }
+
+  function setPreset(id) {
+    const [kStr, rule] = String(id).split('-');
+    setConfig(Number(kStr), rule);
+  }
+
+  function setCloseup(enabled) {
+    globalCloseupBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    retroPhone.setCloseup(enabled);
+    bauhausPhone.setCloseup(enabled);
+  }
+
+  function ensureValidOutcomeConfig(mode) {
+    const cfg = getConfig();
+    if (mode === 'train' && cfg.hits === 0) setConfig(3, activeRule);
+    else if (mode === 'rest' && cfg.hits === cfg.total) setConfig(3, activeRule);
+  }
+
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.mode;
+      ensureValidOutcomeConfig(mode);
+      setModeUI(mode);
+      retroPhone.setMode(mode);
+      bauhausPhone.setMode(mode);
+    });
+  });
+
+  presetBtns.forEach(btn => btn.addEventListener('click', () => setPreset(btn.dataset.preset)));
+  kBtns.forEach(btn => btn.addEventListener('click', () => setConfig(Number(btn.dataset.k), activeRule)));
+  ruleBtns.forEach(btn => btn.addEventListener('click', () => setConfig(activeK, btn.dataset.rule)));
+  globalCloseupBtn.addEventListener('click', () => {
+    const next = globalCloseupBtn.getAttribute('aria-pressed') !== 'true';
+    setCloseup(next);
+  });
+
+  syncConfigUI();
+
+  // ---- Debug & Verification Hook ----
+  window.__slotDebug = {
+    snap(mode) {
+      ensureValidOutcomeConfig(mode);
+      setModeUI(mode);
+      retroPhone.snapMode(mode);
+      bauhausPhone.snapMode(mode);
+    },
+    setPreset,
+    setConfig,
+    setFinish(scheme, idx) {
+      if (scheme === 'retro' || scheme === 'a' || scheme === 'A') retroPhone.setFinish(idx);
+      else if (scheme === 'bauhaus' || scheme === 'b' || scheme === 'B') bauhausPhone.setFinish(idx);
+      else {
+        retroPhone.setFinish(idx);
+        bauhausPhone.setFinish(idx);
+      }
+    },
+    setCloseup,
+    orbit(az, el) {
+      retroPhone.stage.setOrbit(az, el);
+      bauhausPhone.stage.setOrbit(az, el);
+    },
+    resetView() {
+      setCloseup(false);
+    },
+    getStats() {
+      return { retro: retroStats, bauhaus: bauStats };
+    },
+    getProbTable() {
+      const out = [];
+      for (const rule of ['majority', 'any', 'all']) {
+        for (let k = 0; k <= 6; k++) out.push(calcSlotProb(k, rule));
+      }
+      return out;
+    },
+    getState() {
+      return { k: activeK, rule: activeRule, retro: retroPhone.getState(), bauhaus: bauhausPhone.getState() };
+    },
+    getLeverClientPos(scheme) {
+      return (scheme === 'bauhaus' || scheme === 'b') ? bauhausPhone.getLeverClientPos() : retroPhone.getLeverClientPos();
+    },
+  };
+})();
+</script>
+</body>
+</html>

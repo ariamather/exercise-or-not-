@@ -133,7 +133,7 @@ fun SettingsScreen(
 }
 
 private const val PRIVACY_TEXT =
-    "不联网（应用没有网络权限），不收集、不上传任何信息，没有广告和统计。训练记录和骰子设置只保存在这台手机上；导出的备份文件保存在你自己选择的位置。"
+    "不联网（应用没有网络权限），不收集、不上传任何信息，没有广告和统计。训练记录和玩法设置只保存在这台手机上；导出的备份文件保存在你自己选择的位置。"
 
 private val timeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 

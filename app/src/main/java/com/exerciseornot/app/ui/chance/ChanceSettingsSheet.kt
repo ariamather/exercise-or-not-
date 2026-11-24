@@ -5,21 +5,27 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -43,88 +49,168 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.exerciseornot.app.chance.OutcomeModel
 import com.exerciseornot.app.chance.ChanceGames
+import com.exerciseornot.app.chance.OutcomeModel
+import com.exerciseornot.app.chance.RevolverDraw
 import com.exerciseornot.app.chance.Stop
 import com.exerciseornot.app.chance.nearestStop
 
-/** One slider for every game; the game decides where it can stop and what each stop means. */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun ChanceSettingsSheet(
-    setup: ChanceSetup,
-    onStop: (Stop) -> Unit,
+fun ChanceGameSheet(
+    gameId: String,
     onGame: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val game = setup.game
-    val model = game.model
-    // While dragging, show the stop under the finger; after release, hold it until the saved value arrives.
-    var dragValue by remember(game.id) { mutableStateOf<Float?>(null) }
-    var pending by remember(game.id) { mutableStateOf<Stop?>(null) }
-    LaunchedEffect(setup.stop) { if (pending?.key == setup.stop.key) pending = null }
-    val shown = dragValue?.let { model.nearestStop(it.toDouble()) } ?: pending ?: setup.stop
-    val choose: (Stop) -> Unit = { s ->
-        if (s.key != shown.key) {
-            pending = s
-            onStop(s)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        modifier = Modifier.semantics { paneTitle = "选择玩法" },
+    ) {
+        FlowRow(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp).selectableGroup(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            ChanceGames.all.forEach { option ->
+                FilterChip(
+                    selected = option.id == gameId,
+                    onClick = {
+                        if (option.id != gameId) onGame(option.id)
+                        onDismiss()
+                    },
+                    label = { Text(option.name, fontSize = 13.sp) },
+                )
+            }
         }
     }
-    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+}
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.padding(start = 24.dp, end = 24.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text("把一点偏爱，交给概率。", fontSize = 19.sp, fontWeight = FontWeight.Medium, modifier = Modifier.semantics { heading() })
-            Text("选一个玩法，再拖动滑条决定练的概率", fontSize = 12.sp, color = muted)
-            Row(
-                Modifier.fillMaxWidth().padding(top = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ChanceGames.all.forEach { option ->
-                    FilterChip(
-                        selected = option.id == game.id,
-                        onClick = { if (option.id != game.id) onGame(option.id) },
-                        label = { Text(option.name, fontSize = 13.sp) },
-                    )
-                }
-            }
-            Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("练的概率", fontSize = 12.sp, modifier = Modifier.weight(1f))
-                Text(shown.percentText, fontSize = 28.sp)
-            }
-            Column {
-                StopSlider(
-                    model = model,
-                    shown = shown,
-                    onDrag = { v ->
-                        dragValue = v
-                        choose(model.nearestStop(v.toDouble()))
-                    },
-                    onDragEnd = { dragValue = null },
-                    onStep = choose,
+/** Every game has a probability slider, and the revolver also has two count controls. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChanceProbabilitySheet(
+    setup: ChanceSetup,
+    onStop: (Stop) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val model = setup.game.model
+    // Show the new stop immediately while the saved value flows back from preferences.
+    var pending by remember(setup.game.id) { mutableStateOf<Stop?>(null) }
+    LaunchedEffect(setup.stop) { if (pending?.key == setup.stop.key) pending = null }
+    val shown = pending ?: setup.stop
+    val choose: (Stop) -> Unit = { stop ->
+        if (stop.key != (pending ?: setup.stop).key) {
+            pending = stop
+            onStop(stop)
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "练的概率", fontSize = 19.sp, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f).semantics { heading() },
                 )
-                Row(Modifier.fillMaxWidth()) {
-                    Text("0%", fontSize = 11.sp, color = muted)
-                    Spacer(Modifier.weight(1f))
-                    Text("100%", fontSize = 11.sp, color = muted)
+                Text(shown.percentText, fontSize = 28.sp)
+                IconButton(onClick = onDismiss, modifier = Modifier.padding(start = 8.dp)) {
+                    Icon(Icons.Filled.Close, contentDescription = "关闭概率设置")
                 }
             }
-            Text(
-                shown.rule, fontSize = 14.sp,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            StopSlider(
+                model = model,
+                shown = shown,
+                onStop = choose,
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Text("结果只是一个小建议，决定权一直在你。", fontSize = 11.sp, color = muted)
-            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp), shape = RoundedCornerShape(18.dp)) { Text("就这样") }
+            if (model == RevolverDraw) RevolverControls(shown, onStop = choose)
+        }
+    }
+}
+
+@Composable
+private fun RevolverControls(shown: Stop, onStop: (Stop) -> Unit) {
+    val config = RevolverDraw.configOf(shown)
+    Column(
+        Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        RevolverStepper(
+            label = "装 ${config.loaded} 发",
+            count = config.loaded,
+            range = 0..6,
+            decreaseLabel = "少装一发",
+            increaseLabel = "多装一发",
+            onChange = { onStop(RevolverDraw.stopFor(it, config.shots)) },
+        )
+        RevolverStepper(
+            label = "打 ${config.shots} 下",
+            count = config.shots,
+            range = 1..6,
+            decreaseLabel = "少打一下",
+            increaseLabel = "多打一下",
+            onChange = { onStop(RevolverDraw.stopFor(config.loaded, it)) },
+        )
+        Text(
+            if (config.all) "全部命中才练" else "至少中一次就练",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun RevolverStepper(
+    label: String,
+    count: Int,
+    range: IntRange,
+    decreaseLabel: String,
+    increaseLabel: String,
+    onChange: (Int) -> Unit,
+) {
+    Row(
+        Modifier.widthIn(max = 224.dp).fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedIconButton(
+            onClick = { onChange(count - 1) },
+            enabled = count > range.first,
+            modifier = Modifier.size(48.dp).semantics { contentDescription = decreaseLabel },
+        ) {
+            Text("−", Modifier.clearAndSetSemantics {}, style = MaterialTheme.typography.titleLarge)
+        }
+        Text(
+            label,
+            modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite },
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+        )
+        OutlinedIconButton(
+            onClick = { onChange(count + 1) },
+            enabled = count < range.last,
+            modifier = Modifier.size(48.dp).semantics { contentDescription = increaseLabel },
+        ) {
+            Text("+", Modifier.clearAndSetSemantics {}, style = MaterialTheme.typography.titleLarge)
         }
     }
 }
@@ -138,9 +224,7 @@ fun ChanceSettingsSheet(
 private fun StopSlider(
     model: OutcomeModel,
     shown: Stop,
-    onDrag: (Float) -> Unit,
-    onDragEnd: () -> Unit,
-    onStep: (Stop) -> Unit,
+    onStop: (Stop) -> Unit,
 ) {
     val current by rememberUpdatedState(shown)
     val active = MaterialTheme.colorScheme.primary
@@ -152,8 +236,11 @@ private fun StopSlider(
 
     Slider(
         value = shown.chance.toFloat(),
-        onValueChange = onDrag,
-        onValueChangeFinished = onDragEnd,
+        onValueChange = {
+            val next = model.nearestStop(it.toDouble())
+            // Different configurations can share a probability.
+            if (next.chance != shown.chance) onStop(next)
+        },
         valueRange = 0f..1f,
         thumb = {
             Box(
@@ -189,7 +276,7 @@ private fun StopSlider(
         // Screen readers step stop by stop instead of in 5% increments that would snap back.
         modifier = Modifier.fillMaxWidth().clearAndSetSemantics {
             contentDescription = "练的概率"
-            stateDescription = "${shown.percentText}，${shown.rule}"
+            stateDescription = shown.percentText
             progressBarRangeInfo = ProgressBarRangeInfo(shown.chance.toFloat(), 0f..1f)
             setProgress { target ->
                 val now = current
@@ -198,7 +285,7 @@ private fun StopSlider(
                     target < now.chance - 1e-6 -> model.stops.lastOrNull { it.chance < now.chance - 1e-9 }
                     else -> null
                 }
-                next?.let(onStep)
+                next?.let(onStop)
                 next != null
             }
         },

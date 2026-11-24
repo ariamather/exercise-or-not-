@@ -6,6 +6,7 @@ import com.exerciseornot.app.chance.ChancePreferences
 import com.exerciseornot.app.chance.ChanceResult
 import com.exerciseornot.app.chance.D6
 import com.exerciseornot.app.chance.RevealPace
+import com.exerciseornot.app.chance.RevolverDraw
 import com.exerciseornot.app.chance.draw
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -74,7 +76,7 @@ class ChanceViewModelTest {
         val vm = newViewModel(seed = 7)
         vm.draw()
         awaitUntil("result") { vm.todayResult.value != null && !vm.drawing.value }
-        assertEquals(ChanceResult("dice", "d6", expected.outcomeId, expected.train, today), vm.todayResult.value)
+        assertEquals(ChanceResult("dice", "d6", expected.outcomeId, expected.train, today, "3/6"), vm.todayResult.value)
         assertEquals(vm.todayResult.value, runBlocking { prefs.lastResult.first() })
     }
 
@@ -133,12 +135,14 @@ class ChanceViewModelTest {
             val inner = Random(1)
             var draws = 0
             override fun nextBits(bitCount: Int): Int = inner.nextBits(bitCount)
-            override fun nextInt(from: Int, until: Int): Int { draws++; return inner.nextInt(from, until) }
+            override fun nextInt(until: Int): Int { draws++; return inner.nextInt(until) }
         }
         val vm = ChanceViewModel(prefs, clock, random, revealDurationMs = 60_000)
         vm.draw()
         vm.draw()
         vm.draw()
+        // The random draw happens after DataStore supplies the model's memory.
+        runBlocking { withTimeout(5_000) { prefs.lastResult.first { it != null } } }
         assertTrue(vm.drawing.value)
         assertEquals(1, random.draws)
     }
@@ -206,6 +210,29 @@ class ChanceViewModelTest {
     }
 
     @Test
+    fun revolverDrawUsesExactRuleAndKeepsItWithTheSavedResult() {
+        val vm = newViewModel()
+        vm.setGame("revolver")
+        awaitUntil("revolver selected") { vm.setup.value.game.id == "revolver" }
+        assertEquals("3-1-any", vm.setup.value.stop.key)
+
+        val exact = RevolverDraw.stopFor(1, 3)
+        vm.setStop(exact)
+        awaitUntil("exact rule selected") { vm.setup.value.stop == exact }
+        val expected = RevolverDraw.draw(exact, Random(7))
+        vm.drawAnimated()
+        awaitUntil("animation requested") { vm.animation.value != null }
+        val request = vm.animation.value!!
+        assertEquals(ChanceResult("revolver", "revolver", expected.outcomeId, expected.train, today, exact.key), request.result)
+        vm.animationFinished(request.id, request.result.outcomeId)
+
+        val next = RevolverDraw.stopFor(3, 1)
+        vm.setStop(next)
+        awaitUntil("same probability, different rule") { vm.setup.value.stop == next }
+        assertEquals(request.result, runBlocking { prefs.lastResult.first() })
+    }
+
+    @Test
     fun setGame_keepsTodaysAnswerAndIgnoresUnknownGames() {
         val vm = newViewModel()
         vm.draw()
@@ -242,5 +269,32 @@ class ChanceViewModelTest {
         assertEquals(false, vm.drawing.value)
         assertTrue(vm.error.value != null)
         assertEquals(request.result, runBlocking { prefs.lastResult.first() })
+    }
+
+    @Test
+    fun setGameToLots_snapsTargetAndSavesLotsModelResult() {
+        runBlocking { prefs.setTarget(2.0 / 6) }
+        val vm = newViewModel(seed = 11)
+        awaitUntil("setup loaded") { vm.setup.value.target == 2.0 / 6 }
+        vm.setGame("lots")
+        awaitUntil("lots selected") { vm.setup.value.game.id == "lots" }
+        assertEquals("3/10", vm.setup.value.stop.key)
+        assertEquals("10 支签里放 3 支「练」签", vm.setup.value.stop.rule)
+
+        vm.drawAnimated()
+        awaitUntil("animation requested") { vm.animation.value != null }
+        val request = vm.animation.value!!
+        assertEquals("lots", request.result.gameId)
+        assertEquals("lots", request.result.modelId)
+        assertEquals(RevealPace.TIMED, request.pace)
+        vm.animationFinished(request.id, request.result.outcomeId)
+        assertEquals(false, vm.drawing.value)
+        assertEquals(request.result, vm.todayResult.value)
+
+        // Switching to cup keeps today's answer and target, even across models.
+        vm.setGame("cup")
+        awaitUntil("cup selected") { vm.setup.value.game.id == "cup" }
+        assertEquals("2/6", vm.setup.value.stop.key)
+        assertEquals(request.result, vm.todayResult.value)
     }
 }

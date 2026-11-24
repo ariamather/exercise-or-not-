@@ -102,7 +102,7 @@ class BackupService(
         val s = chance.settings.first()
         val legacyFaces = D6.trainFaces(D6.snap(s.target))
         val memory = chance.memories.first().takeIf { it.isNotEmpty() }
-        return file.copy(settings = BackupSettings(legacyFaces, s.gameId, s.target, memory))
+        return file.copy(settings = BackupSettings(legacyFaces, s.gameId, s.target, memory, s.revolverStopKey))
     }
 
     private suspend fun replaceAll(content: BackupContent) {
@@ -121,7 +121,7 @@ class BackupService(
             chance.setSettings(content.chance)
             chance.setMemories(content.chanceMemory)
         } catch (e: Exception) {
-            throw IllegalArgumentException("训练数据已恢复，但练的概率未能恢复，请在掷骰子页的设置里重新调整")
+            throw IllegalArgumentException("训练数据已恢复，但练的概率未能恢复，请在玩法页的设置里重新调整")
         }
     }
 

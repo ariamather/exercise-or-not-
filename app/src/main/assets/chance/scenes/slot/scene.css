@@ -1,0 +1,18 @@
+.stage.slot-stage {
+  touch-action: none;
+  cursor: grab;
+}
+
+.stage.slot-stage.is-orbiting { cursor: grabbing; }
+.stage.slot-stage.is-pulling { cursor: ns-resize; }
+.stage.slot-stage:disabled { cursor: default; }
+
+.slot-hint {
+  position: absolute;
+  inset: auto 16px 4px;
+  text-align: center;
+  color: #647364;
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+}

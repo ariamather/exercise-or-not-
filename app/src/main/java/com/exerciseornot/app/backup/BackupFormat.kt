@@ -35,7 +35,7 @@ data class BackupFile(
  * [diceTrainFaces] is what 0.2.0 reads (it requires the field and ignores unknown ones), so it
  * is still written, from the current probability, and a newer backup restores on 0.2.0 too.
  * [chanceTarget] wins when present. [chanceMemory] is each model's draw memory (e.g. what is
- * left in a pot), keyed by model id; older versions ignore it.
+ * left in a pot), keyed by model id. [chanceRevolverStopKey] keeps the exact revolver rule.
  */
 @Serializable
 data class BackupSettings(
@@ -43,6 +43,7 @@ data class BackupSettings(
     val chanceGame: String? = null,
     val chanceTarget: Double? = null,
     val chanceMemory: Map<String, String>? = null,
+    val chanceRevolverStopKey: String? = null,
 )
 
 @Serializable

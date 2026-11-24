@@ -92,21 +92,49 @@ class ChanceGameTest {
     fun diceAndCup_shareTheD6Model() {
         assertEquals(D6, ChanceGames.Dice.model)
         assertEquals(D6, ChanceGames.Cup.model)
+        assertEquals(Lots10, ChanceGames.Lots.model)
         assertEquals("dice", ChanceGames.Dice.sceneId)
         assertEquals("cup", ChanceGames.Cup.sceneId)
-        assertEquals(listOf(D6), ChanceGames.models)
+        assertEquals("lots", ChanceGames.Lots.sceneId)
+        assertEquals(listOf(D6, Lots10, ScratchTicket, RevolverDraw, SlotMachine, CarnivalWheel), ChanceGames.models)
+    }
+
+    @Test
+    fun lots10_hasElevenStopsAndEvenDraw() {
+        assertEquals(
+            listOf("0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"),
+            Lots10.stops.map { it.percentText },
+        )
+        assertEquals("怎么抽都休息", Lots10.stops[0].rule)
+        assertEquals("10 支签里放 5 支「练」签", Lots10.stops[5].rule)
+        assertEquals("怎么抽都练", Lots10.stops[10].rule)
+        assertTrue(Lots10.trains(Lots10.stops[5], "6"))
+        assertEquals(false, Lots10.trains(Lots10.stops[5], "5"))
+        assertEquals("5/10", Lots10.snap(0.5).key)
+        assertEquals("1/10", Lots10.snap(0.01).key)
+        assertEquals("9/10", Lots10.snap(0.99).key)
+        assertEquals("0/10", Lots10.snap(0.0).key)
+        assertEquals("10/10", Lots10.snap(1.0).key)
+
+        val counts = mutableMapOf<String, Int>()
+        val random = Random(99)
+        repeat(10_000) { counts.merge(Lots10.draw(Lots10.stops[5], random).outcomeId, 1, Int::plus) }
+        assertEquals((1..10).map { "$it" }.toSet(), counts.keys)
+        counts.values.forEach { assertTrue("uneven: $counts", it in 850..1150) }
     }
 
     /** Shipped ids are stored in preferences and backups; they must never change. */
     @Test
     fun shippedIdsAreStable() {
-        assertEquals(listOf("dice", "cup"), ChanceGames.all.map { it.id }.take(2))
+        assertEquals(listOf("dice", "cup", "lots", "scratch", "revolver", "slot", "wheel"), ChanceGames.all.map { it.id })
         assertEquals("d6", D6.id)
+        assertEquals("lots", Lots10.id)
     }
 
     @Test
     fun registry() {
         assertEquals(ChanceGames.Cup, ChanceGames.byId("cup"))
+        assertEquals(ChanceGames.Lots, ChanceGames.byId("lots"))
         assertEquals(ChanceGames.Dice, ChanceGames.resolve("dice"))
         assertEquals(ChanceGames.default, ChanceGames.resolve("something-newer"))
         assertEquals(ChanceGames.default, ChanceGames.resolve(null))

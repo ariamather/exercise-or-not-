@@ -13,6 +13,7 @@
  *     reveal(outcome) -> Promise<outcome | null>,  // play until `outcome` shows; resolve with what shows
  *     show(outcome | null),                        // stop anything running and display `outcome` (null = idle)
  *     revealing() -> boolean,
+ *     primaryState(), primaryAction()             // optional manual step button during a reveal
  *   }
  * }).
  *
@@ -23,6 +24,9 @@
  *   asset(path)          URL of a file in this scene's folder (textures, models, sounds)
  *   parts(outcome)       a combined outcome's parts: "3,5" -> ["3", "5"]
  *   pace()               'timed' or 'user' for the reveal in progress (or the game's default)
+ *   train()              whether the current outcome means train (true) or rest (false)
+ *   refreshControls()      redraw button state when a manual step becomes available
+ *   stopKey()            the saved outcome's probability stop, or the selected stop when idle
  *
  * Outcomes are strings. A 'user' reveal waits for the user (scratching, turning a wheel) with no
  * deadline; the main button then offers to skip, which calls show(outcome). Whatever a scene
@@ -41,6 +45,12 @@
   const $ = id => document.getElementById(id);
   const stage = $('stage'), button = $('draw'), label = $('draw-label');
   const result = $('result'), error = $('error'), record = $('record');
+  const skipButton = document.createElement('button');
+  skipButton.className = 'shortcut';
+  skipButton.id = 'skip';
+  skipButton.hidden = true;
+  button.after(skipButton);
+
   const sceneId = new URLSearchParams(location.search).get('scene') || 'dice';
   const base = 'scenes/' + sceneId + '/';
   let definition = null, scene = null, labels = DEFAULT_LABELS, sceneError = '';
@@ -48,12 +58,23 @@
 
   const userPaced = () => busy && state.pace === 'user' && !!state.requestId;
 
+  const stepping = () => busy && !!state.requestId && !!scene?.primaryAction;
+
   function controls() {
     busy = !!state.drawing;
     const skip = userPaced() && skipped !== state.requestId;
-    button.disabled = !skip && (busy || !scene || !!sceneError);
-    stage.disabled = busy && !userPaced() || !scene || !!sceneError;
-    label.textContent = skip ? labels.skip : busy ? labels.busy : state.hasResult ? labels.again : labels.action;
+    const manual = stepping() && skipped !== state.requestId;
+    const step = manual ? scene.primaryState() : null;
+    skipButton.hidden = !(manual && skip);
+    skipButton.textContent = labels.skip;
+    if (manual) {
+      button.disabled = !step?.enabled || !!sceneError;
+      label.textContent = step?.label || labels.busy;
+    } else {
+      button.disabled = !skip && (busy || !scene || !!sceneError);
+      label.textContent = skip ? labels.skip : busy ? labels.busy : state.hasResult ? labels.again : labels.action;
+    }
+    stage.disabled = busy && !userPaced() && !manual || !scene || !!sceneError;
     result.className = 'result' + (!busy && state.hasResult ? ' answer' + (state.train ? '' : ' rest') : '');
     result.textContent = busy ? labels.waiting : !state.hasResult ? labels.idle : state.train ? '走吧，练一点。' : '今天，歇一歇。';
     stage.setAttribute('aria-label', busy ? labels.stageBusy
@@ -75,7 +96,15 @@
   }
 
   function show(outcome) {
-    try { scene && scene.show(outcome); } catch (_) { /* the native error line already explains it */ }
+    try {
+      scene.show(outcome);
+      return true;
+    } catch (error) {
+      console.error('Cannot show ' + sceneId + ' outcome', error);
+      sceneError = labels.loadError;
+      controls();
+      return false;
+    }
   }
 
   /* Paths stay inside the scene folder: lowercase names, no "..", like the native whitelist. */
@@ -103,7 +132,8 @@
         });
       } else if (!next.requestId && !next.drawing) {
         // Keep the resting pose a reveal ended on; only redraw when something actually changed.
-        if (scene && (scene.revealing() || !previous.hasResult || previous.outcome !== next.outcome)) show(next.outcome);
+        if (scene && (scene.revealing() || previous.outcome !== next.outcome ||
+          previous.train !== next.train || previous.stopKey !== next.stopKey)) show(next.outcome);
         request = 0;
       }
     },
@@ -140,9 +170,11 @@
     for (const file of definition.libs || []) await loadScript('lib/' + file);
     for (const file of definition.requires || []) await loadScript(asset(file));
     scene = definition.create(stage, {
-      fail, haptic, draw, asset,
+      fail, haptic, draw, asset, refreshControls: controls,
       parts: outcome => String(outcome).split(','),
       pace: () => state.pace || 'timed',
+      train: () => !!state.train,
+      stopKey: () => state.stopKey,
     });
   }
 
@@ -158,18 +190,29 @@
     const id = state.requestId;
     if (!userPaced() || skipped === id) return;
     skipped = id;
-    show(state.outcome);
+    const shown = show(state.outcome);
     controls();
-    AndroidChance.finished(id, state.outcome);
+    if (shown) AndroidChance.finished(id, state.outcome);
+    else AndroidChance.failed(id);
   }
 
   stage.addEventListener('click', () => { if (!definition || definition.tapToDraw !== false) draw(); });
-  button.addEventListener('click', () => (userPaced() ? skip() : draw()));
-  $('settings').addEventListener('click', () => AndroidChance.settings());
+  button.addEventListener('click', () => {
+    if (stepping()) scene.primaryAction();
+    else if (userPaced()) skip();
+    else draw();
+  });
+  skipButton.addEventListener('click', skip);
+  $('game').addEventListener('click', () => AndroidChance.game());
+  $('probability').addEventListener('click', () => AndroidChance.probability());
   record.addEventListener('click', () => AndroidChance.record());
 
   controls();
-  start().catch(() => { scene = null; sceneError = labels.loadError; }).finally(() => {
+  start().catch(error => {
+    console.error('Cannot start ' + sceneId + ' scene', error);
+    scene = null;
+    sceneError = labels.loadError;
+  }).finally(() => {
     controls();
     AndroidChance.ready();
   });

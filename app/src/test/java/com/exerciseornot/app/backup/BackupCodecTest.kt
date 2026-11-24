@@ -20,8 +20,12 @@ class BackupCodecTest {
         game: String? = null,
         target: Double? = null,
         memory: Map<String, String>? = null,
+        revolverStopKey: String? = null,
         formatVersion: Int = BACKUP_FORMAT_VERSION,
-    ) = BackupFile(formatVersion, 1, "0.1.0", 42, exercises, workouts, items, sets, BackupSettings(faces, game, target, memory))
+    ) = BackupFile(
+        formatVersion, 1, "0.1.0", 42, exercises, workouts, items, sets,
+        BackupSettings(faces, game, target, memory, revolverStopKey),
+    )
 
     private fun rejects(f: BackupFile, reasonPart: String) = rejectsText(BackupCodec.encode(f), reasonPart)
 
@@ -49,6 +53,18 @@ class BackupCodecTest {
     fun chanceTarget_winsOverLegacyFaces() {
         val content = BackupCodec.decode(BackupCodec.encode(file(faces = listOf(4, 5, 6), game = "dice", target = 0.25)))
         assertEquals(ChanceSettings("dice", 0.25), content.chance)
+    }
+
+    @Test
+    fun revolverKey_roundTripsAndFallsBackToTargetIfItCanNoLongerBeUsed() {
+        fun read(target: Double, key: String): ChanceSettings = BackupCodec.decode(BackupCodec.encode(
+            file(game = "revolver", target = target, revolverStopKey = key),
+        )).chance
+
+        assertEquals(ChanceSettings("revolver", 0.5, "1-3-any"), read(0.5, "1-3-any"))
+        assertEquals(ChanceSettings("revolver", 0.4, "4-2-all"), read(0.4, "4-2-all"))
+        assertEquals(ChanceSettings("revolver", 0.5), read(0.5, "7-3-any"))
+        assertEquals(ChanceSettings("revolver", 0.5), read(0.5, "4-2-all"))
     }
 
     @Test

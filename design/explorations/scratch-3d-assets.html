@@ -1,0 +1,3641 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>练不练 · 刮刮乐三维票券与六箔章资产探索</title>
+<style>
+  :root {
+    color-scheme: light;
+    --desk: #e8eae3;
+    --paper: #f6f5f0;
+    --card: #fbfcf7;
+    --ink: #28392f;
+    --ink-2: #536052;
+    --muted: #7d847b;
+    --line: #dce0d4;
+    --soft: #e9eddf;
+    --accent: #365b43;
+    --accent-hover: #294b36;
+    --on-accent: #fafbf5;
+    --rest: #596e80;
+    --focus: #9dac67;
+    --shadow: 0 24px 70px rgba(40, 57, 47, 0.12);
+    font-family: -apple-system, BlinkMacSystemFont, "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--desk); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; border: 0; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  button:disabled { cursor: default; opacity: 0.45; }
+
+  .workspace {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 24px 24px 52px;
+  }
+
+  /* Top control header */
+  .topbar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .topbar-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px 24px;
+  }
+  .topbar-copy .eyebrow {
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    font-weight: 600;
+    color: #7c886b;
+    margin-bottom: 5px;
+  }
+  .topbar-copy h1 {
+    margin: 0;
+    font-size: 25px;
+    font-weight: 600;
+    letter-spacing: -0.6px;
+  }
+  .topbar-copy p {
+    margin: 5px 0 0;
+    font-size: 13px;
+    color: var(--ink-2);
+    line-height: 1.6;
+    max-width: 760px;
+  }
+
+  .controls-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .global-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 7px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 15px;
+  }
+  .controls-label {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 0 6px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .divider-v {
+    width: 1px;
+    height: 18px;
+    background: var(--line);
+    margin: 0 4px;
+  }
+  .pill {
+    padding: 6px 11px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-2);
+    transition: background 0.16s, color 0.16s;
+    white-space: nowrap;
+  }
+  .pill.sm {
+    padding: 5px 8px;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pill:hover:not(:disabled) { background: var(--soft); color: var(--ink); }
+  .pill[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+  .pill.cycle-btn {
+    border: 1px dashed #bcc5af;
+    color: var(--accent);
+    margin-left: auto;
+  }
+
+  .prob-readout {
+    margin-left: auto;
+    padding: 4px 10px;
+    border-radius: 9px;
+    background: var(--soft);
+    color: var(--accent);
+    font-size: 11.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* Two-column phone showcase */
+  .comparison {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 420px));
+    justify-content: center;
+    gap: 28px 32px;
+  }
+  @media (max-width: 860px) {
+    .comparison { grid-template-columns: minmax(0, 420px); }
+    .workspace { padding: 18px 14px 44px; }
+  }
+
+  .scheme-col {
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+  .scheme-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 10px;
+    padding: 0 4px;
+  }
+  .scheme-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .scheme-title strong { font-size: 15px; font-weight: 600; }
+  .scheme-title span { font-size: 11px; color: var(--muted); }
+
+  .scheme-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+  }
+  .mini-chip {
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .mini-chip:hover { background: var(--soft); }
+  .mini-chip[aria-pressed="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--on-accent);
+  }
+
+  /* Phone frame matching 6-spatial shell.css */
+  .phone {
+    position: relative;
+    width: 100%;
+    background: var(--paper);
+    border-radius: 34px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(40, 57, 47, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 690px;
+  }
+  .gl-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  .phone header {
+    height: 66px;
+    padding: 10px 26px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: none;
+    position: relative;
+    z-index: 2;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .brand-mark {
+    width: 26px;
+    height: 26px;
+    background: var(--accent);
+    color: var(--paper);
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    margin-right: 9px;
+    font: 24px Georgia, serif;
+    line-height: 20px;
+    padding-bottom: 4px;
+    transform: rotate(-8deg);
+  }
+  .brand-dot { color: #8d9a67; margin-left: 2px; }
+  .icon-button {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--ink);
+  }
+  .icon-button:hover { background: var(--soft); }
+  .icon-button svg { width: 22px; height: 22px; }
+  .icon-button circle { fill: var(--paper); }
+
+  .phone main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-bottom: 18px;
+    position: relative;
+    z-index: 2;
+  }
+  .phone h2.hero-q {
+    margin: 10px 30px 0;
+    font-size: 44px;
+    line-height: 1.2;
+    letter-spacing: -2px;
+    font-weight: 550;
+  }
+  .phone h2.hero-q span { color: #8a9a72; font-weight: 350; }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 292px;
+    flex: none;
+    touch-action: none;
+    cursor: crosshair;
+    z-index: 5;
+  }
+  .stage.mode-orbit { cursor: grab; }
+  .stage.is-orbiting { cursor: grabbing; }
+  .stage.is-scratching { cursor: none; }
+  .stage canvas.shadow-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .stage-hint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 6px;
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    color: #8f9686;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .stage.is-orbiting .stage-hint,
+  .stage.is-scratching .stage-hint { opacity: 0.25; }
+
+  .result-line {
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: 2px 18px 16px;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    color: var(--ink);
+  }
+  .result-line.answer { font-size: 25px; font-weight: 550; }
+  .result-line.rest { color: var(--rest); }
+
+  .actions { padding: 0 30px; }
+  .primary {
+    width: 100%;
+    min-height: 53px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    background: var(--accent);
+    border-radius: 17px;
+    color: var(--on-accent);
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 1.8px;
+    transition: background 0.16s, transform 0.14s;
+  }
+  .primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .primary:active:not(:disabled) { transform: scale(0.985); }
+  .shortcut {
+    width: 100%;
+    min-height: 44px;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 10px 4px;
+  }
+
+  /* Specs & notes footer */
+  .specs {
+    max-width: 872px;
+    margin: 26px auto 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 28px;
+  }
+  @media (max-width: 720px) {
+    .specs { grid-template-columns: 1fr; padding: 18px; }
+  }
+  .spec-block h3 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .spec-block p, .spec-block li {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.75;
+    color: var(--ink-2);
+  }
+  .spec-block ul {
+    margin: 0;
+    padding-left: 16px;
+  }
+  .spec-block code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: var(--soft);
+    color: var(--ink);
+  }
+  .spec-stats {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+    font-size: 11px;
+    line-height: 1.7;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+</head>
+<body>
+<div class="workspace">
+  <header class="topbar">
+    <div class="topbar-head">
+      <div class="topbar-copy">
+        <div class="eyebrow">EXERCISE OR NOT · 3D ASSET EXPLORATION · SCRATCH CARD</div>
+        <h1>刮刮乐 · 复古厚棉票券 × 盲盒六枚箔章三维对比</h1>
+        <p>严格沿用 <code>6-spatial</code> 桌面光学与材质体系：支持真实三维射线拾取刮箔、3D 齿边硬币贴面倾斜刮擦、实时金属箔屑溅落、<code>RevealPace.USER</code> 自主揭晓节奏与 11 档透明训练概率。</p>
+      </div>
+    </div>
+
+    <div class="controls-stack">
+      <!-- Row 1: States, Camera & Interaction -->
+      <div class="global-controls" role="group" aria-label="状态与交互模式">
+        <span class="controls-label">状态</span>
+        <button class="pill" data-mode="idle" aria-pressed="true">未刮开</button>
+        <button class="pill" data-mode="partial" aria-pressed="false">半刮悬念</button>
+        <button class="pill" data-mode="train" aria-pressed="false">全揭 · 练</button>
+        <button class="pill" data-mode="rest" aria-pressed="false">全揭 · 歇</button>
+        <button class="pill" data-mode="explode" aria-pressed="false">3D 拆解视图</button>
+        <span class="divider-v" aria-hidden="true"></span>
+        <button class="pill" id="btn-closeup" aria-pressed="false">特写</button>
+        <span class="divider-v" aria-hidden="true"></span>
+        <span class="controls-label">拖拽</span>
+        <button class="pill sm" data-interact="scratch" aria-pressed="true">刮卡手势</button>
+        <button class="pill sm" data-interact="orbit" aria-pressed="false">360° 旋转观察</button>
+        <button class="pill cycle-btn" id="btn-next-copy">换一句签语 ↻</button>
+      </div>
+
+      <!-- Row 2: 11 Transparent Probability Presets -->
+      <div class="global-controls" role="group" aria-label="训练概率透明档位">
+        <span class="controls-label">训练概率</span>
+        <button class="pill sm" data-prob="0" aria-pressed="false">0%</button>
+        <button class="pill sm" data-prob="10" aria-pressed="false">10%</button>
+        <button class="pill sm" data-prob="20" aria-pressed="false">20%</button>
+        <button class="pill sm" data-prob="30" aria-pressed="false">30%</button>
+        <button class="pill sm" data-prob="40" aria-pressed="false">40%</button>
+        <button class="pill sm" data-prob="50" aria-pressed="true">50%</button>
+        <button class="pill sm" data-prob="60" aria-pressed="false">60%</button>
+        <button class="pill sm" data-prob="70" aria-pressed="false">70%</button>
+        <button class="pill sm" data-prob="80" aria-pressed="false">80%</button>
+        <button class="pill sm" data-prob="90" aria-pressed="false">90%</button>
+        <button class="pill sm" data-prob="100" aria-pressed="false">100%</button>
+        <span class="prob-readout" id="prob-readout">训练概率 50% · 透明抽取 · RevealPace.USER</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="comparison" aria-label="双方案实时 3D 刮卡对比">
+    <!-- Scheme A: Vintage Cotton Ticket + 3D Milled Coin -->
+    <div class="scheme-col" data-scheme="ticket">
+      <div class="scheme-meta">
+        <div class="scheme-title">
+          <strong>方案 A · 复古厚棉卡票券 + 3D 金属硬币</strong>
+          <span>邮票撕口厚棉卡 + 枕形拉丝金属刮箔窗 + 齿边币贴面刮擦</span>
+        </div>
+        <div class="scheme-tools">
+          <button class="mini-chip" data-finish="0" aria-pressed="true">墨绿烫金券 + 银箔黄铜币</button>
+          <button class="mini-chip" data-finish="1" aria-pressed="false">暖羊皮券 + 香槟金箔银币</button>
+          <button class="mini-chip" data-toggle-closeup aria-pressed="false">特写</button>
+          <button class="mini-chip" data-reset-view>复位视角</button>
+        </div>
+      </div>
+
+      <article class="phone" id="phone-ticket">
+        <canvas class="gl-overlay" id="gl-ticket" aria-hidden="true"></canvas>
+        <header>
+          <div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
+          <button class="icon-button" aria-label="设置训练概率">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg>
+          </button>
+        </header>
+        <main>
+          <h2 class="hero-q">今天，<br>练不练<span>？</span></h2>
+          <div class="stage" id="stage-ticket" role="img" aria-label="方案 A 复古厚棉票券与金属硬币三维舞台">
+            <canvas class="shadow-canvas" id="shadow-ticket" aria-hidden="true"></canvas>
+            <div class="stage-hint" id="hint-ticket">在票面涂刮揭晓 · 卡外或右键拖转 360° · 概率 50%</div>
+          </div>
+          <div class="result-line" id="result-ticket">硬币刮开银箔，看看今日签 · 50%</div>
+          <div class="actions">
+            <button class="primary" id="btn-ticket"><span id="btn-label-ticket">刮开看看</span><span aria-hidden="true">→</span></button>
+            <button class="shortcut">已经决定了，直接记录 ↗</button>
+          </div>
+        </main>
+      </article>
+    </div>
+
+    <!-- Scheme B: Blind-Box 6 Metallic Foil Seals Card -->
+    <div class="scheme-col" data-scheme="seals">
+      <div class="scheme-meta">
+        <div class="scheme-title">
+          <strong>方案 B · 盲盒六枚箔章刮卡（多格悬念）</strong>
+          <span>切角厚磅特种卡 + 3×2 立体圆箔章 + 逐枚刮开揭晓印记</span>
+        </div>
+        <div class="scheme-tools">
+          <button class="mini-chip" data-finish="0" aria-pressed="true">森林绿特种卡 + 哑光锡箔</button>
+          <button class="mini-chip" data-finish="1" aria-pressed="false">靛青石纹卡 + 复古铜箔</button>
+          <button class="mini-chip" data-toggle-closeup aria-pressed="false">特写</button>
+          <button class="mini-chip" data-reset-view>复位视角</button>
+        </div>
+      </div>
+
+      <article class="phone" id="phone-seals">
+        <canvas class="gl-overlay" id="gl-seals" aria-hidden="true"></canvas>
+        <header>
+          <div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
+          <button class="icon-button" aria-label="设置训练概率">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg>
+          </button>
+        </header>
+        <main>
+          <h2 class="hero-q">今天，<br>练不练<span>？</span></h2>
+          <div class="stage" id="stage-seals" role="img" aria-label="方案 B 盲盒六枚箔章刮卡三维舞台">
+            <canvas class="shadow-canvas" id="shadow-seals" aria-hidden="true"></canvas>
+            <div class="stage-hint" id="hint-seals">逐枚涂刮或横扫六章 · 卡外或右键拖转 360° · 概率 50%</div>
+          </div>
+          <div class="result-line" id="result-seals">六枚箔章藏着今日去向 · 50%</div>
+          <div class="actions">
+            <button class="primary" id="btn-seals"><span id="btn-label-seals">刮开看看</span><span aria-hidden="true">→</span></button>
+            <button class="shortcut">已经决定了，直接记录 ↗</button>
+          </div>
+        </main>
+      </article>
+    </div>
+  </section>
+
+  <section class="specs" aria-label="三维资产、概率透明与接入说明">
+    <div class="spec-block">
+      <h3>三维造型、动态刮箔着色与实时几何统计</h3>
+      <ul>
+        <li><strong>方案 A · 厚棉票券与齿边硬币</strong>：倒角邮票锯齿撕口厚棉卡体、烫金边框与凹窗阶梯、枕形细分拉丝金属刮箔层，配 72 齿真实铣边硬币（双面浮雕压印贴图）；刮卡时精确射线反求 UV，实时擦除离屏 Foil Mask 并生成 3D 卷曲金属箔屑沿重力落回票面与桌面。</li>
+        <li><strong>方案 B · 六枚立体箔章卡</strong>：八边形切角厚磅特种卡、6 枚车削金属嵌环与 6 枚微穹顶压纹圆形锡/铜箔章（3×2 排布），配 12 棱复古刮片代币，支持单章轻刮或连片横扫，并独立追踪每枚箔章刮开度。</li>
+        <li><strong>四层立体拆解视图</strong>：纵向分离「厚棉卡体 → 印刷底面层 → 金属刮箔层 → 悬停硬币与箔屑」，便于审核贴合公差与零 Z-fighting 分层。</li>
+      </ul>
+      <div class="spec-stats">
+        <div id="stats-ticket">方案 A 几何统计计算中…</div>
+        <div id="stats-seals">方案 B 几何统计计算中…</div>
+      </div>
+    </div>
+    <div class="spec-block">
+      <h3>概率透明机制与 Kotlin <code>OutcomeModel</code> / <code>RevealPace.USER</code> 接入</h3>
+      <ul>
+        <li><strong>11 档绝对透明概率</strong>：对应 <code>prd.md</code> 原则，提供 <code>0%–100%</code> 共 11 档（<code>0%</code> 必歇、<code>100%</code> 必练，中间档严格按 <code>p / 100</code> 抽取），票头实时印制当前概率徽章（如 <code>训练概率 50%</code>）。</li>
+        <li><strong>方案 B 无误导六章排布</strong>：开刮前由 Kotlin <code>OutcomeModel</code> 严格按设定概率抽定本张票卡属于「练」或「歇」，场景不改变中奖率；抽中「练」时于六枚箔章中随机藏入 2 枚（<code>100%</code> 时全 6 枚）墨绿「练」印（见「练」即定局），抽中「歇」时六枚皆为平静石板灰「歇」印与无负担宽慰短语，避免把 6 格误解为固定 1/6。</li>
+        <li><strong><code>RevealPace.USER</code> 自主节奏</strong>：登记为 <code>ChanceGame(id = "scratch", pace = RevealPace.USER)</code>，无 30 秒超时；未刮开主按钮为「刮开看看 →」（硬币自动往复手刮演出），刮开任意区域后切换为「直接看结果 →」（一键撕净余箔），手刮面积达 <code>58%</code> 自动收尾揭晓并触发 <code>host.haptic('thud')</code>，揭晓后切换为「换一张再刮 →」。</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  window.__errors = [];
+  window.addEventListener('error', e => window.__errors.push(e.message || String(e)));
+  window.addEventListener('unhandledrejection', e => window.__errors.push(String(e.reason)));
+
+  const TAU = Math.PI * 2;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  const easeInOut = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+  // ---- Vector & Matrix Math ----
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const scale = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+  const normalize = a => {
+    const l = Math.hypot(a[0], a[1], a[2]) || 1;
+    return [a[0] / l, a[1] / l, a[2] / l];
+  };
+
+  function multiply(a, b) {
+    const o = new Float32Array(16);
+    for (let c = 0; c < 4; c++) {
+      for (let r = 0; r < 4; r++) {
+        let s = 0;
+        for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k];
+        o[c * 4 + r] = s;
+      }
+    }
+    return o;
+  }
+
+  function invertMat4(m) {
+    const out = new Float32Array(16);
+    const a00 = m[0], a01 = m[1], a02 = m[2], a03 = m[3];
+    const a10 = m[4], a11 = m[5], a12 = m[6], a13 = m[7];
+    const a20 = m[8], a21 = m[9], a22 = m[10], a23 = m[11];
+    const a30 = m[12], a31 = m[13], a32 = m[14], a33 = m[15];
+
+    const b00 = a00 * a11 - a01 * a10;
+    const b01 = a00 * a12 - a02 * a10;
+    const b02 = a00 * a13 - a03 * a10;
+    const b03 = a01 * a12 - a02 * a11;
+    const b04 = a01 * a13 - a03 * a11;
+    const b05 = a02 * a13 - a03 * a12;
+    const b06 = a20 * a31 - a21 * a30;
+    const b07 = a20 * a32 - a22 * a30;
+    const b08 = a20 * a33 - a23 * a30;
+    const b09 = a21 * a32 - a22 * a31;
+    const b10 = a21 * a33 - a23 * a31;
+    const b11 = a22 * a33 - a23 * a32;
+
+    let det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+    if (Math.abs(det) < 1e-10) return null;
+    det = 1.0 / det;
+
+    out[0] = (a11 * b11 - a12 * b10 + a13 * b09) * det;
+    out[1] = (a02 * b10 - a01 * b11 - a03 * b09) * det;
+    out[2] = (a31 * b05 - a32 * b04 + a33 * b03) * det;
+    out[3] = (a22 * b04 - a21 * b05 - a23 * b03) * det;
+    out[4] = (a12 * b08 - a10 * b11 - a13 * b07) * det;
+    out[5] = (a00 * b11 - a02 * b08 + a03 * b07) * det;
+    out[6] = (a32 * b02 - a30 * b05 - a33 * b01) * det;
+    out[7] = (a20 * b05 - a22 * b02 + a23 * b01) * det;
+    out[8] = (a10 * b10 - a11 * b08 + a13 * b06) * det;
+    out[9] = (a01 * b08 - a00 * b10 - a03 * b06) * det;
+    out[10] = (a30 * b04 - a31 * b02 + a33 * b00) * det;
+    out[11] = (a21 * b02 - a20 * b04 - a23 * b00) * det;
+    out[12] = (a11 * b07 - a10 * b09 - a12 * b06) * det;
+    out[13] = (a00 * b09 - a01 * b07 + a02 * b06) * det;
+    out[14] = (a31 * b01 - a30 * b03 - a32 * b00) * det;
+    out[15] = (a20 * b03 - a21 * b01 + a22 * b00) * det;
+    return out;
+  }
+
+  function unprojectNDC(invVP, ndcX, ndcY, ndcZ) {
+    const x = invVP[0] * ndcX + invVP[4] * ndcY + invVP[8] * ndcZ + invVP[12];
+    const y = invVP[1] * ndcX + invVP[5] * ndcY + invVP[9] * ndcZ + invVP[13];
+    const z = invVP[2] * ndcX + invVP[6] * ndcY + invVP[10] * ndcZ + invVP[14];
+    const w = invVP[3] * ndcX + invVP[7] * ndcY + invVP[11] * ndcZ + invVP[15];
+    return [x / w, y / w, z / w];
+  }
+
+  function qAxis(axis, angle) {
+    const u = normalize(axis);
+    const s = Math.sin(angle / 2);
+    return [u[0] * s, u[1] * s, u[2] * s, Math.cos(angle / 2)];
+  }
+
+  function qMultiply(a, b) {
+    const ax = a[0], ay = a[1], az = a[2], aw = a[3];
+    const bx = b[0], by = b[1], bz = b[2], bw = b[3];
+    return [
+      aw * bx + ax * bw + ay * bz - az * by,
+      aw * by - ax * bz + ay * bw + az * bx,
+      aw * bz + ax * by - ay * bx + az * bw,
+      aw * bw - ax * bx - ay * by - az * bz,
+    ];
+  }
+
+  function qFromChain(...qs) {
+    return qs.reduce((acc, q) => qMultiply(acc, q), [0, 0, 0, 1]);
+  }
+
+  function modelMatrix(q, p, s = 1) {
+    const [x, y, z, w] = q;
+    const xx = x * x, yy = y * y, zz = z * z;
+    return new Float32Array([
+      (1 - 2 * (yy + zz)) * s, (2 * (x * y + z * w)) * s, (2 * (x * z - y * w)) * s, 0,
+      (2 * (x * y - z * w)) * s, (1 - 2 * (xx + zz)) * s, (2 * (y * z + x * w)) * s, 0,
+      (2 * (x * z + y * w)) * s, (2 * (y * z - x * w)) * s, (1 - 2 * (xx + yy)) * s, 0,
+      p[0], p[1], p[2], 1,
+    ]);
+  }
+
+  function transformPoint(m, p) {
+    return [
+      m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12],
+      m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13],
+      m[2] * p[0] + m[6] * p[1] + m[10] * p[2] + m[14],
+    ];
+  }
+
+  function cameraMatrix(eye, target) {
+    const z = normalize(add(eye, scale(target, -1)));
+    const x = normalize(cross([0, 1, 0], z));
+    const y = cross(z, x);
+    return new Float32Array([
+      x[0], y[0], z[0], 0,
+      x[1], y[1], z[1], 0,
+      x[2], y[2], z[2], 0,
+      -dot(x, eye), -dot(y, eye), -dot(z, eye), 1,
+    ]);
+  }
+
+  function perspective(aspect) {
+    const f = 1 / Math.tan((30 * Math.PI) / 360);
+    const n = 0.1, far = 60;
+    return new Float32Array([
+      f / aspect, 0, 0, 0,
+      0, f, 0, 0,
+      0, 0, (far + n) / (n - far), -1,
+      0, 0, (2 * far * n) / (n - far), 0,
+    ]);
+  }
+
+  // ---- Curated Chinese Copy (Calm & Guilt-free per prd.md) ----
+  const TRAIN_COPIES = [
+    { tag: '宜动 · 01', headline: '去都去了，先推两组', sub: '热身完不想练也能随时停' },
+    { tag: '宜动 · 02', headline: '换上鞋就算赢了一半', sub: '不用破纪录，动起来就行' },
+    { tag: '宜动 · 03', headline: '今日筋骨宜微热', sub: '二十分钟也是认真练过' },
+    { tag: '宜动 · 04', headline: '多举半斤也是进步', sub: '只跟上次的自己比一点点' },
+    { tag: '宜动 · 05', headline: '今天手气偏硬核', sub: '推完这组，晚餐更香' },
+    { tag: '宜动 · 06', headline: '日拱一卒，不慌不忙', sub: '动作标准比重量更值钱' },
+    { tag: '宜动 · 07', headline: '趁这股劲儿还没散', sub: '把今天这一笔存进记录' },
+    { tag: '宜动 · 08', headline: '活动开比硬扛重要', sub: '轻重量也能练出好状态' },
+  ];
+
+  const REST_COPIES = [
+    { tag: '宜歇 · 01', headline: '肌肉是在休息时长大的', sub: '安心歇着，明天更有劲' },
+    { tag: '宜歇 · 02', headline: '少练一天天塌不下来', sub: '松弛有度，才能练得长久' },
+    { tag: '宜歇 · 03', headline: '今日签面写着放空', sub: '早点睡觉也是高级恢复' },
+    { tag: '宜歇 · 04', headline: '茶已温好，今日免战', sub: '散个小步，拉伸两下也不错' },
+    { tag: '宜歇 · 05', headline: '一张一弛，文武之道', sub: '把好状态留给下一次起杠' },
+    { tag: '宜歇 · 06', headline: '系统批准今日休整', sub: '不扣分、不打断、不内耗' },
+    { tag: '宜歇 · 07', headline: '允许自己今天不动铁', sub: '吃顿踏实饭，给身体充充电' },
+    { tag: '宜歇 · 08', headline: '蓄力也是训练的一部分', sub: '满电回归，下次更轻快' },
+  ];
+
+  const SEAL_TRAIN_MICROS = ['去练一点', '先推两组', '起身热身', '今日宜动', '举铁开张', '状态在线'];
+  const SEAL_REST_MICROS = ['今日宜歇', '松弛一下', '养精蓄锐', '早点睡吧', '安心放空', '明天再战'];
+  const SEAL_NUMERALS = ['壹', '贰', '叁', '肆', '伍', '陆'];
+
+  // ---- Studio WebGL Shaders with Brushed Foil, Torn-Edge Gleam & Cotton Paper Grain ----
+  const VERTEX_SRC = `
+    attribute vec3 aPosition;
+    attribute vec3 aNormal;
+    attribute vec2 aUv;
+    attribute float aFlag;
+    uniform mat4 uModel;
+    uniform mat4 uVP;
+    varying vec3 vNormal;
+    varying vec3 vWorld;
+    varying vec2 vUv;
+    varying float vFlag;
+    void main() {
+      vec4 p = uModel * vec4(aPosition, 1.0);
+      vWorld = p.xyz;
+      vNormal = mat3(uModel) * aNormal;
+      vUv = aUv;
+      vFlag = aFlag;
+      gl_Position = uVP * p;
+    }
+  `;
+
+  const FRAGMENT_SRC = `
+    precision highp float;
+    varying vec3 vNormal;
+    varying vec3 vWorld;
+    varying vec2 vUv;
+    varying float vFlag;
+    uniform vec3 uEye;
+    uniform vec3 uColor;
+    uniform vec3 uAccentColor;
+    uniform vec3 uTrimColor;
+    uniform vec3 uCavityColor;
+    uniform vec3 uMatMeta;
+    uniform vec3 uMatRough;
+    uniform sampler2D uTex;
+    uniform float uTextured;
+    uniform float uUseTexAlpha;
+    uniform float uSurfaceStyle; // 0: normal, 1: brushed metallic foil, 2: cotton cardstock grain
+    uniform float uOpacity;
+
+    void main() {
+      vec3 n = normalize(vNormal);
+      if (!gl_FrontFacing) n = -n;
+      vec3 keyDir = normalize(vec3(-2.6, 7.6, 4.4));
+      vec3 fillDir = normalize(vec3(5.2, 2.2, 2.4));
+      vec3 rimDir = normalize(vec3(-3.8, 4.2, -5.2));
+      vec3 viewDir = normalize(uEye - vWorld);
+      vec3 R = reflect(-viewDir, n);
+
+      float key = max(dot(n, keyDir), 0.0);
+      float fill = max(dot(n, fillDir), 0.0);
+      float rim = max(dot(n, rimDir), 0.0);
+      float ndv = max(dot(n, viewDir), 0.0);
+
+      if (vFlag > 0.5 && vFlag < 1.5) {
+        float depthShade = mix(0.65, 1.0, clamp(vUv.y, 0.0, 1.0));
+        vec3 cav = uCavityColor * (0.28 + key * 0.16 + fill * 0.08) * depthShade;
+        gl_FragColor = vec4(cav, uOpacity);
+        return;
+      }
+
+      vec3 base = uColor;
+      float alpha = uOpacity;
+      float metal = uMatMeta.x;
+      float rough = uMatRough.x;
+      float tearGleam = 0.0;
+
+      if (vFlag < 0.5 && uTextured > 0.5) {
+        vec4 texel = texture2D(uTex, vUv);
+        base = texel.rgb;
+        if (uUseTexAlpha > 0.5) {
+          if (texel.a < 0.07) discard;
+          alpha *= texel.a;
+          // Freshly torn metallic foil edge catches crisp specular gleam
+          tearGleam = smoothstep(0.07, 0.42, texel.a) * (1.0 - smoothstep(0.45, 0.94, texel.a));
+        }
+      } else if (vFlag > 1.5 && vFlag < 2.5) {
+        base = uAccentColor;
+        metal = uMatMeta.y;
+        rough = uMatRough.y;
+      } else if (vFlag > 2.5) {
+        base = uTrimColor;
+        metal = uMatMeta.z;
+        rough = uMatRough.z;
+      }
+
+      // Surface micro-detail: brushed foil anisotropy vs tactile cotton paper fibers
+      float brushAniso = 0.0;
+      if (uSurfaceStyle > 0.5 && uSurfaceStyle < 1.5 && vFlag < 0.5) {
+        float diag = vUv.x * 165.0 + vUv.y * 92.0;
+        float fine = sin(diag) * 0.032 + sin(diag * 2.7 + vUv.y * 28.0) * 0.018;
+        float shimmer = sin(vUv.x * 11.0 - vUv.y * 8.0 + dot(viewDir, vec3(3.2, 0.8, 2.4))) * 0.045;
+        base *= (1.0 + fine + shimmer);
+        brushAniso = (0.5 + 0.5 * sin(diag * 0.35 + dot(viewDir, vec3(2.4, 0.0, 1.8)))) * 0.16;
+      } else if (uSurfaceStyle > 1.5 && vFlag < 0.5) {
+        float grain = sin(vUv.x * 210.0 + sin(vUv.y * 130.0) * 1.6) * 0.014
+                    + cos(vUv.y * 195.0 - sin(vUv.x * 84.0)) * 0.011;
+        base *= (1.0 + grain);
+      }
+
+      metal = clamp(metal, 0.0, 0.95);
+      rough = clamp(rough, 0.14, 0.94);
+
+      // Analytic studio environment reflection
+      float topBox = smoothstep(0.18, 0.84, R.y);
+      float horizonBand = exp(-pow((R.y - 0.04) * 4.8, 2.0));
+      float floorBounce = smoothstep(-0.04, -0.62, R.y);
+      vec3 env = mix(vec3(0.56, 0.58, 0.54), vec3(1.07, 1.05, 1.00), topBox);
+      env = mix(env, vec3(0.16, 0.20, 0.19), horizonBand * 0.82);
+      env = mix(env, vec3(0.80, 0.81, 0.74), floorBounce * 0.72);
+
+      float diffuseScale = mix(1.0, 0.42, metal);
+      vec3 diffuse = base * diffuseScale * (0.52 + key * 0.40 + fill * 0.12);
+
+      vec3 specTint = mix(vec3(1.0), base * 1.22, metal);
+      float fresnel = metal + (1.0 - metal) * pow(1.0 - ndv, 4.0) * 0.50;
+      float envWeight = (0.06 + metal * 0.66) * (1.0 - rough * 0.60) * (0.58 + 0.42 * fresnel);
+
+      vec3 H = normalize(keyDir + viewDir);
+      float ndh = max(dot(n, H), 0.0);
+      float tightSpec = pow(ndh, mix(88.0, 14.0, rough)) * mix(0.56, 0.06, rough);
+      float broadSpec = pow(ndh, mix(16.0, 5.0, rough)) * mix(0.24, 0.05, rough);
+      float rimSpec = pow(rim, 1.8) * pow(1.0 - ndv, 2.2) * (0.10 + metal * 0.34);
+
+      vec3 lit = diffuse
+               + env * specTint * (envWeight + brushAniso * metal)
+               + specTint * (tightSpec + broadSpec + rimSpec)
+               + vec3(1.0, 0.99, 0.94) * tearGleam * 0.36;
+
+      gl_FragColor = vec4(lit, alpha);
+    }
+  `;
+
+  // Tabletop viewing camera: frames full rounded tray + card + coin cleanly inside .stage
+  const DEFAULT_TARGET = [0.02, 0.08, 0.04];
+  const BASE_YAW = 0.05;
+  const BASE_PITCH = 0.88;
+  const BASE_DIST = 9.10;
+
+  class ScratchStage3D {
+    constructor(phoneEl, stageEl, glCanvas, shadowCanvas, callbacks) {
+      this.phoneEl = phoneEl;
+      this.stage = stageEl;
+      this.canvas = glCanvas;
+      this.shadow = shadowCanvas;
+      this.ctx = shadowCanvas.getContext('2d');
+      this.callbacks = callbacks || {};
+      this.gl = glCanvas.getContext('webgl', { alpha: true, antialias: true, premultipliedAlpha: false });
+      if (!this.gl) throw new Error('WebGL unavailable');
+
+      const gl = this.gl;
+      const compile = (type, src) => {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+        return s;
+      };
+      this.program = gl.createProgram();
+      gl.attachShader(this.program, compile(gl.VERTEX_SHADER, VERTEX_SRC));
+      gl.attachShader(this.program, compile(gl.FRAGMENT_SHADER, FRAGMENT_SRC));
+      gl.linkProgram(this.program);
+      if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(this.program));
+      gl.useProgram(this.program);
+
+      this.attribs = [['aPosition', 3, 0], ['aNormal', 3, 3], ['aUv', 2, 6], ['aFlag', 1, 8]]
+        .map(([name, size, offset]) => {
+          const loc = gl.getAttribLocation(this.program, name);
+          gl.enableVertexAttribArray(loc);
+          return [loc, size, offset];
+        });
+      const uNames = [
+        'uModel', 'uVP', 'uEye', 'uColor', 'uAccentColor', 'uTrimColor', 'uCavityColor',
+        'uMatMeta', 'uMatRough', 'uTex', 'uTextured', 'uUseTexAlpha', 'uSurfaceStyle', 'uOpacity',
+      ];
+      this.uniforms = Object.fromEntries(uNames.map(n => [n, gl.getUniformLocation(this.program, n)]));
+
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.CULL_FACE);
+      gl.clearColor(0, 0, 0, 0);
+
+      this.meshes = [];
+      this.shadows = [];
+      this.tray = { halfX: 2.76, halfZ: 1.74, corner: 0.38 };
+      this.target = DEFAULT_TARGET.slice();
+      this.camYaw = BASE_YAW;
+      this.camPitch = BASE_PITCH;
+      this.camDist = BASE_DIST;
+      this.interactMode = 'scratch';
+      this.forceOrbitOnly = false;
+      this.updateCamera();
+
+      this.observer = new ResizeObserver(() => this.resize());
+      this.observer.observe(this.phoneEl);
+      this.observer.observe(this.stage);
+      window.addEventListener('resize', () => this.resize(), { passive: true });
+      this.bindPointer();
+      this.resize();
+    }
+
+    updateCamera() {
+      const cp = Math.cos(this.camPitch);
+      this.eye = [
+        this.target[0] + this.camDist * cp * Math.sin(this.camYaw),
+        this.target[1] + this.camDist * Math.sin(this.camPitch),
+        this.target[2] + this.camDist * cp * Math.cos(this.camYaw),
+      ];
+      this.view = cameraMatrix(this.eye, this.target);
+      if (this.stageW && this.stageH) {
+        this.vp = multiply(perspective(this.stageW / this.stageH), this.view);
+        this.invVP = invertMat4(this.vp);
+      }
+    }
+
+    resetView() {
+      this.target = DEFAULT_TARGET.slice();
+      this.camYaw = BASE_YAW;
+      this.camPitch = BASE_PITCH;
+      this.camDist = BASE_DIST;
+      this.updateCamera();
+      this.draw();
+    }
+
+    setCloseupView(enabled) {
+      if (enabled) {
+        this.target = [0.02, 0.12, 0.06];
+        this.camYaw = 0.06;
+        this.camPitch = 0.86;
+        this.camDist = 7.15;
+      } else {
+        this.target = DEFAULT_TARGET.slice();
+        this.camYaw = BASE_YAW;
+        this.camPitch = BASE_PITCH;
+        this.camDist = BASE_DIST;
+      }
+      this.updateCamera();
+      this.draw();
+    }
+
+    setExplodeTarget(enabled) {
+      this.target = enabled ? [0.02, 0.46, 0.04] : DEFAULT_TARGET.slice();
+      this.updateCamera();
+      this.draw();
+    }
+
+    setOrbit(yawDelta, pitchAbs) {
+      this.camYaw = BASE_YAW + yawDelta;
+      if (pitchAbs != null) this.camPitch = clamp(pitchAbs, 0.14, 1.44);
+      this.updateCamera();
+      this.draw();
+    }
+
+    setInteractMode(mode) {
+      this.interactMode = mode;
+      this.stage.classList.toggle('mode-orbit', mode === 'orbit' || this.forceOrbitOnly);
+    }
+
+    raycastPlaneY(clientX, clientY, planeY) {
+      if (!this.invVP) return null;
+      const rect = this.stage.getBoundingClientRect();
+      if (rect.width < 1 || rect.height < 1) return null;
+      const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+      const ndcY = 1 - ((clientY - rect.top) / rect.height) * 2;
+      const nearPt = unprojectNDC(this.invVP, ndcX, ndcY, -1);
+      const farPt = unprojectNDC(this.invVP, ndcX, ndcY, 1);
+      const dir = sub(farPt, nearPt);
+      if (Math.abs(dir[1]) < 1e-6) return null;
+      const t = (planeY - nearPt[1]) / dir[1];
+      if (t < 0) return null;
+      return [
+        nearPt[0] + dir[0] * t,
+        planeY,
+        nearPt[2] + dir[2] * t,
+      ];
+    }
+
+    bindPointer() {
+      let active = null;
+      this.stage.addEventListener('contextmenu', e => e.preventDefault());
+      this.stage.addEventListener('pointerdown', e => {
+        if (active) return;
+        e.preventDefault();
+        this.stage.setPointerCapture(e.pointerId);
+
+        const wantOrbit = this.interactMode === 'orbit' || this.forceOrbitOnly || e.button === 2 || e.altKey || e.shiftKey;
+        if (!wantOrbit && this.callbacks.onScratchStart) {
+          const hit = this.callbacks.onScratchStart(e.clientX, e.clientY);
+          if (hit) {
+            active = { id: e.pointerId, mode: 'scratch', x: e.clientX, y: e.clientY };
+            this.stage.classList.add('is-scratching');
+            return;
+          }
+        }
+        active = { id: e.pointerId, mode: 'orbit', x: e.clientX, y: e.clientY };
+        this.stage.classList.add('is-orbiting');
+      });
+
+      this.stage.addEventListener('pointermove', e => {
+        if (!active || e.pointerId !== active.id) return;
+        if (active.mode === 'scratch') {
+          if (this.callbacks.onScratchMove) this.callbacks.onScratchMove(e.clientX, e.clientY);
+          return;
+        }
+        const dx = e.clientX - active.x;
+        const dy = e.clientY - active.y;
+        active.x = e.clientX;
+        active.y = e.clientY;
+        this.camYaw -= dx * 0.011;
+        this.camPitch = clamp(this.camPitch + dy * 0.0085, 0.14, 1.44);
+        this.updateCamera();
+        this.draw();
+      });
+
+      const stop = e => {
+        if (!active || e.pointerId !== active.id) return;
+        const prevMode = active.mode;
+        active = null;
+        this.stage.classList.remove('is-orbiting');
+        this.stage.classList.remove('is-scratching');
+        if (prevMode === 'scratch' && this.callbacks.onScratchEnd) {
+          this.callbacks.onScratchEnd();
+        }
+      };
+      this.stage.addEventListener('pointerup', stop);
+      this.stage.addEventListener('pointercancel', stop);
+    }
+
+    addMesh(data, opts = {}) {
+      const gl = this.gl;
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+      const mDef = opts.metallic ?? 0.0;
+      const rDef = opts.roughness ?? 0.62;
+      const mesh = {
+        buffer,
+        count: data.length / 9,
+        color: opts.color || [0.3, 0.45, 0.35],
+        accent: opts.accent || [0.78, 0.66, 0.38],
+        trim: opts.trim || [0.55, 0.44, 0.28],
+        cavity: opts.cavity || [0.08, 0.11, 0.09],
+        matMeta: opts.matMeta || [mDef, mDef, mDef],
+        matRough: opts.matRough || [rDef, rDef, rDef],
+        texture: opts.texture || null,
+        useTexAlpha: !!opts.useTexAlpha,
+        surfaceStyle: opts.surfaceStyle || 0,
+        opacity: opts.opacity ?? 1.0,
+        transparent: !!opts.transparent,
+        q: [0, 0, 0, 1],
+        position: [0, 0, 0],
+        scale: opts.scale || 1,
+        visible: opts.visible !== false,
+        doubleSided: !!opts.doubleSided,
+      };
+      this.meshes.push(mesh);
+      return mesh;
+    }
+
+    createTextureFromCanvas(cnv) {
+      const gl = this.gl;
+      const t = gl.createTexture();
+      this.updateTextureFromCanvas(t, cnv);
+      return t;
+    }
+
+    updateTextureFromCanvas(tex, cnv) {
+      const gl = this.gl;
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cnv);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    }
+
+    resize() {
+      const sr = this.stage.getBoundingClientRect();
+      const pr = this.phoneEl.getBoundingClientRect();
+      if (sr.width < 1 || sr.height < 1 || pr.width < 1 || pr.height < 1) return;
+      this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      this.stageW = sr.width;
+      this.stageH = sr.height;
+      this.phoneW = pr.width;
+      this.phoneH = pr.height;
+      this.stageOffsetX = sr.left - pr.left;
+      this.stageOffsetY = sr.top - pr.top;
+
+      this.shadow.width = Math.round(sr.width * this.dpr);
+      this.shadow.height = Math.round(sr.height * this.dpr);
+      this.canvas.width = Math.round(pr.width * this.dpr);
+      this.canvas.height = Math.round(pr.height * this.dpr);
+
+      this.vp = multiply(perspective(this.stageW / this.stageH), this.view);
+      this.invVP = invertMat4(this.vp);
+      this.draw();
+    }
+
+    overlayProjection() {
+      const w = this.phoneW, h = this.phoneH;
+      const sx = this.stageW / w;
+      const sy = this.stageH / h;
+      const tx = (this.stageOffsetX * 2 + this.stageW) / w - 1;
+      const ty = 1 - (this.stageOffsetY * 2 + this.stageH) / h;
+      const remap = new Float32Array([
+        sx, 0, 0, 0,
+        0, sy, 0, 0,
+        0, 0, 1, 0,
+        tx, ty, 0, 1,
+      ]);
+      return multiply(remap, this.vp);
+    }
+
+    project(p) {
+      const m = this.vp;
+      const w = m[3] * p[0] + m[7] * p[1] + m[11] * p[2] + m[15];
+      return [
+        ((m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12]) / w) * (this.stageW / 2) + this.stageW / 2,
+        (-(m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13]) / w + 1) * (this.stageH / 2),
+      ];
+    }
+
+    floorPath(y = 0) {
+      const ctx = this.ctx, rx = this.tray.halfX, rz = this.tray.halfZ, r = this.tray.corner;
+      ctx.beginPath();
+      const corners = [
+        [-rx + r, -rz + r, Math.PI],
+        [rx - r, -rz + r, -Math.PI / 2],
+        [rx - r, rz - r, 0],
+        [-rx + r, rz - r, Math.PI / 2],
+      ];
+      let first = true;
+      for (const [cx, cz, angle] of corners) {
+        for (let i = 0; i <= 8; i++) {
+          const a = angle + (i * Math.PI) / 16;
+          const pt = this.project([cx + r * Math.cos(a), y, cz + r * Math.sin(a)]);
+          if (first) { ctx.moveTo(pt[0], pt[1]); first = false; }
+          else ctx.lineTo(pt[0], pt[1]);
+        }
+      }
+      ctx.closePath();
+    }
+
+    drawRectShadow(x3, z3, hx, hz, opacity, lift) {
+      const ctx = this.ctx;
+      const ox = 0.08 + lift * 0.14;
+      const oz = 0.09 + lift * 0.12;
+      const pad = 0.08 + lift * 0.16;
+      const pts = [
+        this.project([x3 - hx - pad + ox, 0, z3 - hz - pad + oz]),
+        this.project([x3 + hx + pad + ox, 0, z3 - hz - pad + oz]),
+        this.project([x3 + hx + pad + ox, 0, z3 + hz + pad + oz]),
+        this.project([x3 - hx - pad + ox, 0, z3 + hz + pad + oz]),
+      ];
+      ctx.save();
+      ctx.filter = `blur(${Math.round(5 + lift * 6)}px)`;
+      ctx.fillStyle = `rgba(40, 56, 36, ${opacity / (1 + lift * 1.1)})`;
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < 4; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    drawBlob(x3, z3, radiusFrac, opacity, air, stretchX = 1, angleRad = 0) {
+      const ctx = this.ctx;
+      const [sx, sy] = this.project([x3, 0, z3]);
+      const size = this.stageH * radiusFrac * (1 + air * 0.14);
+      ctx.save();
+      ctx.translate(sx + 4 + air * 8, sy + 4 + air * 4);
+      if (angleRad) ctx.rotate(angleRad);
+      ctx.scale(stretchX, 0.72);
+      const g = ctx.createRadialGradient(0, 0, size * 0.14, 0, 0, size);
+      g.addColorStop(0, `rgba(42, 56, 34, ${opacity})`);
+      g.addColorStop(0.45, `rgba(42, 56, 34, ${opacity * 0.52})`);
+      g.addColorStop(1, 'rgba(42, 56, 34, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, size, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    drawFloor() {
+      const ctx = this.ctx;
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      ctx.clearRect(0, 0, this.stageW, this.stageH);
+
+      this.floorPath(-0.068);
+      ctx.fillStyle = '#d7dccd';
+      ctx.fill();
+
+      this.floorPath(0);
+      const surface = ctx.createLinearGradient(0, this.stageH * 0.14, this.stageW, this.stageH * 0.92);
+      surface.addColorStop(0, '#f0f1e8');
+      surface.addColorStop(1, '#e6eadc');
+      ctx.fillStyle = surface;
+      ctx.fill();
+      ctx.strokeStyle = '#dce1d1';
+      ctx.lineWidth = 0.85;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.clip();
+      for (const s of this.shadows) {
+        if (!s.visible) continue;
+        const lift = Math.max(0, s.y || 0);
+        if (s.kind === 'rect') {
+          this.drawRectShadow(s.x, s.z, s.hx, s.hz, s.opacity, lift);
+        } else {
+          const op = s.opacity / (1 + lift * 1.25);
+          this.drawBlob(s.x, s.z, s.radius, op, lift, s.stretch || 1, s.angle || 0);
+        }
+      }
+      ctx.restore();
+    }
+
+    drawMeshItem(m) {
+      const gl = this.gl, u = this.uniforms;
+      if (m.doubleSided) gl.disable(gl.CULL_FACE);
+      else gl.enable(gl.CULL_FACE);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, m.buffer);
+      for (const [loc, size, offset] of this.attribs) {
+        gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 36, offset * 4);
+      }
+      gl.uniform3fv(u.uColor, m.color);
+      gl.uniform3fv(u.uAccentColor, m.accent);
+      gl.uniform3fv(u.uTrimColor, m.trim);
+      gl.uniform3fv(u.uCavityColor, m.cavity);
+      gl.uniform3fv(u.uMatMeta, m.matMeta);
+      gl.uniform3fv(u.uMatRough, m.matRough);
+      gl.uniform1f(u.uSurfaceStyle, m.surfaceStyle);
+      gl.uniform1f(u.uTextured, m.texture ? 1 : 0);
+      gl.uniform1f(u.uUseTexAlpha, m.useTexAlpha ? 1 : 0);
+      gl.uniform1f(u.uOpacity, m.opacity);
+      if (m.texture) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, m.texture);
+        gl.uniform1i(u.uTex, 0);
+      }
+      gl.uniformMatrix4fv(u.uModel, false, modelMatrix(m.q, m.position, m.scale));
+      gl.drawArrays(gl.TRIANGLES, 0, m.count);
+    }
+
+    draw() {
+      if (!this.vp) return;
+      const gl = this.gl, u = this.uniforms;
+      gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(this.program);
+      gl.uniformMatrix4fv(u.uVP, false, this.overlayProjection());
+      gl.uniform3fv(u.uEye, this.eye);
+
+      // Pass 1: Opaque geometry (card stock, rims, print sheet, 3D coin, shavings)
+      gl.disable(gl.BLEND);
+      gl.depthMask(true);
+      for (const m of this.meshes) {
+        if (!m.visible || m.transparent) continue;
+        this.drawMeshItem(m);
+      }
+
+      // Pass 2: Alpha-masked metallic foil layers (smooth anti-aliased scraped edge over print sheet)
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      for (const m of this.meshes) {
+        if (!m.visible || !m.transparent) continue;
+        this.drawMeshItem(m);
+      }
+      gl.disable(gl.BLEND);
+
+      this.drawFloor();
+    }
+  }
+
+  // ---- Geometry Builders (Outward CCW enforced via pushTri) ----
+  function pushTri(out, p0, p1, p2, n, uv0, uv1, uv2, flag = 0) {
+    const e1 = sub(p1, p0);
+    const e2 = sub(p2, p0);
+    const cr = cross(e1, e2);
+    if (dot(cr, n) < 0) {
+      out.push(
+        p0[0], p0[1], p0[2], n[0], n[1], n[2], uv0[0], uv0[1], flag,
+        p2[0], p2[1], p2[2], n[0], n[1], n[2], uv2[0], uv2[1], flag,
+        p1[0], p1[1], p1[2], n[0], n[1], n[2], uv1[0], uv1[1], flag
+      );
+    } else {
+      out.push(
+        p0[0], p0[1], p0[2], n[0], n[1], n[2], uv0[0], uv0[1], flag,
+        p1[0], p1[1], p1[2], n[0], n[1], n[2], uv1[0], uv1[1], flag,
+        p2[0], p2[1], p2[2], n[0], n[1], n[2], uv2[0], uv2[1], flag
+      );
+    }
+  }
+
+  function pushTriSmooth(out, p0, p1, p2, n0, n1, n2, uv0, uv1, uv2, f0, f1, f2) {
+    const avgN = add(add(n0, n1), n2);
+    const cr = cross(sub(p1, p0), sub(p2, p0));
+    if (dot(cr, avgN) < 0) {
+      out.push(
+        p0[0], p0[1], p0[2], n0[0], n0[1], n0[2], uv0[0], uv0[1], f0,
+        p2[0], p2[1], p2[2], n2[0], n2[1], n2[2], uv2[0], uv2[1], f2,
+        p1[0], p1[1], p1[2], n1[0], n1[1], n1[2], uv1[0], uv1[1], f1
+      );
+    } else {
+      out.push(
+        p0[0], p0[1], p0[2], n0[0], n0[1], n0[2], uv0[0], uv0[1], f0,
+        p1[0], p1[1], p1[2], n1[0], n1[1], n1[2], uv1[0], uv1[1], f1,
+        p2[0], p2[1], p2[2], n2[0], n2[1], n2[2], uv2[0], uv2[1], f2
+      );
+    }
+  }
+
+  function pushQuad(out, p0, p1, p2, p3, n, uv0, uv1, uv2, uv3, flag = 0) {
+    pushTri(out, p0, p1, p2, n, uv0, uv1, uv2, flag);
+    pushTri(out, p0, p2, p3, n, uv0, uv2, uv3, flag);
+  }
+
+  function pushQuadSmooth(out, p0, p1, p2, p3, n0, n1, n2, n3, uv0, uv1, uv2, uv3, f0, f1, f2, f3) {
+    pushTriSmooth(out, p0, p1, p2, n0, n1, n2, uv0, uv1, uv2, f0, f1, f2);
+    pushTriSmooth(out, p0, p2, p3, n0, n2, n3, uv0, uv2, uv3, f0, f2, f3);
+  }
+
+  function appendBeveledBox(out, x0, x1, y0, y1, z0, z1, bevel = 0.012, flag = 0) {
+    const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+    const b = Math.min(bevel, dx * 0.28, dy * 0.28, dz * 0.28);
+    if (b <= 1e-5) {
+      pushQuad(out, [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [0, 0, 1], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [0, 0, -1], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [-1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0], [0, 1, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, -1, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      return;
+    }
+    const xi0 = x0 + b, xi1 = x1 - b, yi0 = y0 + b, yi1 = y1 - b, zi0 = z0 + b, zi1 = z1 - b;
+    pushQuad(out, [xi0, yi0, z1], [xi1, yi0, z1], [xi1, yi1, z1], [xi0, yi1, z1], [0, 0, 1], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi1, yi0, z0], [xi0, yi0, z0], [xi0, yi1, z0], [xi1, yi1, z0], [0, 0, -1], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x1, yi0, zi1], [x1, yi0, zi0], [x1, yi1, zi0], [x1, yi1, zi1], [1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x0, yi0, zi0], [x0, yi0, zi1], [x0, yi1, zi1], [x0, yi1, zi0], [-1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, y1, zi1], [xi1, y1, zi1], [xi1, y1, zi0], [xi0, y1, zi0], [0, 1, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, y0, zi0], [xi1, y0, zi0], [xi1, y0, zi1], [xi0, y0, zi1], [0, -1, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    const s2 = Math.SQRT1_2;
+    pushQuad(out, [xi1, yi1, z1], [x1, yi1, zi1], [x1, yi0, zi1], [xi1, yi0, z1], [s2, 0, s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x0, yi1, zi1], [xi0, yi1, z1], [xi0, yi0, z1], [x0, yi0, zi1], [-s2, 0, s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x1, yi1, zi0], [xi1, yi1, z0], [xi1, yi0, z0], [x1, yi0, zi0], [s2, 0, -s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, yi1, z0], [x0, yi1, zi0], [x0, yi0, zi0], [xi0, yi0, z0], [-s2, 0, -s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, yi1, z1], [xi1, yi1, z1], [xi1, y1, zi1], [xi0, y1, zi1], [0, s2, s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, y0, zi1], [xi1, y0, zi1], [xi1, yi0, z1], [xi0, yi0, z1], [0, -s2, s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi1, yi1, z0], [xi0, yi1, z0], [xi0, y1, zi0], [xi1, y1, zi0], [0, s2, -s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi1, y0, zi0], [xi0, y0, zi0], [xi0, yi0, z0], [xi1, yi0, z0], [0, -s2, -s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi1, y1, zi1], [x1, yi1, zi1], [x1, yi1, zi0], [xi1, y1, zi0], [s2, s2, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x0, yi1, zi1], [xi0, y1, zi1], [xi0, y1, zi0], [x0, yi1, zi0], [-s2, s2, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x1, yi0, zi1], [xi1, y0, zi1], [xi1, y0, zi0], [x1, yi0, zi0], [s2, -s2, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, y0, zi1], [x0, yi0, zi1], [x0, yi0, zi0], [xi0, y0, zi0], [-s2, -s2, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+          const px = sx > 0 ? [x1, xi1] : [x0, xi0];
+          const py = sy > 0 ? [y1, yi1] : [y0, yi0];
+          const pz = sz > 0 ? [z1, zi1] : [z0, zi0];
+          pushTri(out, [px[0], py[1], pz[1]], [px[1], py[0], pz[1]], [px[1], py[1], pz[0]], normalize([sx, sy, sz]), [0, 0], [1, 0], [0.5, 1], flag);
+        }
+      }
+    }
+  }
+
+  // 2D ear-clipping triangulation + beveled extrusion along Y (for cards lying on XZ plane)
+  function signedArea2D(pts) {
+    let s = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      s += a[0] * b[1] - b[0] * a[1];
+    }
+    return s * 0.5;
+  }
+
+  function pointInTri2D(p, a, b, c) {
+    const c1 = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+    const c2 = (c[0] - b[0]) * (p[1] - b[1]) - (c[1] - b[1]) * (p[0] - b[0]);
+    const c3 = (a[0] - c[0]) * (p[1] - c[1]) - (a[1] - c[1]) * (p[0] - c[0]);
+    return c1 >= -1e-6 && c2 >= -1e-6 && c3 >= -1e-6;
+  }
+
+  function triangulateCCW(poly) {
+    const idx = poly.map((_, i) => i);
+    const tris = [];
+    let guard = 0;
+    while (idx.length > 3 && guard++ < poly.length * poly.length * 2) {
+      let clipped = false;
+      for (let i = 0; i < idx.length; i++) {
+        const ia = idx[(i + idx.length - 1) % idx.length];
+        const ib = idx[i];
+        const ic = idx[(i + 1) % idx.length];
+        const a = poly[ia], b = poly[ib], c = poly[ic];
+        if ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) <= 1e-6) continue;
+        let hasInside = false;
+        for (let k = 0; k < idx.length; k++) {
+          const id = idx[k];
+          if (id === ia || id === ib || id === ic) continue;
+          if (pointInTri2D(poly[id], a, b, c)) { hasInside = true; break; }
+        }
+        if (!hasInside) {
+          tris.push([ia, ib, ic]);
+          idx.splice(i, 1);
+          clipped = true;
+          break;
+        }
+      }
+      if (!clipped) break;
+    }
+    if (idx.length === 3) tris.push([idx[0], idx[1], idx[2]]);
+    return tris;
+  }
+
+  /**
+   * Extrudes a 2D [x, z] silhouette vertically along Y (y0..y1) with crisp bevels.
+   * UV mapping on top face (+Y): u = (x - uvBox.x0)/(uvBox.x1-uvBox.x0), v = (uvBox.z1 - z)/(uvBox.z1-uvBox.z0)
+   * which pairs with UNPACK_FLIP_Y_WEBGL=true for upright, non-mirrored Canvas textures!
+   */
+  function appendExtrudedXZ(out, rawPolyXZ, y0, y1, bevel = 0.016, flag = 0, uvBox = null, sideFlag = null) {
+    // Work in (x, u_y = -z) so standard 2D CCW corresponds to +Y outward normal
+    const pts2D = rawPolyXZ.map(p => [p[0], -p[1]]);
+    const poly = signedArea2D(pts2D) >= 0 ? pts2D : pts2D.slice().reverse();
+    const N = poly.length;
+    const bY = Math.min(bevel, (y1 - y0) * 0.36);
+    const bInset = Math.min(bY * 0.65, 0.012);
+    const sFlag = sideFlag != null ? sideFlag : flag;
+
+    const inner = poly.map((_, i) => {
+      if (bInset <= 1e-5) return poly[i].slice();
+      const pPrev = poly[(i + N - 1) % N], pCurr = poly[i], pNext = poly[(i + 1) % N];
+      const e1x = pCurr[0] - pPrev[0], e1y = pCurr[1] - pPrev[1];
+      const e2x = pNext[0] - pCurr[0], e2y = pNext[1] - pCurr[1];
+      const l1 = Math.hypot(e1x, e1y) || 1;
+      const l2 = Math.hypot(e2x, e2y) || 1;
+      const nIn1 = [-e1y / l1, e1x / l1];
+      const nIn2 = [-e2y / l2, e2x / l2];
+      const bx = nIn1[0] + nIn2[0], by = nIn1[1] + nIn2[1];
+      const bl = Math.hypot(bx, by) || 1;
+      const d = Math.min(bInset, Math.min(l1, l2) * 0.36);
+      return [pCurr[0] + (bx / bl) * d, pCurr[1] + (by / bl) * d];
+    });
+
+    const mapUV = (x, z) => {
+      if (!uvBox) return [(x + 2) * 0.25, (2 - z) * 0.25];
+      return [
+        (x - uvBox.x0) / (uvBox.x1 - uvBox.x0),
+        (uvBox.z1 - z) / (uvBox.z1 - uvBox.z0),
+      ];
+    };
+
+    const tris = triangulateCCW(inner);
+    for (const [ia, ib, ic] of tris) {
+      const a = inner[ia], bPt = inner[ib], c = inner[ic];
+      const paT = [a[0], y1, -a[1]], pbT = [bPt[0], y1, -bPt[1]], pcT = [c[0], y1, -c[1]];
+      pushTri(out, paT, pbT, pcT, [0, 1, 0], mapUV(paT[0], paT[2]), mapUV(pbT[0], pbT[2]), mapUV(pcT[0], pcT[2]), flag);
+      const paB = [a[0], y0, -a[1]], pbB = [bPt[0], y0, -bPt[1]], pcB = [c[0], y0, -c[1]];
+      pushTri(out, pcB, pbB, paB, [0, -1, 0], [0, 0], [1, 0], [0.5, 1], sFlag);
+    }
+
+    const yTB = y1 - bY, yBB = y0 + bY;
+    for (let i = 0; i < N; i++) {
+      const j = (i + 1) % N;
+      const o0 = [poly[i][0], -poly[i][1]], o1 = [poly[j][0], -poly[j][1]];
+      const i0 = [inner[i][0], -inner[i][1]], i1 = [inner[j][0], -inner[j][1]];
+      const ex = poly[j][0] - poly[i][0], ey = poly[j][1] - poly[i][1];
+      // Outward normal in 2D (x, -z) is (ey, -ex), so in 3D (x, y, z) it is (ey, 0, ex)
+      const ns = normalize([ey, 0, ex]);
+      const nt = normalize([ns[0] * 0.68, 0.73, ns[2] * 0.68]);
+      const nb = normalize([ns[0] * 0.68, -0.73, ns[2] * 0.68]);
+
+      if (bY > 1e-5) {
+        pushQuad(out, [o0[0], yTB, o0[1]], [o1[0], yTB, o1[1]], [i1[0], y1, i1[1]], [i0[0], y1, i0[1]], nt, [0, 0], [1, 0], [1, 1], [0, 1], sFlag);
+        pushQuad(out, [o0[0], yBB, o0[1]], [o1[0], yBB, o1[1]], [o1[0], yTB, o1[1]], [o0[0], yTB, o0[1]], ns, [0, 0], [1, 0], [1, 1], [0, 1], sFlag);
+        pushQuad(out, [i0[0], y0, i0[1]], [i1[0], y0, i1[1]], [o1[0], yBB, o1[1]], [o0[0], yBB, o0[1]], nb, [0, 0], [1, 0], [1, 1], [0, 1], sFlag);
+      } else {
+        pushQuad(out, [o0[0], y0, o0[1]], [o1[0], y0, o1[1]], [o1[0], y1, o1[1]], [o0[0], y1, o0[1]], ns, [0, 0], [1, 0], [1, 1], [0, 1], sFlag);
+      }
+    }
+  }
+
+  function appendCircularRingY(out, cx, cz, y0, y1, rIn, rOut, segs, flag = 2) {
+    const b = Math.min(0.008, (rOut - rIn) * 0.28, (y1 - y0) * 0.35);
+    const prof = [
+      [rIn, y0],
+      [rOut, y0],
+      [rOut, y1 - b],
+      [rOut - b, y1],
+      [rIn + b, y1],
+      [rIn, y1 - b],
+    ];
+    for (let s = 0; s < segs; s++) {
+      const a0 = (s / segs) * TAU;
+      const a1 = ((s + 1) / segs) * TAU;
+      const c0 = Math.cos(a0), s0 = Math.sin(a0);
+      const c1 = Math.cos(a1), s1 = Math.sin(a1);
+      for (let k = 0; k < prof.length; k++) {
+        const kn = (k + 1) % prof.length;
+        const [ra, ya] = prof[k];
+        const [rb, yb] = prof[kn];
+        const dr = rb - ra, dy = yb - ya;
+        const nLen = Math.hypot(dr, dy) || 1;
+        // Outward normal in (r, y) plane for CCW profile (rIn,y0)->(rOut,y0)->(rOut,y1)->(rIn,y1) is (dy, -dr)
+        const nr = dy / nLen, ny = -dr / nLen;
+        const p0 = [cx + ra * c0, ya, cz + ra * s0];
+        const p1 = [cx + ra * c1, ya, cz + ra * s1];
+        const p2 = [cx + rb * c1, yb, cz + rb * s1];
+        const p3 = [cx + rb * c0, yb, cz + rb * s0];
+        const n0 = normalize([nr * c0, ny, nr * s0]);
+        const n1 = normalize([nr * c1, ny, nr * s1]);
+        pushQuadSmooth(out, p0, p1, p2, p3, n0, n1, n1, n0, [s / segs, 0], [(s + 1) / segs, 0], [(s + 1) / segs, 1], [s / segs, 1], flag, flag, flag, flag);
+      }
+    }
+  }
+
+  // ---- Scheme A Constants & Geometry (Vintage Cotton Ticket + Milled Coin) ----
+  const TICKET_HX = 1.92, TICKET_HZ = 1.19, TICKET_H = 0.115;
+  const TICKET_PRINT_BOX = { x0: -1.72, x1: 1.72, z0: -1.07, z1: 1.07 };
+  const TICKET_FOIL_BOX = { x0: -1.48, x1: 1.48, z0: -0.37, z1: 0.90 };
+
+  function buildTicketSilhouette() {
+    const pts = [];
+    const hx = TICKET_HX, hz = TICKET_HZ, cr = 0.11;
+
+    // Top edge: left-to-right (z = -hz)
+    for (let i = 0; i <= 4; i++) {
+      const a = Math.PI + (i / 4) * (Math.PI / 2);
+      pts.push([-hx + cr + cr * Math.cos(a), -hz + cr + cr * Math.sin(a)]);
+    }
+    for (let i = 0; i <= 4; i++) {
+      const a = -Math.PI / 2 + (i / 4) * (Math.PI / 2);
+      pts.push([hx - cr + cr * Math.cos(a), -hz + cr + cr * Math.sin(a)]);
+    }
+
+    // Right edge (x = +hx): top-to-bottom with 6 perforated stub notches + center thumb cutout
+    const rightNotches = [
+      { z: -0.84, r: 0.044 },
+      { z: -0.60, r: 0.044 },
+      { z: -0.36, r: 0.044 },
+      { z: 0.0, r: 0.112 },   // classic vintage ticket thumb notch
+      { z: 0.36, r: 0.044 },
+      { z: 0.60, r: 0.044 },
+      { z: 0.84, r: 0.044 },
+    ];
+    for (const nt of rightNotches) {
+      const segs = nt.r > 0.08 ? 8 : 5;
+      for (let i = 0; i <= segs; i++) {
+        const a = -Math.PI / 2 - (i / segs) * Math.PI;
+        pts.push([hx + nt.r * Math.cos(a), nt.z + nt.r * Math.sin(a)]);
+      }
+    }
+
+    // Bottom-right corner -> bottom edge -> bottom-left corner (z = +hz)
+    for (let i = 0; i <= 4; i++) {
+      const a = (i / 4) * (Math.PI / 2);
+      pts.push([hx - cr + cr * Math.cos(a), hz - cr + cr * Math.sin(a)]);
+    }
+    for (let i = 0; i <= 4; i++) {
+      const a = Math.PI / 2 + (i / 4) * (Math.PI / 2);
+      pts.push([-hx + cr + cr * Math.cos(a), hz - cr + cr * Math.sin(a)]);
+    }
+
+    // Left edge (x = -hx): bottom-to-top with mirrored stub notches
+    const leftNotches = rightNotches.slice().reverse();
+    for (const nt of leftNotches) {
+      const segs = nt.r > 0.08 ? 8 : 5;
+      for (let i = 0; i <= segs; i++) {
+        const a = Math.PI / 2 - (i / segs) * Math.PI;
+        pts.push([-hx + nt.r * Math.cos(a), nt.z + nt.r * Math.sin(a)]);
+      }
+    }
+    return pts;
+  }
+
+  function buildTicketBodyGeo() {
+    const out = [];
+    const silhouette = buildTicketSilhouette();
+    appendExtrudedXZ(out, silhouette, 0, TICKET_H, 0.018, 0, { x0: -TICKET_HX, x1: TICKET_HX, z0: -TICKET_HZ, z1: TICKET_HZ }, 0);
+
+    // Raised metallic letterpress border rails framing the ticket
+    const y0 = TICKET_H - 0.002, y1 = TICKET_H + 0.014;
+    const rx0 = -1.76, rx1 = 1.76, rz0 = -1.11, rz1 = 1.11, rw = 0.036;
+    appendBeveledBox(out, rx0, rx1, y0, y1, rz0, rz0 + rw, 0.006, 2);
+    appendBeveledBox(out, rx0, rx1, y0, y1, rz1 - rw, rz1, 0.006, 2);
+    appendBeveledBox(out, rx0, rx0 + rw, y0, y1, rz0 + rw, rz1 - rw, 0.006, 2);
+    appendBeveledBox(out, rx1 - rw, rx1, y0, y1, rz0 + rw, rz1 - rw, 0.006, 2);
+
+    // Subtle embossed raised molding lip framing the large scratch foil window
+    const fx0 = TICKET_FOIL_BOX.x0 - 0.04, fx1 = TICKET_FOIL_BOX.x1 + 0.04;
+    const fz0 = TICKET_FOIL_BOX.z0 - 0.04, fz1 = TICKET_FOIL_BOX.z1 + 0.04;
+    const fw = 0.030, fy1 = TICKET_H + 0.022;
+    appendBeveledBox(out, fx0, fx1, y0, fy1, fz0, fz0 + fw, 0.006, 2);
+    appendBeveledBox(out, fx0, fx1, y0, fy1, fz1 - fw, fz1, 0.006, 2);
+    appendBeveledBox(out, fx0, fx0 + fw, y0, fy1, fz0 + fw, fz1 - fw, 0.006, 2);
+    appendBeveledBox(out, fx1 - fw, fx1, y0, fy1, fz0 + fw, fz1 - fw, 0.006, 2);
+
+    // Four small embossed metallic corner studs
+    for (const [cx, cz] of [[-1.62, -0.97], [1.62, -0.97], [-1.62, 0.97], [1.62, 0.97]]) {
+      appendCircularRingY(out, cx, cz, y0, y1 + 0.005, 0.008, 0.042, 16, 2);
+    }
+    return new Float32Array(out);
+  }
+
+  function buildTicketPrintGeo() {
+    const out = [];
+    const b = TICKET_PRINT_BOX;
+    const poly = [[b.x0, b.z0], [b.x1, b.z0], [b.x1, b.z1], [b.x0, b.z1]];
+    appendExtrudedXZ(out, poly, 0, 0.012, 0.002, 0, b, 2);
+    return new Float32Array(out);
+  }
+
+  /**
+   * Pillowed subdivided metallic foil sheet for Scheme A so studio specular bands
+   * sweep realistically across the raised foil coating.
+   */
+  function buildTicketFoilGeo() {
+    const out = [];
+    const b = TICKET_FOIL_BOX;
+    const nx = 28, nz = 14;
+    const domeH = 0.017;
+
+    const pt = (ix, iz) => {
+      const u = ix / nx;
+      const vCanvas = iz / nz; // 0 at top (-z), 1 at bottom (+z)
+      const x = lerp(b.x0, b.x1, u);
+      const z = lerp(b.z0, b.z1, vCanvas);
+      // Smooth pillowed edge falloff (flat-ish interior, rounded bevel rim)
+      const ex = Math.min(u, 1 - u);
+      const ez = Math.min(vCanvas, 1 - vCanvas);
+      const bx = smoothstepJS(0, 0.09, ex);
+      const bz = smoothstepJS(0, 0.14, ez);
+      const crown = Math.sin(u * Math.PI) * Math.sin(vCanvas * Math.PI) * 0.006;
+      const y = bx * bz * domeH + crown;
+      return { x, y, z, u, vGL: 1 - vCanvas };
+    };
+
+    const grid = [];
+    for (let iz = 0; iz <= nz; iz++) {
+      const row = [];
+      for (let ix = 0; ix <= nx; ix++) row.push(pt(ix, iz));
+      grid.push(row);
+    }
+
+    const normalAt = (ix, iz) => {
+      const l = grid[iz][Math.max(0, ix - 1)];
+      const r = grid[iz][Math.min(nx, ix + 1)];
+      const t = grid[Math.max(0, iz - 1)][ix];
+      const bo = grid[Math.min(nz, iz + 1)][ix];
+      const dx = [r.x - l.x, r.y - l.y, r.z - l.z];
+      const dz = [bo.x - t.x, bo.y - t.y, bo.z - t.z];
+      let n = cross(dz, dx);
+      if (n[1] < 0) n = scale(n, -1);
+      return normalize(n);
+    };
+
+    for (let iz = 0; iz < nz; iz++) {
+      for (let ix = 0; ix < nx; ix++) {
+        const a = grid[iz][ix];
+        const bP = grid[iz][ix + 1];
+        const c = grid[iz + 1][ix + 1];
+        const d = grid[iz + 1][ix];
+        const na = normalAt(ix, iz), nb = normalAt(ix + 1, iz), nc = normalAt(ix + 1, iz + 1), nd = normalAt(ix, iz + 1);
+        pushQuadSmooth(
+          out,
+          [a.x, a.y, a.z], [bP.x, bP.y, bP.z], [c.x, c.y, c.z], [d.x, d.y, d.z],
+          na, nb, nc, nd,
+          [a.u, a.vGL], [bP.u, bP.vGL], [c.u, c.vGL], [d.u, d.vGL],
+          0, 0, 0, 0
+        );
+      }
+    }
+    return new Float32Array(out);
+  }
+
+  function smoothstepJS(e0, e1, x) {
+    const t = clamp((x - e0) / (e1 - e0), 0, 1);
+    return t * t * (3 - 2 * t);
+  }
+
+  /**
+   * High-detail 72-reed milled 3D metallic coin (radius 0.43, thickness 0.074).
+   * Flag 0 = embossed coin face (textured), Flag 2 = bright milled edge & raised rim.
+   */
+  function buildMilledCoinGeo() {
+    const out = [];
+    const R = 0.43, rInner = 0.365, hRim = 0.037, hField = 0.029;
+    const segs = 72;
+
+    // 1. Reeded/milled outer cylindrical edge (alternating ridges)
+    for (let s = 0; s < segs; s++) {
+      const a0 = (s / segs) * TAU;
+      const a1 = ((s + 1) / segs) * TAU;
+      const aMid = (a0 + a1) * 0.5;
+      const r0 = R;
+      const rMid = R - 0.011;
+      const subSegs = [[a0, r0, aMid, rMid], [aMid, rMid, a1, r0]];
+      for (const [tA, ra, tB, rb] of subSegs) {
+        const p0 = [ra * Math.cos(tA), -hRim + 0.007, ra * Math.sin(tA)];
+        const p1 = [rb * Math.cos(tB), -hRim + 0.007, rb * Math.sin(tB)];
+        const p2 = [rb * Math.cos(tB), hRim - 0.007, rb * Math.sin(tB)];
+        const p3 = [ra * Math.cos(tA), hRim - 0.007, ra * Math.sin(tA)];
+        const n = normalize(cross(sub(p1, p0), sub(p3, p0)));
+        const outN = dot(n, [Math.cos((tA + tB) * 0.5), 0, Math.sin((tA + tB) * 0.5)]) >= 0 ? n : scale(n, -1);
+        pushQuad(out, p0, p1, p2, p3, outN, [0, 0], [1, 0], [1, 1], [0, 1], 2);
+      }
+    }
+
+    // 2. Top & bottom beveled raised rims + recessed coin fields (upright non-mirrored UV!)
+    const ringSegs = 64;
+    for (const sgn of [1, -1]) {
+      const yRimOuter = sgn * (hRim - 0.007);
+      const yRimTop = sgn * hRim;
+      const yFld = sgn * hField;
+      for (let s = 0; s < ringSegs; s++) {
+        const a0 = (s / ringSegs) * TAU, a1 = ((s + 1) / ringSegs) * TAU;
+        const c0 = Math.cos(a0), s0 = Math.sin(a0);
+        const c1 = Math.cos(a1), s1 = Math.sin(a1);
+
+        // Outer bevel -> Rim crown -> Inner step down to field
+        const rings = [
+          [R, yRimOuter, normalize([c0 * 0.72, sgn * 0.69, s0 * 0.72]), normalize([c1 * 0.72, sgn * 0.69, s1 * 0.72])],
+          [R - 0.014, yRimTop, [0, sgn, 0], [0, sgn, 0]],
+          [rInner + 0.012, yRimTop, [0, sgn, 0], [0, sgn, 0]],
+          [rInner, yFld, normalize([-c0 * 0.68, sgn * 0.73, -s0 * 0.68]), normalize([-c1 * 0.68, sgn * 0.73, -s1 * 0.68])],
+        ];
+        for (let k = 0; k < rings.length - 1; k++) {
+          const [ra, ya, n0a, n1a] = rings[k];
+          const [rb, yb, n0b, n1b] = rings[k + 1];
+          const p0 = [ra * c0, ya, ra * s0];
+          const p1 = [ra * c1, ya, ra * s1];
+          const p2 = [rb * c1, yb, rb * s1];
+          const p3 = [rb * c0, yb, rb * s0];
+          pushQuadSmooth(out, p0, p1, p2, p3, n0a, n1a, n1b, n0b, [0, 0], [1, 0], [1, 1], [0, 1], 2, 2, 2, 2);
+        }
+
+        // Textured coin face disc (flag = 0)
+        const pCenter = [0, yFld, 0];
+        const pA = [rInner * c0, yFld, rInner * s0];
+        const pB = [rInner * c1, yFld, rInner * s1];
+        const uvMap = (x, z) => [0.5 + (x / rInner) * 0.48, 0.5 - (z / rInner) * 0.48];
+        pushTri(out, pCenter, pA, pB, [0, sgn, 0], [0.5, 0.5], uvMap(pA[0], pA[2]), uvMap(pB[0], pB[2]), 0);
+      }
+    }
+    return new Float32Array(out);
+  }
+
+  // ---- Scheme B Constants & Geometry (6-Seal Heavyweight Specialty Card + Octa Token) ----
+  const SEALS_HX = 1.78, SEALS_HZ = 1.33, SEALS_H = 0.130;
+  const SEALS_PRINT_BOX = { x0: -1.65, x1: 1.65, z0: -1.21, z1: 1.21 };
+  const SEAL_CENTERS = [
+    [-0.98, -0.21], [0.00, -0.21], [0.98, -0.21],
+    [-0.98,  0.64], [0.00,  0.64], [0.98,  0.64],
+  ];
+  const SEAL_FOIL_R = 0.352;
+  const SEAL_RING_OUTER = 0.382;
+
+  function buildChamferedCardPoly(hx, hz, ch) {
+    return [
+      [-hx + ch, -hz],
+      [ hx - ch, -hz],
+      [ hx, -hz + ch],
+      [ hx,  hz - ch],
+      [ hx - ch,  hz],
+      [-hx + ch,  hz],
+      [-hx,  hz - ch],
+      [-hx, -hz + ch],
+    ];
+  }
+
+  function buildSealsBodyGeo() {
+    const out = [];
+    // Stepped luxury collector card base + main body
+    appendExtrudedXZ(out, buildChamferedCardPoly(SEALS_HX + 0.03, SEALS_HZ + 0.03, 0.25), 0.0, 0.042, 0.012, 2);
+    appendExtrudedXZ(out, buildChamferedCardPoly(SEALS_HX, SEALS_HZ, 0.24), 0.038, SEALS_H, 0.022, 0);
+
+    // Metallic perimeter inlay framing bars
+    const y0 = SEALS_H - 0.002, y1 = SEALS_H + 0.012;
+    appendBeveledBox(out, -1.52, 1.52, y0, y1, -1.25, -1.215, 0.005, 2);
+    appendBeveledBox(out, -1.52, 1.52, y0, y1, 1.215, 1.25, 0.005, 2);
+    appendBeveledBox(out, -1.69, -1.655, y0, y1, -1.04, 1.04, 0.005, 2);
+    appendBeveledBox(out, 1.655, 1.69, y0, y1, -1.04, 1.04, 0.005, 2);
+
+    // 6 raised lathe-turned circular metallic medallion bezel wells
+    for (const [cx, cz] of SEAL_CENTERS) {
+      appendCircularRingY(out, cx, cz, SEALS_H - 0.002, SEALS_H + 0.024, SEAL_FOIL_R - 0.008, SEAL_RING_OUTER, 36, 2);
+    }
+    return new Float32Array(out);
+  }
+
+  function buildSealsPrintGeo() {
+    const out = [];
+    const b = SEALS_PRINT_BOX;
+    const poly = buildChamferedCardPoly((b.x1 - b.x0) * 0.5, (b.z1 - b.z0) * 0.5, 0.18);
+    appendExtrudedXZ(out, poly, 0, 0.012, 0.002, 0, b, 2);
+    return new Float32Array(out);
+  }
+
+  /**
+   * 6 distinct raised 3D domed circular metallic foil seals (wax/tin stamp relief).
+   * All 6 share the exact same UV domain as SEALS_PRINT_BOX so dragging across
+   * multiple domes scrapes continuously with zero seam offsets!
+   */
+  function buildSealsFoilGeo() {
+    const out = [];
+    const b = SEALS_PRINT_BOX;
+    const segs = 32;
+    const radRings = [
+      { r: 0.0, y: 0.030 },
+      { r: SEAL_FOIL_R * 0.45, y: 0.028 },
+      { r: SEAL_FOIL_R * 0.78, y: 0.024 },
+      { r: SEAL_FOIL_R * 0.92, y: 0.015 },
+      { r: SEAL_FOIL_R, y: 0.002 },
+    ];
+    const mapUV = (x, z) => [
+      (x - b.x0) / (b.x1 - b.x0),
+      (b.z1 - z) / (b.z1 - b.z0),
+    ];
+
+    for (const [cx, cz] of SEAL_CENTERS) {
+      for (let k = 0; k < radRings.length - 1; k++) {
+        const ra = radRings[k].r, ya = radRings[k].y;
+        const rb = radRings[k + 1].r, yb = radRings[k + 1].y;
+        const dr = rb - ra, dy = yb - ya;
+        const nSlope = normalize([-dy, dr, 0]);
+        for (let s = 0; s < segs; s++) {
+          const a0 = (s / segs) * TAU, a1 = ((s + 1) / segs) * TAU;
+          const c0 = Math.cos(a0), s0 = Math.sin(a0);
+          const c1 = Math.cos(a1), s1 = Math.sin(a1);
+          const p0 = [cx + ra * c0, ya, cz + ra * s0];
+          const p1 = [cx + ra * c1, ya, cz + ra * s1];
+          const p2 = [cx + rb * c1, yb, cz + rb * s1];
+          const p3 = [cx + rb * c0, yb, cz + rb * s0];
+          const n0 = k === 0 ? [0, 1, 0] : normalize([nSlope[0] * c0, nSlope[1], nSlope[0] * s0]);
+          const n1 = k === 0 ? [0, 1, 0] : normalize([nSlope[0] * c1, nSlope[1], nSlope[0] * s1]);
+          const n2 = normalize([nSlope[0] * c1, nSlope[1], nSlope[0] * s1]);
+          const n3 = normalize([nSlope[0] * c0, nSlope[1], nSlope[0] * s0]);
+          if (ra < 1e-4) {
+            pushTriSmooth(out, p0, p3, p2, [0, 1, 0], n3, n2, mapUV(p0[0], p0[2]), mapUV(p3[0], p3[2]), mapUV(p2[0], p2[2]), 0, 0, 0);
+          } else {
+            pushQuadSmooth(
+              out, p0, p1, p2, p3, n0, n1, n2, n3,
+              mapUV(p0[0], p0[2]), mapUV(p1[0], p1[2]), mapUV(p2[0], p2[2]), mapUV(p3[0], p3[2]),
+              0, 0, 0, 0
+            );
+          }
+        }
+      }
+    }
+    return new Float32Array(out);
+  }
+
+  /**
+   * 12-faceted architectural brass/silver scratch token for Scheme B.
+   */
+  function buildDodecaTokenGeo() {
+    const out = [];
+    const sides = 12, R = 0.40, rIn = 0.31, hRim = 0.036, hFld = 0.027;
+    const polyOuter = [];
+    for (let i = 0; i < sides; i++) {
+      const a = (i / sides) * TAU + Math.PI / sides;
+      polyOuter.push([R * Math.cos(a), R * Math.sin(a)]);
+    }
+    // Faceted thick bezel body (flag = 2)
+    appendExtrudedXZ(out, polyOuter, -hRim, hRim, 0.012, 2);
+
+    // Recessed circular stamped top & bottom discs (flag = 0 textured)
+    const segs = 36;
+    for (const sgn of [1, -1]) {
+      const yF = sgn * (hRim + 0.002);
+      for (let s = 0; s < segs; s++) {
+        const a0 = (s / segs) * TAU, a1 = ((s + 1) / segs) * TAU;
+        const p0 = [0, yF, 0];
+        const p1 = [rIn * Math.cos(a0), yF, rIn * Math.sin(a0)];
+        const p2 = [rIn * Math.cos(a1), yF, rIn * Math.sin(a1)];
+        const uvMap = (x, z) => [0.5 + (x / rIn) * 0.47, 0.5 - (z / rIn) * 0.47];
+        pushTri(out, p0, p1, p2, [0, sgn, 0], [0.5, 0.5], uvMap(p1[0], p1[2]), uvMap(p2[0], p2[2]), 0);
+      }
+    }
+    return new Float32Array(out);
+  }
+
+  /**
+   * Curled 3D metallic foil shaving flake (double-sided ribbon).
+   */
+  function buildShavingGeo() {
+    const out = [];
+    const segs = 6;
+    const len = 0.155, w = 0.048;
+    for (let i = 0; i < segs; i++) {
+      const t0 = i / segs, t1 = (i + 1) / segs;
+      const a0 = t0 * 2.5, a1 = t1 * 2.5;
+      const x0 = (t0 - 0.5) * len, x1 = (t1 - 0.5) * len;
+      const y0 = Math.sin(a0) * 0.032, y1 = Math.sin(a1) * 0.032;
+      const tw0 = (t0 - 0.5) * 0.85, tw1 = (t1 - 0.5) * 0.85;
+      const hw0 = w * (0.62 + 0.38 * Math.sin(t0 * Math.PI));
+      const hw1 = w * (0.62 + 0.38 * Math.sin(t1 * Math.PI));
+      const p0 = [x0, y0 - Math.sin(tw0) * hw0, -Math.cos(tw0) * hw0];
+      const p1 = [x1, y1 - Math.sin(tw1) * hw1, -Math.cos(tw1) * hw1];
+      const p2 = [x1, y1 + Math.sin(tw1) * hw1,  Math.cos(tw1) * hw1];
+      const p3 = [x0, y0 + Math.sin(tw0) * hw0,  Math.cos(tw0) * hw0];
+      const n = normalize(cross(sub(p1, p0), sub(p3, p0)));
+      pushQuad(out, p0, p1, p2, p3, n, [t0, 0], [t1, 0], [t1, 1], [t0, 1], 0);
+    }
+    return new Float32Array(out);
+  }
+
+  const GEOS = {
+    ticketBody: buildTicketBodyGeo(),
+    ticketPrint: buildTicketPrintGeo(),
+    ticketFoil: buildTicketFoilGeo(),
+    coin: buildMilledCoinGeo(),
+    sealsBody: buildSealsBodyGeo(),
+    sealsPrint: buildSealsPrintGeo(),
+    sealsFoil: buildSealsFoilGeo(),
+    token: buildDodecaTokenGeo(),
+    shaving: buildShavingGeo(),
+  };
+
+  // ---- Finishes Catalog ----
+  const TICKET_FINISHES = [
+    {
+      name: '墨绿烫金券 + 银箔黄铜币',
+      body: {
+        color: [0.19, 0.33, 0.25], accent: [0.82, 0.69, 0.38], trim: [0.82, 0.69, 0.38],
+        matMeta: [0.04, 0.88, 0.86], matRough: [0.84, 0.24, 0.26],
+      },
+      foilMat: {
+        color: [0.82, 0.85, 0.83], matMeta: [0.86, 0.86, 0.86], matRough: [0.26, 0.26, 0.26],
+      },
+      coinMat: {
+        color: [0.86, 0.72, 0.38], accent: [0.88, 0.74, 0.39], trim: [0.86, 0.72, 0.38],
+        matMeta: [0.90, 0.92, 0.90], matRough: [0.22, 0.19, 0.22],
+      },
+      shavingColor: [0.84, 0.87, 0.85],
+      cardTheme: { bg0: '#fbfaf3', bg1: '#efeade', headerBg: '#274333', headerInk: '#f4f2e6', badgeBg: '#395d47', badgeStroke: '#d4b56a', border: '#365b43', gold: '#b99648' },
+      foilPalette: { c0: '#d7ddd9', c1: '#b8c1bc', c2: '#cfd6d2', ink: '#46544c', stroke: 'rgba(62, 76, 68, 0.35)' },
+      coinPalette: { bg0: '#e2c574', bg1: '#b7933f', rim: '#7b5e21', ink: '#4c3810' },
+    },
+    {
+      name: '暖羊皮券 + 香槟金箔银币',
+      body: {
+        color: [0.91, 0.87, 0.78], accent: [0.64, 0.50, 0.30], trim: [0.64, 0.50, 0.30],
+        matMeta: [0.02, 0.82, 0.82], matRough: [0.88, 0.28, 0.28],
+      },
+      foilMat: {
+        color: [0.88, 0.79, 0.58], matMeta: [0.88, 0.88, 0.88], matRough: [0.24, 0.24, 0.24],
+      },
+      coinMat: {
+        color: [0.80, 0.83, 0.84], accent: [0.84, 0.87, 0.88], trim: [0.80, 0.83, 0.84],
+        matMeta: [0.92, 0.94, 0.92], matRough: [0.20, 0.17, 0.20],
+      },
+      shavingColor: [0.88, 0.79, 0.56],
+      cardTheme: { bg0: '#f9f5ea', bg1: '#ebe2ce', headerBg: '#e4dac4', headerInk: '#28392f', badgeBg: '#365b43', badgeStroke: '#9d7f48', border: '#876d3f', gold: '#9d7f48' },
+      foilPalette: { c0: '#eadab0', c1: '#c8b07b', c2: '#dfcb9b', ink: '#5c4924', stroke: 'rgba(104, 83, 38, 0.34)' },
+      coinPalette: { bg0: '#dde3e5', bg1: '#aeb7bb', rim: '#5e686c', ink: '#323c40' },
+    },
+  ];
+
+  const SEALS_FINISHES = [
+    {
+      name: '森林绿特种卡 + 哑光锡箔',
+      body: {
+        color: [0.16, 0.29, 0.22], accent: [0.79, 0.68, 0.42], trim: [0.79, 0.68, 0.42],
+        matMeta: [0.05, 0.86, 0.86], matRough: [0.82, 0.26, 0.26],
+      },
+      foilMat: {
+        color: [0.76, 0.80, 0.78], matMeta: [0.80, 0.80, 0.80], matRough: [0.34, 0.34, 0.34],
+      },
+      tokenMat: {
+        color: [0.83, 0.68, 0.36], accent: [0.85, 0.70, 0.38], trim: [0.83, 0.68, 0.36],
+        matMeta: [0.90, 0.92, 0.90], matRough: [0.23, 0.20, 0.23],
+      },
+      shavingColor: [0.77, 0.81, 0.79],
+      cardTheme: { bg0: '#274333', bg1: '#1d3427', bedBg: '#f6f4eb', headerInk: '#f4f2e6', mutedInk: '#b7c7ba', accentGold: '#d2bb79' },
+      foilPalette: { c0: '#cdd4d0', c1: '#9ea8a3', c2: '#bfc7c3', ink: '#3f4c45', ring: 'rgba(55, 68, 60, 0.42)' },
+      tokenPalette: { bg0: '#dec174', bg1: '#b28e3d', rim: '#71561d', ink: '#463410' },
+    },
+    {
+      name: '靛青石纹卡 + 复古铜箔',
+      body: {
+        color: [0.19, 0.25, 0.32], accent: [0.78, 0.53, 0.38], trim: [0.78, 0.53, 0.38],
+        matMeta: [0.06, 0.88, 0.88], matRough: [0.80, 0.24, 0.24],
+      },
+      foilMat: {
+        color: [0.80, 0.54, 0.39], matMeta: [0.88, 0.88, 0.88], matRough: [0.28, 0.28, 0.28],
+      },
+      tokenMat: {
+        color: [0.80, 0.83, 0.84], accent: [0.84, 0.87, 0.88], trim: [0.80, 0.83, 0.84],
+        matMeta: [0.92, 0.93, 0.92], matRough: [0.21, 0.18, 0.21],
+      },
+      shavingColor: [0.82, 0.56, 0.40],
+      cardTheme: { bg0: '#2c3a49', bg1: '#202b37', bedBg: '#f5f3ec', headerInk: '#f1f3f5', mutedInk: '#aab8c5', accentGold: '#d69975' },
+      foilPalette: { c0: '#dba07e', c1: '#a96c4a', c2: '#cb8c69', ink: '#4a2918', ring: 'rgba(72, 39, 22, 0.44)' },
+      tokenPalette: { bg0: '#dce2e4', bg1: '#aab3b8', rim: '#586268', ink: '#2d373d' },
+    },
+  ];
+
+  // ---- Offscreen Canvas Texture Renderers (Guaranteed Upright, Non-Mirrored) ----
+  function makeCoinEmblemCanvas(palette, isToken = false) {
+    const S = 512;
+    const c = document.createElement('canvas');
+    c.width = S; c.height = S;
+    const ctx = c.getContext('2d');
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const g = ctx.createRadialGradient(S * 0.36, S * 0.34, 24, S * 0.5, S * 0.5, S * 0.52);
+    g.addColorStop(0, palette.bg0);
+    g.addColorStop(0.7, palette.bg1);
+    g.addColorStop(1, palette.bg0);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, S, S);
+
+    // Subtle brushed radial metal rings
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    ctx.lineWidth = 2;
+    for (let r = 46; r < 245; r += 10) {
+      ctx.beginPath();
+      ctx.arc(S / 2, S / 2, r, 0, TAU);
+      ctx.stroke();
+    }
+
+    // Outer beaded border
+    ctx.strokeStyle = palette.rim;
+    ctx.lineWidth = 9;
+    ctx.beginPath();
+    ctx.arc(S / 2, S / 2, 222, 0, TAU);
+    ctx.stroke();
+
+    ctx.fillStyle = palette.rim;
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * TAU;
+      ctx.beginPath();
+      ctx.arc(S / 2 + Math.cos(a) * 198, S / 2 + Math.sin(a) * 198, 5.5, 0, TAU);
+      ctx.fill();
+    }
+
+    // Embossed center emblem (∴ + 练不练)
+    ctx.fillStyle = palette.ink;
+    ctx.font = '700 132px Georgia, "Songti SC", serif';
+    ctx.fillText('∴', S / 2, S / 2 - 22);
+
+    ctx.font = '700 44px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText(isToken ? '刮章令' : '练不练', S / 2, S / 2 + 88);
+
+    ctx.font = '600 24px -apple-system, sans-serif';
+    ctx.fillText('EST · 2026', S / 2, S / 2 - 122);
+    return c;
+  }
+
+  function makeTicketPrintCanvas(finish, outcomeTrain, probPct, serialNo, copyObj) {
+    const W = 1024, H = 636;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    const th = finish.cardTheme;
+
+    // Cream cotton paper background
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, th.bg0);
+    bg.addColorStop(1, th.bg1);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle paper cotton flecks
+    for (let i = 0; i < 240; i++) {
+      const fx = ((i * 197) % W);
+      const fy = ((i * 313) % H);
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(40,57,47,0.035)' : 'rgba(180,165,120,0.045)';
+      ctx.fillRect(fx, fy, 4, 2);
+    }
+
+    // Top Header Band (ALWAYS visible above scratch window! z = -1.07..-0.40 => py = 0..198)
+    ctx.fillStyle = th.headerBg;
+    ctx.fillRect(0, 0, W, 182);
+
+    // Gold decorative hairline under header
+    ctx.fillStyle = th.gold;
+    ctx.fillRect(0, 178, W, 5);
+
+    // Brand mark on header left
+    ctx.fillStyle = th.headerInk;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = '700 44px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText('∴ 练不练 · 刮刮票券', 48, 72);
+
+    ctx.font = '500 24px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.globalAlpha = 0.78;
+    ctx.fillText(`票号 NO.${String(serialNo).padStart(4, '0')}  ·  每日一签 · 刮开即晓`, 52, 132);
+    ctx.globalAlpha = 1.0;
+
+    // Live transparent probability stamp pill on header right
+    const badgeX = 678, badgeY = 36, badgeW = 298, badgeH = 108;
+    ctx.fillStyle = th.badgeBg;
+    ctx.beginPath();
+    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 20);
+    ctx.fill();
+    ctx.strokeStyle = th.badgeStroke;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#f8f8f0';
+    ctx.font = '600 22px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText('透明设定 · 训练概率', badgeX + badgeW / 2, badgeY + 34);
+    ctx.font = '700 44px -apple-system, "PingFang SC", sans-serif';
+    ctx.fillText(`${probPct}%`, badgeX + badgeW / 2, badgeY + 78);
+
+    // Scratch Window Under-Print Area (matches TICKET_FOIL_BOX exactly: px 71..953, py 207..585)
+    const wx = 74, wy = 212, ww = 876, wh = 370;
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(wx, wy, ww, wh, 18);
+    ctx.clip();
+
+    // Guilloché security wave background
+    const wBg = ctx.createLinearGradient(wx, wy, wx + ww, wy + wh);
+    if (outcomeTrain) {
+      wBg.addColorStop(0, '#eef4ea');
+      wBg.addColorStop(1, '#e1ebdc');
+    } else {
+      wBg.addColorStop(0, '#eef2f5');
+      wBg.addColorStop(1, '#e3eaef');
+    }
+    ctx.fillStyle = wBg;
+    ctx.fillRect(wx, wy, ww, wh);
+
+    ctx.strokeStyle = outcomeTrain ? 'rgba(54, 91, 67, 0.085)' : 'rgba(89, 110, 128, 0.095)';
+    ctx.lineWidth = 2.2;
+    for (let row = 0; row < 12; row++) {
+      ctx.beginPath();
+      const baseY = wy + 18 + row * 32;
+      for (let x = wx; x <= wx + ww; x += 18) {
+        const y = baseY + Math.sin((x - wx) * 0.025 + row * 0.7) * 10;
+        if (x === wx) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    // Inner double frame
+    ctx.strokeStyle = outcomeTrain ? 'rgba(54, 91, 67, 0.35)' : 'rgba(89, 110, 128, 0.35)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(wx + 16, wy + 16, ww - 32, wh - 32);
+
+    // Left Circular Verdict Stamp Seal
+    const sealX = wx + 182, sealY = wy + wh / 2, sealR = 122;
+    ctx.fillStyle = outcomeTrain ? '#365b43' : '#596e80';
+    ctx.beginPath();
+    ctx.arc(sealX, sealY, sealR, 0, TAU);
+    ctx.fill();
+
+    ctx.strokeStyle = outcomeTrain ? '#d6be7a' : '#cfd9e2';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(sealX, sealY, sealR - 14, 0, TAU);
+    ctx.stroke();
+
+    ctx.fillStyle = '#fafbf5';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '700 132px "Songti SC", "STSong", "Noto Serif CJK SC", serif';
+    ctx.fillText(outcomeTrain ? '练' : '歇', sealX, sealY + 4);
+
+    // Right Verdict Copy Block
+    const tx = wx + 352;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = outcomeTrain ? '#365b43' : '#596e80';
+    ctx.font = '700 32px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText(outcomeTrain ? '今日签 · 走吧，练一点' : '今日签 · 今天，歇一歇', tx, wy + 96);
+
+    // Accent bar
+    ctx.fillStyle = outcomeTrain ? '#9dac67' : '#8da0b0';
+    ctx.fillRect(tx, wy + 132, 116, 5);
+
+    ctx.fillStyle = '#28392f';
+    ctx.font = '700 50px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText(copyObj.headline, tx, wy + 204);
+
+    ctx.fillStyle = '#536052';
+    ctx.font = '500 31px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText(copyObj.sub, tx, wy + 276);
+
+    ctx.fillStyle = outcomeTrain ? 'rgba(54, 91, 67, 0.55)' : 'rgba(89, 110, 128, 0.60)';
+    ctx.font = '600 22px -apple-system, "PingFang SC", sans-serif';
+    ctx.fillText(`不强制 · 可重刮 · 当前概率 ${probPct}%`, tx, wy + 332);
+
+    ctx.restore();
+    return c;
+  }
+
+  function paintTicketFoilBase(canvas, finish) {
+    const W = canvas.width, H = canvas.height;
+    const ctx = canvas.getContext('2d');
+    const fp = finish.foilPalette;
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, W, H);
+
+    // Brushed metallic base gradient
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, fp.c0);
+    g.addColorStop(0.42, fp.c1);
+    g.addColorStop(0.72, fp.c2);
+    g.addColorStop(1, fp.c1);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    // Fine directional brushed metal streaks
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.lineWidth = 1.5;
+    for (let i = -H; i < W + H; i += 9) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i - H * 0.55, H);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(30, 42, 36, 0.08)';
+    for (let i = -H + 4; i < W + H; i += 13) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i - H * 0.55, H);
+      ctx.stroke();
+    }
+
+    // Security diagonal watermark pattern
+    ctx.strokeStyle = fp.stroke;
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(18, 16, W - 36, H - 32);
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(28, 26, W - 56, H - 52);
+
+    // Subtle corner chevron ornaments
+    for (const [cx, cy, sx, sy] of [[44, 42, 1, 1], [W - 44, 42, -1, 1], [44, H - 42, 1, -1], [W - 44, H - 42, -1, -1]]) {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + sy * 18);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx + sx * 18, cy);
+      ctx.stroke();
+    }
+
+    // Center embossed invitation
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = fp.ink;
+    ctx.font = '700 44px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText('用硬币刮开此区', W / 2, H / 2 - 18);
+
+    ctx.globalAlpha = 0.72;
+    ctx.font = '600 21px -apple-system, "PingFang SC", sans-serif';
+    ctx.fillText('∴  SCRATCH WITH COIN  ·  今日练不练', W / 2, H / 2 + 34);
+    ctx.globalAlpha = 1.0;
+  }
+
+  function makeSealsPrintCanvas(finish, sealIsTrainArr, outcomeTrain, probPct, serialNo, copyObj, revealCopy = false) {
+    const W = 1024, H = 752;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    const th = finish.cardTheme;
+
+    // Specialty card background
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, th.bg0);
+    bg.addColorStop(1, th.bg1);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle stone/linen texture speckles
+    for (let i = 0; i < 320; i++) {
+      const fx = ((i * 223) % W);
+      const fy = ((i * 367) % H);
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.06)';
+      ctx.fillRect(fx, fy, 4, 3);
+    }
+
+    // Inner hairline gold frame
+    ctx.strokeStyle = th.accentGold;
+    ctx.globalAlpha = 0.45;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(24, 24, W - 48, H - 48);
+    ctx.globalAlpha = 1.0;
+
+    // Top Header (py = 24..166)
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = th.headerInk;
+    ctx.font = '700 40px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText('∴ 练不练 · 六章盲盒', 52, 74);
+
+    ctx.fillStyle = th.mutedInk;
+    ctx.font = '500 22px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    const ruleTag = probPct === 0 ? '全「歇」保底 · 无练印' : (probPct === 100 ? '全「练」印记 · 必练' : '规则：刮出「练」印即练');
+    ctx.fillText(ruleTag, 54, 126);
+
+    // Live Probability Pill on right
+    const bx = 684, by = 44, bw = 288, bh = 94;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.09)';
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bw, bh, 18);
+    ctx.fill();
+    ctx.strokeStyle = th.accentGold;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = th.accentGold;
+    ctx.font = '600 20px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText('训练概率（透明抽定）', bx + bw / 2, by + 28);
+    ctx.fillStyle = th.headerInk;
+    ctx.font = '700 40px -apple-system, "PingFang SC", sans-serif';
+    ctx.fillText(`${probPct}%`, bx + bw / 2, by + 67);
+
+    // Divider line
+    ctx.fillStyle = th.accentGold;
+    ctx.globalAlpha = 0.35;
+    ctx.fillRect(52, 160, W - 104, 2);
+    ctx.globalAlpha = 1.0;
+
+    // 6 Circular Seal Beds aligned 1:1 with SEAL_CENTERS in SEALS_PRINT_BOX
+    const box = SEALS_PRINT_BOX;
+    const toPx = (x, z) => [
+      ((x - box.x0) / (box.x1 - box.x0)) * W,
+      ((z - box.z0) / (box.z1 - box.z0)) * H,
+    ];
+    const rPx = (SEAL_FOIL_R / (box.x1 - box.x0)) * W;
+
+    for (let i = 0; i < 6; i++) {
+      const [cx, cz] = SEAL_CENTERS[i];
+      const [px, py] = toPx(cx, cz);
+      const isT = !!sealIsTrainArr[i];
+
+      // Cream recessed seal bed
+      ctx.fillStyle = isT ? '#eef4ea' : '#f1f3f4';
+      ctx.beginPath();
+      ctx.arc(px, py, rPx + 6, 0, TAU);
+      ctx.fill();
+
+      // Inner seal stamp circle
+      ctx.strokeStyle = isT ? '#365b43' : '#596e80';
+      ctx.lineWidth = isT ? 7 : 4.5;
+      ctx.beginPath();
+      ctx.arc(px, py, rPx - 14, 0, TAU);
+      ctx.stroke();
+
+      if (isT) {
+        // Bold celebratory green stamp medallion
+        ctx.fillStyle = '#365b43';
+        ctx.beginPath();
+        ctx.arc(px, py - 14, 50, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = '#fafbf5';
+        ctx.font = '700 66px "Songti SC", "STSong", "Noto Serif CJK SC", serif';
+        ctx.fillText('练', px, py - 11);
+
+        ctx.fillStyle = '#2d4f39';
+        ctx.font = '700 24px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+        ctx.fillText(SEAL_TRAIN_MICROS[(i + serialNo) % SEAL_TRAIN_MICROS.length], px, py + 62);
+      } else {
+        // Calm slate-blue rest stamp
+        ctx.fillStyle = 'rgba(89, 110, 128, 0.14)';
+        ctx.beginPath();
+        ctx.arc(px, py - 14, 46, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = '#596e80';
+        ctx.font = '700 60px "Songti SC", "STSong", "Noto Serif CJK SC", serif';
+        ctx.fillText('歇', px, py - 11);
+
+        ctx.fillStyle = '#607282';
+        ctx.font = '600 23px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+        ctx.fillText(SEAL_REST_MICROS[(i + serialNo) % SEAL_REST_MICROS.length], px, py + 62);
+      }
+    }
+
+    // Bottom Footer Strip (py = 698..728) — never spoil outcome before full reveal
+    ctx.textAlign = 'center';
+    ctx.fillStyle = th.mutedInk;
+    ctx.font = '500 22px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    const footerLine = revealCopy
+      ? `NO.${String(serialNo).padStart(4, '0')}  ·  ${copyObj.headline}`
+      : `NO.${String(serialNo).padStart(4, '0')}  ·  刮开六枚箔章，见「练」即定局`;
+    ctx.fillText(footerLine, W / 2, 712);
+
+    return c;
+  }
+
+  function paintSealsFoilBase(canvas, finish) {
+    const W = canvas.width, H = canvas.height;
+    const ctx = canvas.getContext('2d');
+    const fp = finish.foilPalette;
+    const box = SEALS_PRINT_BOX;
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, W, H);
+
+    const toPx = (x, z) => [
+      ((x - box.x0) / (box.x1 - box.x0)) * W,
+      ((z - box.z0) / (box.z1 - box.z0)) * H,
+    ];
+    const rPx = (SEAL_FOIL_R / (box.x1 - box.x0)) * W;
+
+    for (let i = 0; i < 6; i++) {
+      const [cx, cz] = SEAL_CENTERS[i];
+      const [px, py] = toPx(cx, cz);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(px, py, rPx + 4, 0, TAU);
+      ctx.clip();
+
+      const g = ctx.createLinearGradient(px - rPx, py - rPx, px + rPx, py + rPx);
+      g.addColorStop(0, fp.c0);
+      g.addColorStop(0.5, fp.c1);
+      g.addColorStop(1, fp.c2);
+      ctx.fillStyle = g;
+      ctx.fillRect(px - rPx - 6, py - rPx - 6, (rPx + 6) * 2, (rPx + 6) * 2);
+
+      // Brushed diagonal foil sheen lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 1.4;
+      for (let d = -rPx * 2; d <= rPx * 2; d += 8) {
+        ctx.beginPath();
+        ctx.moveTo(px + d, py - rPx - 4);
+        ctx.lineTo(px + d - rPx * 0.7, py + rPx + 4);
+        ctx.stroke();
+      }
+
+      // Wax/tin stamp outer double ring + blind-debossed numeral
+      ctx.strokeStyle = fp.ring;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(px, py, rPx * 0.80, 0, TAU);
+      ctx.stroke();
+
+      ctx.setLineDash([4, 5]);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, py, rPx * 0.67, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = fp.ink;
+      ctx.font = '700 32px "Songti SC", "STSong", "Noto Serif CJK SC", serif';
+      ctx.fillText(SEAL_NUMERALS[i], px, py - 8);
+      ctx.globalAlpha = 0.72;
+      ctx.font = '600 13px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+      ctx.fillText('刮开箔章', px, py + 24);
+      ctx.globalAlpha = 1.0;
+
+      ctx.restore();
+    }
+  }
+
+  // ---- Organic Coin-Edge Scratch Brush Stamp ----
+  function scrapeFoilLine(ctx, x0, y0, x1, y1, radius) {
+    const dist = Math.hypot(x1 - x0, y1 - y0);
+    const steps = Math.max(1, Math.ceil(dist / (radius * 0.28)));
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const x = lerp(x0, x1, t);
+      const y = lerp(y0, y1, t);
+      // Organic slightly jagged metallic scrape mark (core + micro-edge dabs)
+      ctx.fillStyle = 'rgba(0,0,0,1)';
+      ctx.beginPath();
+      ctx.arc(x, y, radius * 0.88, 0, TAU);
+      ctx.fill();
+      for (let k = 0; k < 5; k++) {
+        const ang = (i * 1.7 + k * 1.28) % TAU;
+        const off = radius * (0.25 + ((k * 37) % 10) * 0.032);
+        ctx.fillStyle = k % 2 === 0 ? 'rgba(0,0,0,0.92)' : 'rgba(0,0,0,0.58)';
+        ctx.beginPath();
+        ctx.arc(x + Math.cos(ang) * off, y + Math.sin(ang) * off, radius * 0.42, 0, TAU);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  // ---- Exact Transparent Outcome Draw (per prd.md) ----
+  function drawOutcome(probPct) {
+    if (probPct <= 0) return false;
+    if (probPct >= 100) return true;
+    return Math.random() * 100 < probPct;
+  }
+
+  function makeSealPattern(outcomeTrain, probPct, seed) {
+    if (!outcomeTrain) return [false, false, false, false, false, false];
+    if (probPct >= 100) return [true, true, true, true, true, true];
+    // Transparent winning blind-box card: 2 hidden「练」seals out of 6, deterministically shuffled by card seed
+    const arr = [true, true, false, false, false, false];
+    let s = (seed * 9301 + 49297) % 233280;
+    for (let i = 5; i > 0; i--) {
+      s = (s * 9301 + 49297) % 233280;
+      const j = Math.floor((s / 233280) * (i + 1));
+      const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  // ---- Phone Scene Factory (Supports both Scheme A 'ticket' & Scheme B 'seals') ----
+  function createScratchPhone(schemeKey, getGlobalState, onPhaseSync) {
+    const isTicket = schemeKey === 'ticket';
+    const finishes = isTicket ? TICKET_FINISHES : SEALS_FINISHES;
+    let finishIdx = 0;
+    let serialNo = isTicket ? 428 : 619;
+    let cardOutcomeTrain = true;
+    let sealPattern = makeSealPattern(true, 50, serialNo);
+
+    // RevealPace.USER state machine: 'idle' | 'partial' | 'revealed' | 'explode'
+    let phase = 'idle';
+    let progress = 0; // 0..1 overall foil cleared
+    let sealCleared = [false, false, false, false, false, false];
+    let animId = 0;
+    let explodeFactor = 0;
+
+    // Clean card + parked coin centered on tray (zero edge overlap, balanced left/right margins!)
+    const CARD_OX = isTicket ? -0.46 : -0.42;
+    const CARD_OZ = -0.02;
+    const COIN_PARK = isTicket ? [2.02, 0.038, 0.62] : [1.94, 0.038, 0.68];
+    const CARD_Y_TOP = isTicket ? TICKET_H : SEALS_H;
+    const FOIL_Y_BASE = isTicket ? TICKET_H + 0.015 : SEALS_H + 0.014;
+    let coinState = { pos: COIN_PARK.slice(), tilt: 0, yaw: 0.42, roll: 0 };
+
+    // Dynamic Foil Canvas
+    const foilCanvas = document.createElement('canvas');
+    foilCanvas.width = isTicket ? 640 : 640;
+    foilCanvas.height = isTicket ? 280 : 470;
+    const foilCtx = foilCanvas.getContext('2d', { willReadFrequently: true });
+
+    // Shavings Physics Pool
+    const SHAVING_POOL = 42;
+    const shavings = [];
+    let nextShavingIdx = 0;
+    let physicsRaf = null;
+
+    // Pointer scratch tracking
+    let lastScratchPx = null;
+    let lastScratchWorld = null;
+    let scratchStrokeCount = 0;
+
+    const phoneEl = document.getElementById(`phone-${schemeKey}`);
+    const stageEl = document.getElementById(`stage-${schemeKey}`);
+    const glCanvas = document.getElementById(`gl-${schemeKey}`);
+    const shadowCanvas = document.getElementById(`shadow-${schemeKey}`);
+
+    const stage = new ScratchStage3D(phoneEl, stageEl, glCanvas, shadowCanvas, {
+      onScratchStart(cx, cy) {
+        if (phase === 'explode' || phase === 'revealed') return false;
+        const hit = hitCardWorld(cx, cy);
+        if (!hit) return false;
+        animId++; // interrupt any auto animation
+        lastScratchPx = [hit.px, hit.py];
+        lastScratchWorld = hit.world;
+        applyScratchPoint(hit.px, hit.py, hit.world, true);
+        return true;
+      },
+      onScratchMove(cx, cy) {
+        if (phase === 'explode' || phase === 'revealed') return;
+        const hit = hitCardWorld(cx, cy, true);
+        if (!hit) return;
+        applyScratchPoint(hit.px, hit.py, hit.world, false);
+      },
+      onScratchEnd() {
+        lastScratchPx = null;
+        lastScratchWorld = null;
+        if (phase === 'partial' && progress >= 0.58) {
+          finishPeelReveal();
+        } else if (phase === 'partial') {
+          parkCoinSoftly();
+        }
+      },
+    });
+
+    // Textures
+    const f0 = finishes[0];
+    const getCopy = () => {
+      const idx = getGlobalState().copyIdx;
+      return cardOutcomeTrain ? TRAIN_COPIES[idx % TRAIN_COPIES.length] : REST_COPIES[idx % REST_COPIES.length];
+    };
+
+    const texPrint = stage.createTextureFromCanvas(
+      isTicket
+        ? makeTicketPrintCanvas(f0, cardOutcomeTrain, getGlobalState().probPct, serialNo, getCopy())
+        : makeSealsPrintCanvas(f0, sealPattern, cardOutcomeTrain, getGlobalState().probPct, serialNo, getCopy())
+    );
+    if (isTicket) paintTicketFoilBase(foilCanvas, f0);
+    else paintSealsFoilBase(foilCanvas, f0);
+    const texFoil = stage.createTextureFromCanvas(foilCanvas);
+    const texCoin = stage.createTextureFromCanvas(
+      makeCoinEmblemCanvas(isTicket ? f0.coinPalette : f0.tokenPalette, !isTicket)
+    );
+
+    // Meshes
+    const bodyMesh = stage.addMesh(isTicket ? GEOS.ticketBody : GEOS.sealsBody, {
+      ...f0.body,
+      surfaceStyle: 2, // cotton paper grain
+    });
+    const printMesh = stage.addMesh(isTicket ? GEOS.ticketPrint : GEOS.sealsPrint, {
+      color: [1, 1, 1], accent: [0.85, 0.82, 0.74], trim: [0.85, 0.82, 0.74],
+      matMeta: [0.0, 0.1, 0.1], matRough: [0.86, 0.72, 0.72],
+      texture: texPrint,
+      surfaceStyle: 2,
+    });
+    const coinMesh = stage.addMesh(isTicket ? GEOS.coin : GEOS.token, {
+      ...(isTicket ? f0.coinMat : f0.tokenMat),
+      texture: texCoin,
+    });
+    const shavingMeshes = Array.from({ length: SHAVING_POOL }, () => {
+      const m = stage.addMesh(GEOS.shaving, {
+        color: f0.shavingColor,
+        matMeta: [0.90, 0.90, 0.90],
+        matRough: [0.22, 0.22, 0.22],
+        visible: false,
+        doubleSided: true,
+      });
+      shavings.push({ mesh: m, pos: [0, 0, 0], vel: [0, 0, 0], rot: [0, 0, 0], vrot: [0, 0, 0], active: false, settled: false });
+      return m;
+    });
+    const foilMesh = stage.addMesh(isTicket ? GEOS.ticketFoil : GEOS.sealsFoil, {
+      ...f0.foilMat,
+      texture: texFoil,
+      useTexAlpha: true,
+      transparent: true,
+      doubleSided: true,
+      surfaceStyle: 1, // brushed metallic sheen
+    });
+
+    // Contact shadows
+    const cardShadow = {
+      kind: 'rect',
+      x: CARD_OX, z: CARD_OZ, y: 0,
+      hx: isTicket ? TICKET_HX : SEALS_HX,
+      hz: isTicket ? TICKET_HZ : SEALS_HZ,
+      opacity: 0.23,
+      visible: true,
+    };
+    const coinShadow = {
+      kind: 'blob',
+      x: COIN_PARK[0], z: COIN_PARK[2], y: 0,
+      radius: 0.135, opacity: 0.28, stretch: 1.0, visible: true,
+    };
+    stage.shadows.push(cardShadow, coinShadow);
+
+    // ---- Coordinate Mapping & Raycast ----
+    function worldToFoilPx(wx, wz) {
+      const lx = wx - CARD_OX;
+      const lz = wz - CARD_OZ;
+      if (isTicket) {
+        const b = TICKET_FOIL_BOX;
+        const u = (lx - b.x0) / (b.x1 - b.x0);
+        const v = (lz - b.z0) / (b.z1 - b.z0);
+        return { u, v, px: u * foilCanvas.width, py: v * foilCanvas.height, inFoil: u >= -0.04 && u <= 1.04 && v >= -0.05 && v <= 1.05 };
+      } else {
+        const b = SEALS_PRINT_BOX;
+        const u = (lx - b.x0) / (b.x1 - b.x0);
+        const v = (lz - b.z0) / (b.z1 - b.z0);
+        return { u, v, px: u * foilCanvas.width, py: v * foilCanvas.height, inFoil: u >= -0.02 && u <= 1.02 && v >= -0.02 && v <= 1.02 };
+      }
+    }
+
+    function foilUVToWorld(u, v) {
+      if (isTicket) {
+        const b = TICKET_FOIL_BOX;
+        return [CARD_OX + lerp(b.x0, b.x1, u), FOIL_Y_BASE + 0.014, CARD_OZ + lerp(b.z0, b.z1, v)];
+      } else {
+        const b = SEALS_PRINT_BOX;
+        return [CARD_OX + lerp(b.x0, b.x1, u), FOIL_Y_BASE + 0.024, CARD_OZ + lerp(b.z0, b.z1, v)];
+      }
+    }
+
+    function hitCardWorld(clientX, clientY, allowClamp = false) {
+      const hitY = FOIL_Y_BASE + (isTicket ? 0.012 : 0.020);
+      const pt = stage.raycastPlaneY(clientX, clientY, hitY);
+      if (!pt) return null;
+      const hx = isTicket ? TICKET_HX : SEALS_HX;
+      const hz = isTicket ? TICKET_HZ : SEALS_HZ;
+      const lx = pt[0] - CARD_OX;
+      const lz = pt[2] - CARD_OZ;
+      if (!allowClamp && (Math.abs(lx) > hx + 0.08 || Math.abs(lz) > hz + 0.08)) {
+        return null;
+      }
+      const clampedW = [CARD_OX + clamp(lx, -hx, hx), hitY, CARD_OZ + clamp(lz, -hz, hz)];
+      const mapped = worldToFoilPx(clampedW[0], clampedW[2]);
+      return {
+        world: clampedW,
+        px: clamp(mapped.px, 0, foilCanvas.width),
+        py: clamp(mapped.py, 0, foilCanvas.height),
+        u: mapped.u,
+        v: mapped.v,
+        inFoil: mapped.inFoil,
+      };
+    }
+
+    // ---- Progress & Per-Seal Coverage Measurement ----
+    function measureProgress() {
+      const W = foilCanvas.width, H = foilCanvas.height;
+      const data = foilCtx.getImageData(0, 0, W, H).data;
+
+      if (isTicket) {
+        let cleared = 0, total = 0;
+        for (let y = 10; y < H - 10; y += 6) {
+          for (let x = 10; x < W - 10; x += 6) {
+            total++;
+            if (data[(y * W + x) * 4 + 3] < 48) cleared++;
+          }
+        }
+        progress = total > 0 ? cleared / total : 0;
+        return progress;
+      } else {
+        const b = SEALS_PRINT_BOX;
+        const rPx = (SEAL_FOIL_R / (b.x1 - b.x0)) * W * 0.92;
+        const rSq = rPx * rPx;
+        let sumFrac = 0;
+        let clearedSealsNow = 0;
+        let autoClearedAny = false;
+        for (let i = 0; i < 6; i++) {
+          const [cx, cz] = SEAL_CENTERS[i];
+          const spx = ((cx - b.x0) / (b.x1 - b.x0)) * W;
+          const spy = ((cz - b.z0) / (b.z1 - b.z0)) * H;
+          let clr = 0, tot = 0;
+          const x0 = Math.max(0, Math.floor(spx - rPx));
+          const x1 = Math.min(W - 1, Math.ceil(spx + rPx));
+          const y0 = Math.max(0, Math.floor(spy - rPx));
+          const y1 = Math.min(H - 1, Math.ceil(spy + rPx));
+          for (let y = y0; y <= y1; y += 4) {
+            for (let x = x0; x <= x1; x += 4) {
+              const dx = x - spx, dy = y - spy;
+              if (dx * dx + dy * dy <= rSq) {
+                tot++;
+                if (data[(y * W + x) * 4 + 3] < 48) clr++;
+              }
+            }
+          }
+          const frac = tot > 0 ? clr / tot : 0;
+          if (frac >= 0.54 && !sealCleared[i]) {
+            // Pop-clean this individual seal so its emblem reads crisp!
+            sealCleared[i] = true;
+            autoClearedAny = true;
+            foilCtx.save();
+            foilCtx.globalCompositeOperation = 'destination-out';
+            foilCtx.beginPath();
+            foilCtx.arc(spx, spy, rPx * 1.18, 0, TAU);
+            foilCtx.fill();
+            foilCtx.restore();
+          }
+          if (sealCleared[i]) clearedSealsNow++;
+          sumFrac += sealCleared[i] ? 1 : frac;
+        }
+        if (autoClearedAny) stage.updateTextureFromCanvas(texFoil, foilCanvas);
+        progress = sumFrac / 6;
+        return progress;
+      }
+    }
+
+    // ---- Shavings Spawner & Physics ----
+    function spawnShavingsAt(worldPos, dirX, dirZ, count = 3, immediateSettle = false) {
+      const f = finishes[finishIdx];
+      for (let i = 0; i < count; i++) {
+        const s = shavings[nextShavingIdx % SHAVING_POOL];
+        nextShavingIdx++;
+        const spreadA = (nextShavingIdx * 2.39996) % TAU;
+        const speed = 0.7 + ((nextShavingIdx * 37) % 10) * 0.14;
+        const hx = isTicket ? TICKET_HX : SEALS_HX;
+        const hz = isTicket ? TICKET_HZ : SEALS_HZ;
+
+        s.mesh.color = f.shavingColor;
+        s.mesh.visible = true;
+        s.mesh.scale = 0.72 + ((nextShavingIdx * 19) % 7) * 0.11;
+        s.active = true;
+
+        if (immediateSettle) {
+          const rx = worldPos[0] + Math.cos(spreadA) * (0.16 + (i % 4) * 0.14);
+          const rz = worldPos[2] + Math.sin(spreadA) * (0.14 + (i % 3) * 0.13);
+          const onCard = Math.abs(rx - CARD_OX) < hx - 0.04 && Math.abs(rz - CARD_OZ) < hz - 0.04;
+          s.pos = [rx, onCard ? FOIL_Y_BASE + 0.024 : 0.020, rz];
+          s.vel = [0, 0, 0];
+          s.rot = [0.22 + (i % 3) * 0.25, spreadA, 0.15];
+          s.vrot = [0, 0, 0];
+          s.settled = true;
+          s.mesh.position = s.pos.slice();
+          s.mesh.q = qFromChain(qAxis([0, 1, 0], s.rot[1]), qAxis([1, 0, 0], s.rot[0]), qAxis([0, 0, 1], s.rot[2]));
+        } else {
+          s.pos = [worldPos[0] + Math.cos(spreadA) * 0.06, worldPos[1] + 0.04, worldPos[2] + Math.sin(spreadA) * 0.06];
+          s.vel = [
+            Math.cos(spreadA) * speed * 0.75 - dirX * 0.35,
+            1.15 + ((nextShavingIdx * 23) % 7) * 0.18,
+            Math.sin(spreadA) * speed * 0.75 - dirZ * 0.35,
+          ];
+          s.rot = [spreadA, spreadA * 1.4, spreadA * 0.6];
+          s.vrot = [6.0 - (i % 3) * 4, 8.0, -5.0 + (i % 2) * 7];
+          s.settled = false;
+        }
+      }
+      if (!immediateSettle) ensureShavingsLoop();
+    }
+
+    function clearShavings() {
+      for (const s of shavings) {
+        s.active = false;
+        s.settled = false;
+        s.mesh.visible = false;
+      }
+    }
+
+    function ensureShavingsLoop() {
+      if (physicsRaf) return;
+      let prev = performance.now();
+      const step = now => {
+        const dt = Math.min(0.04, (now - prev) / 1000);
+        prev = now;
+        const hx = isTicket ? TICKET_HX : SEALS_HX;
+        const hz = isTicket ? TICKET_HZ : SEALS_HZ;
+        let anyMoving = false;
+
+        for (const s of shavings) {
+          if (!s.active || s.settled) continue;
+          anyMoving = true;
+          s.vel[1] -= 5.8 * dt;
+          s.pos[0] += s.vel[0] * dt;
+          s.pos[1] += s.vel[1] * dt;
+          s.pos[2] += s.vel[2] * dt;
+          s.rot[0] += s.vrot[0] * dt;
+          s.rot[1] += s.vrot[1] * dt;
+          s.rot[2] += s.vrot[2] * dt;
+
+          const onCard = Math.abs(s.pos[0] - CARD_OX) < hx - 0.04 && Math.abs(s.pos[2] - CARD_OZ) < hz - 0.04;
+          const floorY = onCard ? FOIL_Y_BASE + 0.024 : 0.020;
+          if (s.pos[1] <= floorY) {
+            s.pos[1] = floorY;
+            s.vel = [0, 0, 0];
+            s.rot[0] = 0.22;
+            s.rot[2] = 0.12;
+            s.settled = true;
+          }
+          s.mesh.position = [s.pos[0], s.pos[1] + explodeFactor * 1.35, s.pos[2]];
+          s.mesh.q = qFromChain(qAxis([0, 1, 0], s.rot[1]), qAxis([1, 0, 0], s.rot[0]), qAxis([0, 0, 1], s.rot[2]));
+        }
+
+        stage.draw();
+        if (anyMoving) {
+          physicsRaf = requestAnimationFrame(step);
+        } else {
+          physicsRaf = null;
+        }
+      };
+      physicsRaf = requestAnimationFrame(step);
+    }
+
+    // ---- Core Scratching Action ----
+    function applyScratchPoint(px, py, worldPt, isStart, immediateShavings = false) {
+      const brushR = isTicket ? 35 : 32;
+      const p0 = lastScratchPx || [px, py];
+      scrapeFoilLine(foilCtx, p0[0], p0[1], px, py, brushR);
+      stage.updateTextureFromCanvas(texFoil, foilCanvas);
+
+      const dx = lastScratchWorld ? worldPt[0] - lastScratchWorld[0] : 0.1;
+      const dz = lastScratchWorld ? worldPt[2] - lastScratchWorld[2] : 0.0;
+      const moveLen = Math.hypot(dx, dz);
+
+      // Position & tilt the 3D coin right against the foil contact point!
+      const yaw = moveLen > 0.01 ? Math.atan2(dx, dz) : coinState.yaw;
+      coinState = {
+        pos: [worldPt[0] + 0.20, FOIL_Y_BASE + 0.23, worldPt[2] + 0.12],
+        tilt: 0.66, // angled ~38° scraping edge into the foil!
+        yaw: lerp(coinState.yaw, yaw * 0.35 + 0.55, 0.35),
+        roll: -0.34,
+      };
+
+      scratchStrokeCount++;
+      if (isStart || moveLen > 0.05 || scratchStrokeCount % 2 === 0) {
+        spawnShavingsAt(worldPt, dx, dz, isStart ? 4 : 3, immediateShavings);
+      }
+
+      lastScratchPx = [px, py];
+      lastScratchWorld = worldPt;
+
+      if (scratchStrokeCount % 3 === 0 || isStart || immediateShavings) {
+        measureProgress();
+      }
+      if (phase === 'idle' && progress >= 0.015) {
+        phase = 'partial';
+        if (onPhaseSync) onPhaseSync();
+      }
+      poseScene(explodeFactor);
+      updateUI();
+      stage.draw();
+    }
+
+    function parkCoinSoftly() {
+      const id = ++animId;
+      const start = { pos: coinState.pos.slice(), tilt: coinState.tilt, yaw: coinState.yaw, roll: coinState.roll };
+      const t0 = performance.now();
+      const dur = 320;
+      const tick = now => {
+        if (id !== animId) return;
+        const p = clamp((now - t0) / dur, 0, 1);
+        const ep = easeOut(p);
+        coinState = {
+          pos: [
+            lerp(start.pos[0], COIN_PARK[0], ep),
+            lerp(start.pos[1], COIN_PARK[1], ep) + Math.sin(p * Math.PI) * 0.18,
+            lerp(start.pos[2], COIN_PARK[2], ep),
+          ],
+          tilt: lerp(start.tilt, 0, ep),
+          yaw: lerp(start.yaw, 0.42, ep),
+          roll: lerp(start.roll, 0, ep),
+        };
+        poseScene(explodeFactor);
+        stage.draw();
+        if (p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    // ---- Scene Posing (Normal & 4-Layer Vertical Exploded View) ----
+    function poseScene(explode = 0) {
+      explodeFactor = explode;
+      const cardQ = [0, 0, 0, 1];
+      const cx = lerp(CARD_OX, 0, explode);
+      const cz = lerp(CARD_OZ, 0, explode);
+
+      // Layer 0: Thick bevelled cotton card body (y = 0)
+      bodyMesh.position = [cx, 0, cz];
+      bodyMesh.q = cardQ;
+
+      // Layer 1: Printed under-card result sheet (y = CARD_Y_TOP normal, +0.54 exploded)
+      printMesh.position = [cx, CARD_Y_TOP - 0.008 + explode * 0.54, cz];
+      printMesh.q = cardQ;
+
+      // Layer 2: Brushed metallic foil layer (y = FOIL_Y_BASE normal, +1.12 exploded)
+      foilMesh.position = [cx, FOIL_Y_BASE + explode * 1.12, cz];
+      foilMesh.q = cardQ;
+      foilMesh.visible = phase !== 'revealed' || explode > 0.05;
+
+      // Layer 3: Milled 3D coin/token (parked/scraping normal, hovering tilted at +1.76 exploded)
+      if (explode > 0.05) {
+        const cPos = [
+          lerp(coinState.pos[0], 0.36, explode),
+          lerp(coinState.pos[1], 1.76, explode),
+          lerp(coinState.pos[2], 0.24, explode),
+        ];
+        coinMesh.position = cPos;
+        coinMesh.q = qFromChain(
+          qAxis([0, 1, 0], 0.46),
+          qAxis([1, 0, 0], lerp(coinState.tilt, 0.58, explode)),
+          qAxis([0, 0, 1], lerp(coinState.roll, -0.32, explode))
+        );
+        coinShadow.x = cPos[0];
+        coinShadow.z = cPos[2];
+        coinShadow.y = cPos[1];
+      } else {
+        coinMesh.position = coinState.pos;
+        coinMesh.q = qFromChain(
+          qAxis([0, 1, 0], coinState.yaw),
+          qAxis([1, 0, 0], coinState.tilt),
+          qAxis([0, 0, 1], coinState.roll)
+        );
+        coinShadow.x = coinState.pos[0];
+        coinShadow.z = coinState.pos[2];
+        coinShadow.y = Math.max(0, coinState.pos[1] - 0.038);
+      }
+
+      // Update settled shavings height in exploded view
+      for (const s of shavings) {
+        if (!s.active) continue;
+        s.mesh.position = [s.pos[0], s.pos[1] + explode * 1.38, s.pos[2]];
+      }
+
+      cardShadow.x = cx;
+      cardShadow.z = cz;
+      cardShadow.y = explode * 0.15;
+    }
+
+    // ---- UI Synchronization (RevealPace.USER) ----
+    function updateUI() {
+      const prob = getGlobalState().probPct;
+      const resEl = document.getElementById(`result-${schemeKey}`);
+      const btnEl = document.getElementById(`btn-${schemeKey}`);
+      const lblEl = document.getElementById(`btn-label-${schemeKey}`);
+      const hintEl = document.getElementById(`hint-${schemeKey}`);
+
+      const modeWord = stage.interactMode === 'orbit'
+        ? '拖拽 360° 观察材质细节'
+        : (isTicket ? '在票面涂刮揭晓 · 卡外或右键拖转 360°' : '逐枚涂刮或横扫六章 · 卡外或右键拖转 360°');
+      hintEl.textContent = `${modeWord} · 概率 ${prob}%`;
+
+      if (phase === 'explode') {
+        resEl.textContent = '四层拆解 · 卡体 / 印刷层 / 金属箔 / 硬币';
+        resEl.className = 'result-line';
+        lblEl.textContent = '刮开看看';
+        btnEl.disabled = false;
+        return;
+      }
+
+      if (phase === 'idle') {
+        if (prob === 0) {
+          resEl.textContent = isTicket ? '已设 0% 训练概率 · 刮开安心歇着' : '已设 0% 训练概率 · 六章皆为「歇」';
+        } else if (prob === 100) {
+          resEl.textContent = isTicket ? '已设 100% 训练概率 · 刮开立刻开练' : '已设 100% 训练概率 · 六章皆藏「练」';
+        } else {
+          resEl.textContent = isTicket ? `硬币刮开金属箔，看看今日签 · ${prob}%` : `六枚箔章藏着今日去向 · ${prob}%`;
+        }
+        resEl.className = 'result-line';
+        lblEl.textContent = '刮开看看';
+        btnEl.disabled = false;
+      } else if (phase === 'partial') {
+        const pct = Math.round(progress * 100);
+        if (isTicket) {
+          resEl.textContent = `已刮开 ${pct}% · 继续刮或直接看结果`;
+        } else {
+          const clearedCount = sealCleared.filter(Boolean).length;
+          const foundTrain = sealCleared.some((c, idx) => c && sealPattern[idx]);
+          resEl.textContent = foundTrain
+            ? `已刮出「练」印！（${clearedCount}/6 枚）· 可继续刮`
+            : `已揭开 ${clearedCount}/6 枚箔章（${pct}%）· 悬念继续`;
+        }
+        resEl.className = 'result-line';
+        lblEl.textContent = '直接看结果';
+        btnEl.disabled = false;
+      } else if (phase === 'revealed') {
+        if (cardOutcomeTrain) {
+          resEl.textContent = '走吧，练一点。';
+          resEl.className = 'result-line answer';
+        } else {
+          resEl.textContent = '今天，歇一歇。';
+          resEl.className = 'result-line answer rest';
+        }
+        lblEl.textContent = '换一张再刮';
+        btnEl.disabled = false;
+      }
+    }
+
+    // ---- Texture Refresh Helpers ----
+    function refreshPrintTexture() {
+      const f = finishes[finishIdx];
+      const prob = getGlobalState().probPct;
+      const showCopy = phase === 'revealed' || phase === 'explode';
+      const cnv = isTicket
+        ? makeTicketPrintCanvas(f, cardOutcomeTrain, prob, serialNo, getCopy())
+        : makeSealsPrintCanvas(f, sealPattern, cardOutcomeTrain, prob, serialNo, getCopy(), showCopy);
+      stage.updateTextureFromCanvas(texPrint, cnv);
+    }
+
+    function resetFoilClean() {
+      const f = finishes[finishIdx];
+      if (isTicket) paintTicketFoilBase(foilCanvas, f);
+      else paintSealsFoilBase(foilCanvas, f);
+      stage.updateTextureFromCanvas(texFoil, foilCanvas);
+      sealCleared = [false, false, false, false, false, false];
+      progress = 0;
+    }
+
+    function applyFinish(idx) {
+      finishIdx = idx;
+      const f = finishes[idx];
+      Object.assign(bodyMesh, f.body);
+      Object.assign(foilMesh, f.foilMat);
+      Object.assign(coinMesh, isTicket ? f.coinMat : f.tokenMat);
+      for (const s of shavings) s.mesh.color = f.shavingColor;
+      stage.updateTextureFromCanvas(texCoin, makeCoinEmblemCanvas(isTicket ? f.coinPalette : f.tokenPalette, !isTicket));
+      refreshPrintTexture();
+
+      // Re-tint existing foil while preserving scratched alpha mask!
+      const prevAlpha = document.createElement('canvas');
+      prevAlpha.width = foilCanvas.width;
+      prevAlpha.height = foilCanvas.height;
+      prevAlpha.getContext('2d').drawImage(foilCanvas, 0, 0);
+
+      if (isTicket) paintTicketFoilBase(foilCanvas, f);
+      else paintSealsFoilBase(foilCanvas, f);
+      foilCtx.save();
+      foilCtx.globalCompositeOperation = 'destination-in';
+      foilCtx.drawImage(prevAlpha, 0, 0);
+      foilCtx.restore();
+      stage.updateTextureFromCanvas(texFoil, foilCanvas);
+      stage.draw();
+    }
+
+    // ---- State Transitions ----
+    function dealFreshCard(forcedOutcome = null, bumpSerial = true) {
+      animId++;
+      if (bumpSerial) serialNo += 1;
+      const prob = getGlobalState().probPct;
+      cardOutcomeTrain = forcedOutcome != null ? !!forcedOutcome : drawOutcome(prob);
+      sealPattern = makeSealPattern(cardOutcomeTrain, prob, serialNo);
+      phase = 'idle';
+      stage.forceOrbitOnly = false;
+      stage.setExplodeTarget(false);
+      stage.setInteractMode(stage.interactMode);
+      clearShavings();
+      resetFoilClean();
+      refreshPrintTexture();
+      coinState = { pos: COIN_PARK.slice(), tilt: 0, yaw: 0.42, roll: 0 };
+      poseScene(0);
+      updateUI();
+      if (onPhaseSync) onPhaseSync();
+      stage.draw();
+    }
+
+    function applyPartialSnap(forcedOutcome = null) {
+      animId++;
+      const prob = getGlobalState().probPct;
+      if (forcedOutcome != null) {
+        cardOutcomeTrain = !!forcedOutcome;
+      } else {
+        cardOutcomeTrain = prob <= 0 ? false : (prob >= 100 ? true : true);
+      }
+      sealPattern = makeSealPattern(cardOutcomeTrain, prob, serialNo);
+      phase = 'partial';
+      stage.forceOrbitOnly = false;
+      stage.setExplodeTarget(false);
+      stage.setInteractMode(stage.interactMode);
+      clearShavings();
+      resetFoilClean();
+      refreshPrintTexture();
+
+      // Execute a rich, realistic mid-scratch stroke showing peeled metallic edge, coin contact & shavings
+      const strokePts = isTicket
+        ? [
+            [0.14, 0.28], [0.34, 0.22], [0.18, 0.56], [0.46, 0.28],
+            [0.28, 0.72], [0.58, 0.42], [0.44, 0.70], [0.64, 0.54],
+          ]
+        : [
+            // Uncover seal 0 (0.203, 0.413) & seal 1 (0.500, 0.413) cleanly, then half-scratch seal 3 (0.203, 0.764)
+            [0.14, 0.37], [0.26, 0.37], [0.16, 0.46], [0.25, 0.45],
+            [0.44, 0.37], [0.56, 0.37], [0.45, 0.46], [0.55, 0.45],
+            [0.16, 0.72], [0.24, 0.77],
+          ];
+
+      runProgrammaticStroke(strokePts, true);
+      if (onPhaseSync) onPhaseSync();
+    }
+
+    function runProgrammaticStroke(uvPoints, immediateShavings = true) {
+      if (!uvPoints || uvPoints.length === 0) return;
+      if (phase === 'explode' || phase === 'revealed') {
+        phase = 'partial';
+        resetFoilClean();
+        stage.forceOrbitOnly = false;
+      }
+      lastScratchPx = null;
+      lastScratchWorld = null;
+      for (let i = 0; i < uvPoints.length; i++) {
+        const [u, v] = uvPoints[i];
+        const worldPt = foilUVToWorld(u, v);
+        const mapped = worldToFoilPx(worldPt[0], worldPt[2]);
+        applyScratchPoint(mapped.px, mapped.py, worldPt, i === 0, immediateShavings);
+      }
+      measureProgress();
+      if (progress >= 0.58) {
+        finishPeelReveal(true);
+      } else {
+        if (progress > 0.01) phase = 'partial';
+        poseScene(0);
+        updateUI();
+        stage.draw();
+      }
+    }
+
+    function applyRevealedSnap(isTrain) {
+      animId++;
+      cardOutcomeTrain = !!isTrain;
+      sealPattern = makeSealPattern(cardOutcomeTrain, getGlobalState().probPct, serialNo);
+      phase = 'revealed';
+      progress = 1;
+      sealCleared = [true, true, true, true, true, true];
+      stage.forceOrbitOnly = false;
+      stage.setExplodeTarget(false);
+      stage.setInteractMode(stage.interactMode);
+
+      foilCtx.clearRect(0, 0, foilCanvas.width, foilCanvas.height);
+      stage.updateTextureFromCanvas(texFoil, foilCanvas);
+      refreshPrintTexture();
+
+      // Leave a subtle authentic sprinkle of metallic shavings resting on the desk beside the card
+      clearShavings();
+      const dustAnchors = isTicket
+        ? [[CARD_OX + 1.56, 0.02, 1.30], [CARD_OX - 1.58, 0.02, 1.24], [CARD_OX + 0.62, 0.02, 1.34], [CARD_OX - 0.52, 0.02, 1.30]]
+        : [[CARD_OX + 1.48, 0.02, 1.40], [CARD_OX - 1.46, 0.02, 1.36], [CARD_OX + 0.56, 0.02, 1.42], [CARD_OX - 0.48, 0.02, 1.40]];
+      for (const p of dustAnchors) spawnShavingsAt(p, 0, 0, 2, true);
+
+      coinState = { pos: COIN_PARK.slice(), tilt: 0, yaw: 0.42, roll: 0 };
+      poseScene(0);
+      updateUI();
+      if (onPhaseSync) onPhaseSync();
+      stage.draw();
+    }
+
+    function applyExplodeSnap() {
+      animId++;
+      phase = 'explode';
+      stage.forceOrbitOnly = true;
+      stage.setExplodeTarget(true);
+      stage.setInteractMode(stage.interactMode);
+
+      // Show a crisp partial scrape window in exploded view so all 4 layers read dramatically!
+      resetFoilClean();
+      refreshPrintTexture();
+      const previewPts = isTicket
+        ? [[0.18, 0.34], [0.38, 0.28], [0.28, 0.62], [0.48, 0.48]]
+        : [[0.15, 0.38], [0.25, 0.44], [0.45, 0.38], [0.55, 0.44]];
+      for (let i = 0; i < previewPts.length; i++) {
+        const [u, v] = previewPts[i];
+        const w = foilUVToWorld(u, v);
+        const mp = worldToFoilPx(w[0], w[2]);
+        const prev = i > 0 ? worldToFoilPx(...foilUVToWorld(previewPts[i - 1][0], previewPts[i - 1][1]).filter((_, k) => k !== 1)) : mp;
+        scrapeFoilLine(foilCtx, prev.px, prev.py, mp.px, mp.py, isTicket ? 35 : 32);
+      }
+      stage.updateTextureFromCanvas(texFoil, foilCanvas);
+
+      clearShavings();
+      spawnShavingsAt([0.22, 0.18, 0.14], 0, 0, 6, true);
+      poseScene(1.0);
+      updateUI();
+      if (onPhaseSync) onPhaseSync();
+      stage.draw();
+    }
+
+    // ---- Animated Peel-Clear (`直接看结果` or >= 58% Auto-Finish) ----
+    function finishPeelReveal(instant = false) {
+      if (instant) {
+        applyRevealedSnap(cardOutcomeTrain);
+        return;
+      }
+      const id = ++animId;
+      const startCoin = { pos: coinState.pos.slice(), tilt: coinState.tilt, yaw: coinState.yaw, roll: coinState.roll };
+      const W = foilCanvas.width, H = foilCanvas.height;
+      const t0 = performance.now();
+      const dur = 360;
+
+      const tick = now => {
+        if (id !== animId) return;
+        const p = clamp((now - t0) / dur, 0, 1);
+        const ep = easeOut(p);
+
+        // Sweeping diagonal wipe cleanly clears remaining foil
+        foilCtx.save();
+        foilCtx.globalCompositeOperation = 'destination-out';
+        foilCtx.fillStyle = 'rgba(0,0,0,1)';
+        foilCtx.beginPath();
+        const diag = (W + H) * ep * 1.15;
+        foilCtx.moveTo(0, 0);
+        foilCtx.lineTo(diag, 0);
+        foilCtx.lineTo(0, diag);
+        foilCtx.closePath();
+        foilCtx.fill();
+        foilCtx.restore();
+        stage.updateTextureFromCanvas(texFoil, foilCanvas);
+
+        coinState = {
+          pos: [
+            lerp(startCoin.pos[0], COIN_PARK[0], ep),
+            lerp(startCoin.pos[1], COIN_PARK[1], ep) + Math.sin(p * Math.PI) * 0.24,
+            lerp(startCoin.pos[2], COIN_PARK[2], ep),
+          ],
+          tilt: lerp(startCoin.tilt, 0, ep),
+          yaw: lerp(startCoin.yaw, 0.42, ep),
+          roll: lerp(startCoin.roll, 0, ep),
+        };
+        poseScene(0);
+        stage.draw();
+
+        if (p < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          applyRevealedSnap(cardOutcomeTrain);
+        }
+      };
+      requestAnimationFrame(tick);
+    }
+
+    // ---- Auto-Scratch Coin Animation (`刮开看看 →`) ----
+    function playAutoScratch() {
+      const id = ++animId;
+      if (phase === 'explode' || phase === 'revealed') {
+        dealFreshCard(null, true);
+      }
+      phase = 'partial';
+      stage.forceOrbitOnly = false;
+      stage.setInteractMode(stage.interactMode);
+      lastScratchPx = null;
+      lastScratchWorld = null;
+
+      // Natural hand-like zigzag path across ticket window or across all 6 foil seals
+      const waypoints = isTicket
+        ? [
+            [0.12, 0.25], [0.36, 0.18], [0.16, 0.62], [0.52, 0.20],
+            [0.32, 0.78], [0.72, 0.24], [0.56, 0.80], [0.88, 0.34], [0.78, 0.76],
+          ]
+        : [
+            [0.16, 0.42], [0.25, 0.40], [0.46, 0.42], [0.54, 0.40],
+            [0.76, 0.42], [0.84, 0.40], [0.80, 0.76], [0.50, 0.76], [0.20, 0.76],
+          ];
+
+      const APPROACH_MS = 220;
+      const SCRATCH_MS = 1480;
+      const t0 = performance.now();
+      const firstWorld = foilUVToWorld(waypoints[0][0], waypoints[0][1]);
+
+      const tick = now => {
+        if (id !== animId) return;
+        const el = now - t0;
+
+        if (el < APPROACH_MS) {
+          const p = easeOut(el / APPROACH_MS);
+          coinState = {
+            pos: [
+              lerp(COIN_PARK[0], firstWorld[0] + 0.20, p),
+              lerp(COIN_PARK[1], FOIL_Y_BASE + 0.23, p) + Math.sin(p * Math.PI) * 0.32,
+              lerp(COIN_PARK[2], firstWorld[2] + 0.12, p),
+            ],
+            tilt: lerp(0, 0.66, p),
+            yaw: lerp(0.42, 0.55, p),
+            roll: lerp(0, -0.34, p),
+          };
+          poseScene(0);
+          updateUI();
+          stage.draw();
+        } else if (el < APPROACH_MS + SCRATCH_MS) {
+          const p = (el - APPROACH_MS) / SCRATCH_MS;
+          const totalSegs = waypoints.length - 1;
+          const scaled = p * totalSegs;
+          const segIdx = Math.min(totalSegs - 1, Math.floor(scaled));
+          const segT = scaled - segIdx;
+          const u = lerp(waypoints[segIdx][0], waypoints[segIdx + 1][0], segT);
+          const v = lerp(waypoints[segIdx][1], waypoints[segIdx + 1][1], segT);
+          const worldPt = foilUVToWorld(u, v);
+          const mapped = worldToFoilPx(worldPt[0], worldPt[2]);
+          applyScratchPoint(mapped.px, mapped.py, worldPt, lastScratchPx === null, false);
+        } else {
+          finishPeelReveal(false);
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    // ---- Primary Button Handler (`RevealPace.USER`) ----
+    document.getElementById(`btn-${schemeKey}`).addEventListener('click', () => {
+      if (phase === 'idle' || phase === 'explode') {
+        playAutoScratch();
+      } else if (phase === 'partial') {
+        finishPeelReveal(false);
+      } else if (phase === 'revealed') {
+        dealFreshCard(null, true);
+      }
+    });
+
+    // ---- Scheme Column Tools ----
+    const col = document.querySelector(`[data-scheme="${schemeKey}"]`);
+    col.querySelectorAll('[data-finish]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        col.querySelectorAll('[data-finish]').forEach(b => b.setAttribute('aria-pressed', 'false'));
+        btn.setAttribute('aria-pressed', 'true');
+        applyFinish(Number(btn.dataset.finish));
+      });
+    });
+
+    const closeupBtn = col.querySelector('[data-toggle-closeup]');
+    closeupBtn.addEventListener('click', () => {
+      const next = closeupBtn.getAttribute('aria-pressed') !== 'true';
+      closeupBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
+      stage.setCloseupView(next);
+    });
+
+    col.querySelector('[data-reset-view]').addEventListener('click', () => {
+      closeupBtn.setAttribute('aria-pressed', 'false');
+      stage.resetView();
+    });
+
+    // Initial boot
+    dealFreshCard(null, false);
+
+    return {
+      snapMode(mode) {
+        if (mode === 'idle') dealFreshCard(null, false);
+        else if (mode === 'partial') applyPartialSnap(null);
+        else if (mode === 'train') applyRevealedSnap(true);
+        else if (mode === 'rest') applyRevealedSnap(false);
+        else if (mode === 'explode') applyExplodeSnap();
+      },
+      setFinish(idx) {
+        col.querySelectorAll('[data-finish]').forEach(b => b.setAttribute('aria-pressed', b.dataset.finish == idx ? 'true' : 'false'));
+        applyFinish(idx);
+      },
+      setCloseup(enabled) {
+        closeupBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+        stage.setCloseupView(enabled);
+      },
+      setInteractMode(mode) {
+        stage.setInteractMode(mode);
+        updateUI();
+      },
+      onProbChanged() {
+        const prob = getGlobalState().probPct;
+        if (phase === 'idle') {
+          cardOutcomeTrain = drawOutcome(prob);
+          sealPattern = makeSealPattern(cardOutcomeTrain, prob, serialNo);
+        } else if (prob === 0 && cardOutcomeTrain) {
+          cardOutcomeTrain = false;
+          sealPattern = makeSealPattern(false, 0, serialNo);
+        } else if (prob === 100 && !cardOutcomeTrain) {
+          cardOutcomeTrain = true;
+          sealPattern = makeSealPattern(true, 100, serialNo);
+        } else {
+          sealPattern = makeSealPattern(cardOutcomeTrain, prob, serialNo);
+        }
+        refreshPrintTexture();
+        updateUI();
+        stage.draw();
+      },
+      onCopyChanged() {
+        refreshPrintTexture();
+        stage.draw();
+      },
+      scratchStroke(uvPoints) {
+        runProgrammaticStroke(uvPoints, true);
+      },
+      testRaycastCenter() {
+        const rect = stageEl.getBoundingClientRect();
+        const worldCenter = foilUVToWorld(0.5, 0.5);
+        const [sx, sy] = stage.project(worldCenter);
+        const hit = hitCardWorld(rect.left + sx, rect.top + sy);
+        return hit ? { u: +hit.u.toFixed(4), v: +hit.v.toFixed(4), inFoil: hit.inFoil } : null;
+      },
+      getState() {
+        return {
+          scheme: schemeKey,
+          phase,
+          progress: +progress.toFixed(3),
+          outcomeTrain: cardOutcomeTrain,
+          probPct: getGlobalState().probPct,
+          sealPattern: isTicket ? null : sealPattern.slice(),
+          sealCleared: isTicket ? null : sealCleared.slice(),
+          finishIdx,
+          serialNo,
+        };
+      },
+      stage,
+    };
+  }
+
+  // ---- Boot & Global State ----
+  const state = {
+    probPct: 50,
+    copyIdx: 0,
+    interactMode: 'scratch',
+  };
+
+  // Live Geometry Vertex & Triangle Stats
+  const countVerts = arr => Math.round(arr.length / 9);
+  const countTris = arr => Math.round(arr.length / 27);
+  const ticketVerts = countVerts(GEOS.ticketBody) + countVerts(GEOS.ticketPrint) + countVerts(GEOS.ticketFoil) + countVerts(GEOS.coin) + 42 * countVerts(GEOS.shaving);
+  const ticketTris = countTris(GEOS.ticketBody) + countTris(GEOS.ticketPrint) + countTris(GEOS.ticketFoil) + countTris(GEOS.coin) + 42 * countTris(GEOS.shaving);
+  const sealsVerts = countVerts(GEOS.sealsBody) + countVerts(GEOS.sealsPrint) + countVerts(GEOS.sealsFoil) + countVerts(GEOS.token) + 42 * countVerts(GEOS.shaving);
+  const sealsTris = countTris(GEOS.sealsBody) + countTris(GEOS.sealsPrint) + countTris(GEOS.sealsFoil) + countTris(GEOS.token) + 42 * countTris(GEOS.shaving);
+
+  document.getElementById('stats-ticket').textContent =
+    `方案 A（复古票券 + 齿边币 + 42 枚箔屑）：${ticketVerts.toLocaleString()} 顶点 · ${ticketTris.toLocaleString()} 三角面 · 3 张动态 Canvas 贴图`;
+  document.getElementById('stats-seals').textContent =
+    `方案 B（六枚箔章卡 + 12 棱刮片 + 42 枚箔屑）：${sealsVerts.toLocaleString()} 顶点 · ${sealsTris.toLocaleString()} 三角面 · 3 张动态 Canvas 贴图`;
+
+  const modeBtns = document.querySelectorAll('.global-controls .pill[data-mode]');
+  const probBtns = document.querySelectorAll('.global-controls .pill[data-prob]');
+  const interactBtns = document.querySelectorAll('.global-controls .pill[data-interact]');
+  const globalCloseupBtn = document.getElementById('btn-closeup');
+
+  function setModeUI(mode) {
+    modeBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === mode ? 'true' : 'false'));
+  }
+
+  let ticketPhone = null;
+  let sealsPhone = null;
+  function syncTopbarPhaseFromPhones() {
+    if (!ticketPhone || !sealsPhone) return;
+    const a = ticketPhone.getState();
+    const b = sealsPhone.getState();
+    const modeOf = st => st.phase === 'revealed' ? (st.outcomeTrain ? 'train' : 'rest') : st.phase;
+    const ma = modeOf(a), mb = modeOf(b);
+    setModeUI(ma === mb ? ma : '');
+  }
+
+  ticketPhone = createScratchPhone('ticket', () => state, syncTopbarPhaseFromPhones);
+  sealsPhone = createScratchPhone('seals', () => state, syncTopbarPhaseFromPhones);
+
+  function syncProbUI() {
+    probBtns.forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.prob) === state.probPct ? 'true' : 'false'));
+    const suffix = state.probPct === 0
+      ? '今日必歇 · 透明保底'
+      : (state.probPct === 100 ? '今日必练 · 透明必中' : '透明抽取 · RevealPace.USER');
+    document.getElementById('prob-readout').textContent = `训练概率 ${state.probPct}% · ${suffix}`;
+    ticketPhone.onProbChanged();
+    sealsPhone.onProbChanged();
+    syncTopbarPhaseFromPhones();
+  }
+
+  function setProb(pct) {
+    state.probPct = clamp(Math.round(pct), 0, 100);
+    syncProbUI();
+  }
+
+  function setCloseup(enabled) {
+    globalCloseupBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    ticketPhone.setCloseup(enabled);
+    sealsPhone.setCloseup(enabled);
+  }
+
+  function setInteractMode(mode) {
+    state.interactMode = mode === 'orbit' ? 'orbit' : 'scratch';
+    interactBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.interact === state.interactMode ? 'true' : 'false'));
+    ticketPhone.setInteractMode(state.interactMode);
+    sealsPhone.setInteractMode(state.interactMode);
+  }
+
+  function nextCopy() {
+    state.copyIdx = (state.copyIdx + 1) % TRAIN_COPIES.length;
+    ticketPhone.onCopyChanged();
+    sealsPhone.onCopyChanged();
+  }
+
+  function snap(mode) {
+    // Keep probability consistent with forced preview outcomes (no 0% train or 100% rest contradiction)
+    if (mode === 'train' && state.probPct === 0) setProb(50);
+    else if (mode === 'rest' && state.probPct === 100) setProb(50);
+    setModeUI(mode);
+    ticketPhone.snapMode(mode);
+    sealsPhone.snapMode(mode);
+  }
+
+  modeBtns.forEach(btn => btn.addEventListener('click', () => snap(btn.dataset.mode)));
+  probBtns.forEach(btn => btn.addEventListener('click', () => setProb(Number(btn.dataset.prob))));
+  interactBtns.forEach(btn => btn.addEventListener('click', () => setInteractMode(btn.dataset.interact)));
+  globalCloseupBtn.addEventListener('click', () => {
+    const next = globalCloseupBtn.getAttribute('aria-pressed') !== 'true';
+    setCloseup(next);
+  });
+  document.getElementById('btn-next-copy').addEventListener('click', nextCopy);
+
+  syncProbUI();
+
+  // ---- Debug & Verification API ----
+  window.__scratchDebug = {
+    snap,
+    setProb,
+    setFinish(scheme, idx) {
+      const k = String(scheme || '').toLowerCase();
+      if (k === 'ticket' || k === 'a') ticketPhone.setFinish(idx);
+      else if (k === 'seals' || k === 'b') sealsPhone.setFinish(idx);
+      else {
+        ticketPhone.setFinish(idx);
+        sealsPhone.setFinish(idx);
+      }
+    },
+    setCloseup,
+    scratchStroke(scheme, uvPoints) {
+      const k = String(scheme || '').toLowerCase();
+      if (k === 'ticket' || k === 'a') ticketPhone.scratchStroke(uvPoints);
+      else if (k === 'seals' || k === 'b') sealsPhone.scratchStroke(uvPoints);
+      else {
+        ticketPhone.scratchStroke(uvPoints);
+        sealsPhone.scratchStroke(uvPoints);
+      }
+    },
+    nextCopy,
+    setInteractMode,
+    orbit(az, el) {
+      ticketPhone.stage.setOrbit(az, el);
+      sealsPhone.stage.setOrbit(az, el);
+    },
+    resetView() {
+      setCloseup(false);
+      ticketPhone.stage.resetView();
+      sealsPhone.stage.resetView();
+    },
+    testRaycast(scheme) {
+      const k = String(scheme || '').toLowerCase();
+      if (k === 'ticket' || k === 'a') return ticketPhone.testRaycastCenter();
+      if (k === 'seals' || k === 'b') return sealsPhone.testRaycastCenter();
+      return {
+        ticket: ticketPhone.testRaycastCenter(),
+        seals: sealsPhone.testRaycastCenter(),
+      };
+    },
+    getState() {
+      return {
+        probPct: state.probPct,
+        copyIdx: state.copyIdx,
+        interactMode: state.interactMode,
+        ticket: ticketPhone.getState(),
+        seals: sealsPhone.getState(),
+        stats: { ticketVerts, ticketTris, sealsVerts, sealsTris },
+      };
+    },
+  };
+})();
+</script>
+</body>
+</html>

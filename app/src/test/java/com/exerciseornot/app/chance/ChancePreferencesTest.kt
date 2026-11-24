@@ -56,11 +56,40 @@ class ChancePreferencesTest {
     }
 
     @Test
+    fun revolverRule_survivesSameProbabilityChangesAndGameSwitches() = runBlocking {
+        val game = ChanceGames.Revolver
+        prefs.setGame(game.id)
+        prefs.setStop(game, RevolverDraw.stopFor(3, 1))
+        prefs.setStop(game, RevolverDraw.stopFor(1, 3))
+        assertEquals(ChanceSettings(game.id, 0.5, "1-3-any"), ChancePreferences(store).settings.first())
+
+        prefs.setGame(ChanceGames.Dice.id)
+        prefs.setStop(ChanceGames.Dice, D6.stops[3])
+        prefs.setGame(game.id)
+        assertEquals(ChanceSettings(game.id, 0.5, "1-3-any"), prefs.settings.first())
+
+        prefs.setTarget(0.6)
+        prefs.setTarget(0.5)
+        assertEquals(ChanceSettings(game.id, 0.5), prefs.settings.first())
+    }
+
+    @Test
     fun lastResult_roundTrips() = runBlocking {
         assertNull(prefs.lastResult.first())
         val r = ChanceResult("dice", "d6", "5", true, LocalDate.of(2026, 11, 11))
         prefs.saveResult(r)
         assertEquals(r, prefs.lastResult.first())
+    }
+
+    @Test
+    fun savedRule_staysWithItsDrawWhenTheNextProbabilityChanges() = runBlocking {
+        val result = ChanceResult("slot", "slot", "1,3,5", true, LocalDate.of(2026, 11, 24), "3-majority")
+        prefs.saveResult(result)
+        prefs.setTarget(0.0)
+        assertEquals(result, ChancePreferences(store).lastResult.first())
+        val olderFormat = result.copy(stopKey = null)
+        prefs.saveResult(olderFormat)
+        assertEquals(olderFormat, prefs.lastResult.first())
     }
 
     /** 0.2.0 stored the chosen faces and the last roll under dice.*; an upgrade keeps both. */

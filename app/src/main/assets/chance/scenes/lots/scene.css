@@ -1,0 +1,5 @@
+/* Bamboo lots cylinder: cylinder, sticks and tray use the shared 3D renderer; only the hint is HTML. */
+.stage.lots-stage{touch-action:none;cursor:grab}
+.stage.lots-stage.is-dragging{cursor:grabbing}
+.lots-hint{position:absolute;left:0;right:0;bottom:2%;text-align:center;font-size:11px;letter-spacing:1px;color:#929787;transition:opacity .2s;pointer-events:none}
+.lots-stage.is-revealed .lots-hint,.lots-stage:disabled .lots-hint{opacity:0}

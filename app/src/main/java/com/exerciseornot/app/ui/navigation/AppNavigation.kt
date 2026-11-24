@@ -50,7 +50,7 @@ import com.exerciseornot.app.ui.settings.SettingsScreen
 private const val HISTORY_ROUTE = "history"
 private const val SETTINGS_ROUTE = "settings"
 private enum class Tab(val route: String, val label: String) {
-    Dice("dice", "掷骰子"), Record("record", "记录"), Stats("stats", "统计"),
+    Dice("dice", "玩法"), Record("record", "记录"), Stats("stats", "统计"),
 }
 
 @Composable

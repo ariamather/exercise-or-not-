@@ -1,0 +1,3391 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>练不练 · 转盘玩法三维资产双方案探索</title>
+<style>
+  :root {
+    color-scheme: light;
+    --desk: #e8eae3;
+    --paper: #f6f5f0;
+    --card: #fbfcf7;
+    --ink: #28392f;
+    --ink-2: #536052;
+    --muted: #7d847b;
+    --line: #dce0d4;
+    --soft: #e9eddf;
+    --accent: #365b43;
+    --accent-hover: #294b36;
+    --on-accent: #fafbf5;
+    --rest: #596e80;
+    --focus: #9dac67;
+    --shadow: 0 24px 70px rgba(40, 57, 47, 0.12);
+    font-family: -apple-system, BlinkMacSystemFont, "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--desk); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; border: 0; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  button:disabled { cursor: default; opacity: 0.48; }
+
+  .workspace {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 24px 24px 56px;
+  }
+
+  /* Top control header */
+  .topbar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .topbar-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px 24px;
+  }
+  .topbar-copy .eyebrow {
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    font-weight: 600;
+    color: #7c886b;
+    margin-bottom: 4px;
+  }
+  .topbar-copy h1 {
+    margin: 0;
+    font-size: 25px;
+    font-weight: 600;
+    letter-spacing: -0.6px;
+  }
+  .topbar-copy p {
+    margin: 5px 0 0;
+    font-size: 13px;
+    color: var(--ink-2);
+    line-height: 1.58;
+    max-width: 860px;
+  }
+
+  .controls-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .global-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 7px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 15px;
+  }
+  .controls-label {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 0 5px 0 6px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .divider-v {
+    width: 1px;
+    height: 18px;
+    background: var(--line);
+    margin: 0 4px;
+  }
+  .pill {
+    padding: 7px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-2);
+    transition: background 0.16s, color 0.16s;
+    white-space: nowrap;
+  }
+  .pill.sm {
+    padding: 5px 9px;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pill.prob {
+    padding: 5px 7px;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    min-width: 44px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+  }
+  .pill.prob small {
+    font-size: 9px;
+    opacity: 0.72;
+    font-weight: 400;
+  }
+  .pill:hover:not(:disabled) { background: var(--soft); color: var(--ink); }
+  .pill[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+  .pill[aria-pressed="true"] small { opacity: 0.88; }
+
+  .prob-readout {
+    margin-left: auto;
+    padding: 5px 10px;
+    border-radius: 9px;
+    background: var(--soft);
+    color: var(--accent);
+    font-size: 11.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* Two-column phone showcase */
+  .comparison {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 420px));
+    justify-content: center;
+    gap: 28px 32px;
+  }
+  @media (max-width: 860px) {
+    .comparison { grid-template-columns: minmax(0, 420px); }
+    .workspace { padding: 18px 14px 44px; }
+  }
+
+  .scheme-col {
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+  .scheme-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 6px;
+  }
+  .scheme-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .scheme-title strong { font-size: 15px; font-weight: 600; }
+  .scheme-title span { font-size: 11px; color: var(--muted); }
+
+  .scheme-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .mini-chip {
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .mini-chip:hover { background: var(--soft); }
+  .mini-chip[aria-pressed="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--on-accent);
+  }
+
+  /* Phone frame matching 6-spatial shell.css */
+  .phone {
+    position: relative;
+    width: 100%;
+    background: var(--paper);
+    border-radius: 34px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(40, 57, 47, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 690px;
+  }
+  .gl-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  .phone header {
+    height: 66px;
+    padding: 10px 26px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: none;
+    position: relative;
+    z-index: 2;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .brand-mark {
+    width: 26px;
+    height: 26px;
+    background: var(--accent);
+    color: var(--paper);
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    margin-right: 9px;
+    font: 24px Georgia, serif;
+    line-height: 20px;
+    padding-bottom: 4px;
+    transform: rotate(-8deg);
+  }
+  .brand-dot { color: #8d9a67; margin-left: 2px; }
+  .icon-button {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--ink);
+  }
+  .icon-button:hover { background: var(--soft); }
+  .icon-button svg { width: 22px; height: 22px; }
+  .icon-button circle { fill: var(--paper); }
+
+  .phone main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-bottom: 18px;
+    position: relative;
+    z-index: 2;
+  }
+  .phone h2.hero-q {
+    margin: 10px 30px 0;
+    font-size: 44px;
+    line-height: 1.2;
+    letter-spacing: -2px;
+    font-weight: 550;
+  }
+  .phone h2.hero-q span { color: #8a9a72; font-weight: 350; }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 292px;
+    flex: none;
+    touch-action: none;
+    cursor: grab;
+    z-index: 5;
+  }
+  .stage.is-dragging { cursor: grabbing; }
+  .stage canvas.shadow-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .stage-hint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 6px;
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    color: #929787;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .stage.is-dragging .stage-hint { opacity: 0.25; }
+
+  .result-line {
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: 2px 18px 16px;
+    font-size: 16.5px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    color: var(--ink);
+  }
+  .result-line.answer { font-size: 25px; font-weight: 550; }
+  .result-line.rest { color: var(--rest); }
+
+  .actions { padding: 0 30px; }
+  .primary {
+    width: 100%;
+    min-height: 53px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    background: var(--accent);
+    border-radius: 17px;
+    color: var(--on-accent);
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    transition: background 0.16s, transform 0.14s;
+  }
+  .primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .primary:active:not(:disabled) { transform: scale(0.985); }
+  .shortcut {
+    width: 100%;
+    min-height: 44px;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 10px 4px;
+  }
+
+  /* Specs & notes footer */
+  .specs {
+    max-width: 872px;
+    margin: 28px auto 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 28px;
+  }
+  @media (max-width: 720px) {
+    .specs { grid-template-columns: 1fr; padding: 18px; }
+  }
+  .spec-block h3 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .spec-block p, .spec-block li {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.75;
+    color: var(--ink-2);
+  }
+  .spec-block ul {
+    margin: 0;
+    padding-left: 16px;
+  }
+  .spec-block code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+    background: var(--soft);
+    padding: 1px 5px;
+    border-radius: 5px;
+    color: var(--ink);
+  }
+  .spec-stats {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .spec-full {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--line);
+    padding-top: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="workspace">
+  <header class="topbar">
+    <div class="topbar-head">
+      <div class="topbar-copy">
+        <div class="eyebrow">EXERCISE OR NOT · 3D ASSET EXPLORATION</div>
+        <h1>转盘玩法 · 双方案三维资产与透明概率探索</h1>
+        <p>严格对齐 <code>6-spatial</code> 视觉与 <code>prd.md</code> 概率透明原则：盘面「练」面积严格等于概率，支持手拨盘面旋转、弹性拨片偏转与 360° 观察。</p>
+      </div>
+    </div>
+
+    <div class="controls-stack">
+      <!-- Row 1: States, Closeup & Sector Layout -->
+      <div class="global-controls" role="group" aria-label="状态、视角与扇区排布">
+        <span class="controls-label">状态</span>
+        <button class="pill" data-mode="idle" aria-pressed="true">待命静置</button>
+        <button class="pill" data-mode="spin" aria-pressed="false">旋转演出</button>
+        <button class="pill" data-mode="train" aria-pressed="false">停格 · 练</button>
+        <button class="pill" data-mode="rest" aria-pressed="false">停格 · 歇</button>
+        <button class="pill" data-mode="explode" aria-pressed="false">3D 拆解视图</button>
+        <span class="divider-v" aria-hidden="true"></span>
+        <button class="pill" id="btn-closeup" aria-pressed="false">特写</button>
+        <span class="divider-v" aria-hidden="true"></span>
+        <span class="controls-label">扇区</span>
+        <button class="pill sm" data-layout="arc" aria-pressed="true">整块弧形占比</button>
+        <button class="pill sm" data-layout="slots" aria-pressed="false">交错等分格</button>
+      </div>
+
+      <!-- Row 2: 11 Probability Presets + Exact Readout -->
+      <div class="global-controls" role="group" aria-label="训练概率档位">
+        <span class="controls-label">概率</span>
+        <button class="pill prob" data-prob="0" aria-pressed="false">0%<small>0/12</small></button>
+        <button class="pill prob" data-prob="10" aria-pressed="false">10%<small>1/10</small></button>
+        <button class="pill prob" data-prob="20" aria-pressed="false">20%<small>2/10</small></button>
+        <button class="pill prob" data-prob="25" aria-pressed="false">25%<small>3/12</small></button>
+        <button class="pill prob" data-prob="33" aria-pressed="false">33%<small>1/3</small></button>
+        <button class="pill prob" data-prob="50" aria-pressed="true">50%<small>1/2</small></button>
+        <button class="pill prob" data-prob="67" aria-pressed="false">67%<small>2/3</small></button>
+        <button class="pill prob" data-prob="75" aria-pressed="false">75%<small>3/4</small></button>
+        <button class="pill prob" data-prob="80" aria-pressed="false">80%<small>4/5</small></button>
+        <button class="pill prob" data-prob="90" aria-pressed="false">90%<small>9/10</small></button>
+        <button class="pill prob" data-prob="100" aria-pressed="false">100%<small>12/12</small></button>
+        <span class="prob-readout" id="prob-readout">练 50.0%（1/2 · 180.0° 连续弧）</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="comparison" aria-label="两套转盘三维方案实时对比">
+    <!-- Scheme A: Upright Brass Carnival Wheel -->
+    <div class="scheme-col" data-scheme="carnival">
+      <div class="scheme-meta">
+        <div class="scheme-title">
+          <strong>方案 A · 立式黄铜嘉年华大转盘</strong>
+          <span>A 型雕塑底座 + 倒角厚漆转盘 + 外圈分度铆钉 + 顶部弹性黄铜拨片</span>
+        </div>
+        <div class="scheme-tools">
+          <button class="mini-chip" data-finish="0" aria-pressed="true">墨绿漆盘 + 拉丝黄铜</button>
+          <button class="mini-chip" data-finish="1" aria-pressed="false">象牙米白 + 暖胡桃木</button>
+          <button class="mini-chip" data-toggle-closeup aria-pressed="false">特写</button>
+          <button class="mini-chip" data-reset-view>复位视角</button>
+        </div>
+      </div>
+
+      <article class="phone" id="phone-carnival">
+        <canvas class="gl-overlay" id="gl-carnival" aria-hidden="true"></canvas>
+        <header>
+          <div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
+          <button class="icon-button" aria-label="设置训练概率">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg>
+          </button>
+        </header>
+        <main>
+          <h2 class="hero-q">今天，<br>练不练<span>？</span></h2>
+          <div class="stage" id="stage-carnival" role="img" aria-label="方案 A 立式黄铜嘉年华大转盘三维舞台">
+            <canvas class="shadow-canvas" id="shadow-carnival" aria-hidden="true"></canvas>
+            <div class="stage-hint" id="hint-carnival">拨动盘面旋转 · 拖外圈 360° 观察 · 50%</div>
+          </div>
+          <div class="result-line" id="result-carnival">训练概率 50% · 整块弧形占比</div>
+          <div class="actions">
+            <button class="primary" id="btn-carnival"><span id="btn-label-carnival">拨动转盘</span><span aria-hidden="true">→</span></button>
+            <button class="shortcut">已经决定了，直接记录 ↗</button>
+          </div>
+        </main>
+      </article>
+    </div>
+
+    <!-- Scheme B: Tabletop Precision Steel Compass Wheel -->
+    <div class="scheme-col" data-scheme="compass">
+      <div class="scheme-meta">
+        <div class="scheme-title">
+          <strong>方案 B · 卧式精钢桌面罗盘转台</strong>
+          <span>贴合 App 托盘视角 + 斜面碗座 + 滚花精钢外环 + 精密内转盘指针</span>
+        </div>
+        <div class="scheme-tools">
+          <button class="mini-chip" data-finish="0" aria-pressed="true">烤蓝精钢 + 橄榄绿盘</button>
+          <button class="mini-chip" data-finish="1" aria-pressed="false">哑光黑曜 + 复古古铜</button>
+          <button class="mini-chip" data-toggle-closeup aria-pressed="false">特写</button>
+          <button class="mini-chip" data-reset-view>复位视角</button>
+        </div>
+      </div>
+
+      <article class="phone" id="phone-compass">
+        <canvas class="gl-overlay" id="gl-compass" aria-hidden="true"></canvas>
+        <header>
+          <div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
+          <button class="icon-button" aria-label="设置训练概率">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg>
+          </button>
+        </header>
+        <main>
+          <h2 class="hero-q">今天，<br>练不练<span>？</span></h2>
+          <div class="stage" id="stage-compass" role="img" aria-label="方案 B 卧式精钢桌面罗盘转台三维舞台">
+            <canvas class="shadow-canvas" id="shadow-compass" aria-hidden="true"></canvas>
+            <div class="stage-hint" id="hint-compass">拨动盘面旋转 · 拖外圈 360° 观察 · 50%</div>
+          </div>
+          <div class="result-line" id="result-compass">训练概率 50% · 整块弧形占比</div>
+          <div class="actions">
+            <button class="primary" id="btn-compass"><span id="btn-label-compass">拨动转盘</span><span aria-hidden="true">→</span></button>
+            <button class="shortcut">已经决定了，直接记录 ↗</button>
+          </div>
+        </main>
+      </article>
+    </div>
+  </section>
+
+  <section class="specs" aria-label="三维资产统计与工程接入说明">
+    <div class="spec-block">
+      <h3>方案 A · 立式黄铜嘉年华大转盘（仪式焦点）</h3>
+      <ul>
+        <li><strong>结构工艺</strong>：阶梯底座 + 展翼式 A 型立柱与后撑杆，96 段车削倒角厚漆轮鼓，10 / 12 枚车削圆头黄铜分度铆钉与多阶中心轴盖。</li>
+        <li><strong>物理拨片</strong>：12 点钟鹅颈铜架悬吊弹性拨片，每枚铆钉掠过时按转速与角距离实时弹性弯折并回弹停格，可搭配 <code>host.haptic('tick')</code> 输出逐钉震感。</li>
+        <li><strong>涂装材质</strong>：工作室柔光箱 + 暗色地平线反射带 + 桌面回光；支持「墨绿漆盘 + 拉丝黄铜」与「象牙米白 + 暖胡桃木」。</li>
+      </ul>
+      <div class="spec-stats" id="stats-carnival">几何体统计计算中…</div>
+    </div>
+
+    <div class="spec-block">
+      <h3>方案 B · 卧式精钢桌面罗盘转台（托盘融合）</h3>
+      <ul>
+        <li><strong>结构工艺</strong>：96 段斜面倒角重型碗座 + 72 齿立体滚花金属外环（随视角产生细腻拉丝高光），内嵌旋转分度转盘、精密中心陀螺帽与 12 点钟微动指针桥。</li>
+        <li><strong>视角与触控</strong>：平卧于桌面托盘，与骰子 / 签筒共享 <code>6-spatial</code> 俯视角，手指直接在盘面画弧即可跟手拨转并松手惯性减速。</li>
+        <li><strong>涂装材质</strong>：高金属度烤蓝精钢与哑光黑曜石双材质预设，搭配 <code>1024×1024</code> Mipmap 精密刻度盘贴图，斜看文字依然锐利。</li>
+      </ul>
+      <div class="spec-stats" id="stats-compass">几何体统计计算中…</div>
+    </div>
+
+    <div class="spec-block spec-full">
+      <h3>概率透明模型、Kotlin <code>OutcomeModel</code> 与 WebGL 接入说明</h3>
+      <ul>
+        <li><strong>零误差透明概率</strong>：11 个常用档位均采用精确有理分数（<code>0/12 · 1/10 · 2/10 · 3/12 · 4/12(1/3) · 6/12(1/2) · 8/12(2/3) · 9/12 · 8/10 · 9/10 · 12/12</code>），盘面「练」扇区总圆心角与「交错等分格」中「练」格数均严格等于抽取概率；<code>0%</code> 恒歇、<code>100%</code> 恒练，指针停格位置与文字结果完全一致。</li>
+        <li><strong>Kotlin <code>OutcomeModel</code> 与 <code>RevealPace.USER</code></strong>：在 <code>ChanceGames</code> 注册 <code>ChanceGame("wheel", "转盘", WheelModel, pace = RevealPace.USER)</code>，使用 60 份等权分度（最小公倍数 <code>lcm(10, 12) = 60</code>，所有 11 档精确整除零舍入误差）预先在 Kotlin 侧完成抽签并落盘，前端 <code>assets/chance/scenes/wheel/scene.js</code> 仅负责拿到既定结果后计算目标落角并完成惯性减速演出。</li>
+        <li><strong>WebGL 复用路径</strong>：所有网格采用标准 9-float 交错顶点格式（<code>pos3 + norm3 + uv2 + flag1</code>）与离屏 Canvas <code>canvasTexture()</code> 动态更新，可直接复用 <code>app/src/main/assets/chance/lib/gl.js</code>（<code>EonGL.Scene</code>）与 <code>anim.js</code>（<code>Timeline</code> + <code>Velocity</code>），单玩法体积预计 &lt; 60 KB，远低于 3 MB 预算。</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  window.__errors = [];
+  window.addEventListener('error', e => window.__errors.push(e.message || String(e)));
+  window.addEventListener('unhandledrejection', e => window.__errors.push(String(e.reason)));
+
+  const TAU = Math.PI * 2;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  const easeOutSpin = t => 1 - Math.pow(1 - t, 3.8);
+
+  // ---- Vector & Matrix Math ----
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const scale = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+  const normalize = a => {
+    const l = Math.hypot(a[0], a[1], a[2]) || 1;
+    return [a[0] / l, a[1] / l, a[2] / l];
+  };
+
+  function multiply(a, b) {
+    const o = new Float32Array(16);
+    for (let c = 0; c < 4; c++) {
+      for (let r = 0; r < 4; r++) {
+        let s = 0;
+        for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k];
+        o[c * 4 + r] = s;
+      }
+    }
+    return o;
+  }
+
+  function qAxis(axis, angle) {
+    const u = normalize(axis);
+    const s = Math.sin(angle / 2);
+    return [u[0] * s, u[1] * s, u[2] * s, Math.cos(angle / 2)];
+  }
+
+  function qMultiply(a, b) {
+    const ax = a[0], ay = a[1], az = a[2], aw = a[3];
+    const bx = b[0], by = b[1], bz = b[2], bw = b[3];
+    return [
+      aw * bx + ax * bw + ay * bz - az * by,
+      aw * by - ax * bz + ay * bw + az * bx,
+      aw * bz + ax * by - ay * bx + az * bw,
+      aw * bw - ax * bx - ay * by - az * bz,
+    ];
+  }
+
+  function qFromChain(...qs) {
+    return qs.reduce((acc, q) => qMultiply(acc, q), [0, 0, 0, 1]);
+  }
+
+  function modelMatrix(q, p, s = 1) {
+    const [x, y, z, w] = q;
+    const xx = x * x, yy = y * y, zz = z * z;
+    return new Float32Array([
+      (1 - 2 * (yy + zz)) * s, (2 * (x * y + z * w)) * s, (2 * (x * z - y * w)) * s, 0,
+      (2 * (x * y - z * w)) * s, (1 - 2 * (xx + zz)) * s, (2 * (y * z + x * w)) * s, 0,
+      (2 * (x * z + y * w)) * s, (2 * (y * z - x * w)) * s, (1 - 2 * (xx + yy)) * s, 0,
+      p[0], p[1], p[2], 1,
+    ]);
+  }
+
+  function transformPoint(m, p) {
+    return [
+      m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12],
+      m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13],
+      m[2] * p[0] + m[6] * p[1] + m[10] * p[2] + m[14],
+    ];
+  }
+
+  function cameraMatrix(eye, target) {
+    const z = normalize(add(eye, scale(target, -1)));
+    const x = normalize(cross([0, 1, 0], z));
+    const y = cross(z, x);
+    return new Float32Array([
+      x[0], y[0], z[0], 0,
+      x[1], y[1], z[1], 0,
+      x[2], y[2], z[2], 0,
+      -dot(x, eye), -dot(y, eye), -dot(z, eye), 1,
+    ]);
+  }
+
+  function perspective(aspect) {
+    const f = 1 / Math.tan((30 * Math.PI) / 360);
+    const n = 0.1, far = 60;
+    return new Float32Array([
+      f / aspect, 0, 0, 0,
+      0, f, 0, 0,
+      0, 0, (far + n) / (n - far), -1,
+      0, 0, (2 * far * n) / (n - far), 0,
+    ]);
+  }
+
+  // ---- Exact Probability Presets & Transparent Sector Math ----
+  // Every preset uses an exact rational fraction so painted arc area AND alternating
+  // equal-slot counts equal the exact draw probability (0% never trains, 100% always trains).
+  const PROB_PRESETS = {
+    0:   { pct: 0,   trainCount: 0,  slotCount: 12, fracLabel: '0/12',  shortFrac: '0',    pattern: [0,0,0,0,0,0,0,0,0,0,0,0] },
+    10:  { pct: 10,  trainCount: 1,  slotCount: 10, fracLabel: '1/10',  shortFrac: '1/10', pattern: [1,0,0,0,0,0,0,0,0,0] },
+    20:  { pct: 20,  trainCount: 2,  slotCount: 10, fracLabel: '2/10',  shortFrac: '1/5',  pattern: [1,0,0,0,0,1,0,0,0,0] },
+    25:  { pct: 25,  trainCount: 3,  slotCount: 12, fracLabel: '3/12',  shortFrac: '1/4',  pattern: [1,0,0,0,1,0,0,0,1,0,0,0] },
+    33:  { pct: 33,  trainCount: 4,  slotCount: 12, fracLabel: '4/12',  shortFrac: '1/3',  pattern: [1,0,0,1,0,0,1,0,0,1,0,0] },
+    50:  { pct: 50,  trainCount: 6,  slotCount: 12, fracLabel: '6/12',  shortFrac: '1/2',  pattern: [1,0,1,0,1,0,1,0,1,0,1,0] },
+    67:  { pct: 67,  trainCount: 8,  slotCount: 12, fracLabel: '8/12',  shortFrac: '2/3',  pattern: [1,1,0,1,1,0,1,1,0,1,1,0] },
+    75:  { pct: 75,  trainCount: 9,  slotCount: 12, fracLabel: '9/12',  shortFrac: '3/4',  pattern: [1,1,1,0,1,1,1,0,1,1,1,0] },
+    80:  { pct: 80,  trainCount: 8,  slotCount: 10, fracLabel: '8/10',  shortFrac: '4/5',  pattern: [1,1,1,1,0,1,1,1,1,0] },
+    90:  { pct: 90,  trainCount: 9,  slotCount: 10, fracLabel: '9/10',  shortFrac: '9/10', pattern: [1,1,1,1,1,1,1,1,1,0] },
+    100: { pct: 100, trainCount: 12, slotCount: 12, fracLabel: '12/12', shortFrac: '1',    pattern: [1,1,1,1,1,1,1,1,1,1,1,1] },
+  };
+
+  function gcd(a, b) {
+    return b === 0 ? a : gcd(b, a % b);
+  }
+
+  function makeBalancedPattern(trainCount, slotCount) {
+    const out = [];
+    for (let i = 0; i < slotCount; i++) {
+      const a = Math.floor(((i + 1) * trainCount) / slotCount);
+      const b = Math.floor((i * trainCount) / slotCount);
+      out.push(a > b ? 1 : 0);
+    }
+    return out;
+  }
+
+  function getProbSpec(pct) {
+    const p = clamp(Math.round(pct), 0, 100);
+    if (PROB_PRESETS[p]) {
+      const s = PROB_PRESETS[p];
+      const exactProb = s.trainCount / s.slotCount;
+      const deg = exactProb * 360;
+      return { ...s, exactProb, deg };
+    }
+    // Custom percentage fallback: exact rational reduction
+    const g = gcd(p, 100);
+    const num = p / g;
+    const den = 100 / g;
+    const slotCount = den <= 20 ? (den <= 6 ? den * 2 : den) : 20;
+    const trainCount = Math.round((p / 100) * slotCount);
+    const exactProb = den <= 20 ? num / den : p / 100;
+    return {
+      pct: p,
+      trainCount: den <= 20 ? (slotCount / den) * num : trainCount,
+      slotCount,
+      fracLabel: `${num}/${den}`,
+      shortFrac: `${num}/${den}`,
+      pattern: makeBalancedPattern(den <= 20 ? (slotCount / den) * num : trainCount, slotCount),
+      exactProb,
+      deg: exactProb * 360,
+    };
+  }
+
+  /**
+   * Generates the exact partition of [0, TAU) clockwise from 12 o'clock.
+   * Sum of `isTrain` sector angular spans / TAU === spec.exactProb.
+   */
+  function buildSectors(spec, layout) {
+    if (layout === 'slots') {
+      const N = spec.slotCount;
+      const step = TAU / N;
+      return spec.pattern.map((v, i) => ({
+        index: i,
+        startRad: i * step,
+        endRad: (i + 1) * step,
+        isTrain: v === 1,
+      }));
+    }
+    // Continuous proportional arc mode
+    if (spec.trainCount === 0) {
+      return [{ index: 0, startRad: 0, endRad: TAU, isTrain: false }];
+    }
+    if (spec.trainCount === spec.slotCount) {
+      return [{ index: 0, startRad: 0, endRad: TAU, isTrain: true }];
+    }
+    const trainSpan = spec.exactProb * TAU;
+    return [
+      { index: 0, startRad: 0, endRad: trainSpan, isTrain: true },
+      { index: 1, startRad: trainSpan, endRad: TAU, isTrain: false },
+    ];
+  }
+
+  function normAngle(a) {
+    return ((a % TAU) + TAU) % TAU;
+  }
+
+  /**
+   * Given clockwise wheel spin `wheelCW`, returns the canvas dial angle `phi`
+   * currently positioned directly under the 12-o'clock pointer.
+   */
+  function pointerDialAngle(wheelCW) {
+    return normAngle(-wheelCW);
+  }
+
+  function sectorAtDialAngle(sectors, phi) {
+    const a = normAngle(phi);
+    for (const s of sectors) {
+      if (a >= s.startRad && a < s.endRad) return s;
+    }
+    return sectors[sectors.length - 1];
+  }
+
+  /**
+   * Performs a mathematically exact transparent draw matching spec.exactProb.
+   * 0% NEVER trains; 100% ALWAYS trains.
+   */
+  function drawExactOutcome(spec) {
+    if (spec.trainCount <= 0 || spec.exactProb <= 0) return false;
+    if (spec.trainCount >= spec.slotCount || spec.exactProb >= 1) return true;
+    // Uniform integer draw over exact slotCount (or exactProb for non-preset)
+    if (Math.abs(spec.trainCount / spec.slotCount - spec.exactProb) < 1e-12) {
+      return Math.floor(Math.random() * spec.slotCount) < spec.trainCount;
+    }
+    return Math.random() < spec.exactProb;
+  }
+
+  /**
+   * Computes label anchor angles inside an arc so wide arcs have evenly spaced readable labels.
+   */
+  function arcLabelAngles(startRad, endRad) {
+    const span = endRad - startRad;
+    const count = span >= 5.2 ? 6 : span >= 3.8 ? 4 : span >= 2.6 ? 3 : span >= 1.7 ? 2 : 1;
+    const angles = [];
+    for (let i = 0; i < count; i++) {
+      angles.push(startRad + ((i + 0.5) / count) * span);
+    }
+    return angles;
+  }
+
+  /**
+   * Picks a target dial angle strictly inside a sector matching `isTrain`,
+   * keeping a safe angular margin away from pegs and boundaries.
+   */
+  function pickLandingAngle(spec, layout, isTrain, deterministic = false) {
+    const sectors = buildSectors(spec, layout);
+    const matching = sectors.filter(s => s.isTrain === isTrain);
+    if (!matching.length) return 0;
+
+    if (deterministic) {
+      const sec = matching[0];
+      if (layout === 'arc') {
+        const anchors = arcLabelAngles(sec.startRad, sec.endRad);
+        return anchors[0];
+      }
+      return (sec.startRad + sec.endRad) * 0.5;
+    }
+
+    const sec = matching[Math.floor(Math.random() * matching.length)];
+    const span = sec.endRad - sec.startRad;
+    const pegStep = TAU / spec.slotCount;
+    const margin = Math.min(0.11, span * 0.24, pegStep * 0.26);
+
+    if (layout === 'arc' && span > pegStep * 1.4) {
+      // Pick a sub-pocket between pegs strictly inside this arc so the clapper
+      // never stops directly on top of a peg!
+      const pockets = [];
+      for (let k = 0; k < spec.slotCount; k++) {
+        const p0 = k * pegStep;
+        const p1 = (k + 1) * pegStep;
+        const lo = Math.max(sec.startRad, p0) + margin;
+        const hi = Math.min(sec.endRad, p1) - margin;
+        if (hi > lo) pockets.push([lo, hi]);
+      }
+      if (pockets.length) {
+        const [lo, hi] = pockets[Math.floor(Math.random() * pockets.length)];
+        return lo + Math.random() * (hi - lo);
+      }
+    }
+
+    const lo = sec.startRad + margin;
+    const hi = sec.endRad - margin;
+    if (hi <= lo) return (sec.startRad + sec.endRad) * 0.5;
+    return lo + Math.random() * (hi - lo);
+  }
+
+  // ---- Studio WebGL Stage Engine ----
+  const VERTEX_SRC = `
+    attribute vec3 aPosition;
+    attribute vec3 aNormal;
+    attribute vec2 aUv;
+    attribute float aFlag;
+    uniform mat4 uModel;
+    uniform mat4 uVP;
+    varying vec3 vNormal;
+    varying vec3 vWorld;
+    varying vec2 vUv;
+    varying float vFlag;
+    void main() {
+      vec4 p = uModel * vec4(aPosition, 1.0);
+      vWorld = p.xyz;
+      vNormal = mat3(uModel) * aNormal;
+      vUv = aUv;
+      vFlag = aFlag;
+      gl_Position = uVP * p;
+    }
+  `;
+
+  const FRAGMENT_SRC = `
+    precision highp float;
+    varying vec3 vNormal;
+    varying vec3 vWorld;
+    varying vec2 vUv;
+    varying float vFlag;
+    uniform vec3 uEye;
+    uniform vec3 uColor;
+    uniform vec3 uAccentColor;
+    uniform vec3 uTrimColor;
+    uniform vec3 uCavityColor;
+    uniform vec3 uMatMeta;
+    uniform vec3 uMatRough;
+    uniform sampler2D uTex;
+    uniform float uTextured;
+    uniform float uGrain;
+    void main() {
+      vec3 n = normalize(vNormal);
+      vec3 keyDir = normalize(vec3(-3.0, 7.2, 5.2));
+      vec3 fillDir = normalize(vec3(5.0, 1.4, 2.4));
+      vec3 rimDir = normalize(vec3(-4.4, 4.2, -5.0));
+      vec3 viewDir = normalize(uEye - vWorld);
+      vec3 R = reflect(-viewDir, n);
+
+      float key = max(dot(n, keyDir), 0.0);
+      float fill = max(dot(n, fillDir), 0.0);
+      float rim = max(dot(n, rimDir), 0.0);
+      float ndv = max(dot(n, viewDir), 0.0);
+
+      if (vFlag > 0.5 && vFlag < 1.5) {
+        float depthShade = mix(0.58, 1.0, clamp(vUv.y, 0.0, 1.0));
+        vec3 cav = uCavityColor * (0.24 + key * 0.16 + fill * 0.06) * depthShade;
+        gl_FragColor = vec4(cav, 1.0);
+        return;
+      }
+
+      vec3 base = uColor;
+      float metal = uMatMeta.x;
+      float rough = uMatRough.x;
+
+      bool isTexFace = (vFlag < 0.5 && uTextured > 0.5);
+      if (isTexFace) {
+        base = texture2D(uTex, vUv).rgb;
+      } else if (vFlag > 1.5 && vFlag < 2.5) {
+        base = uAccentColor;
+        metal = uMatMeta.y;
+        rough = uMatRough.y;
+      } else if (vFlag > 2.5) {
+        base = uTrimColor;
+        metal = uMatMeta.z;
+        rough = uMatRough.z;
+      }
+
+      if (uGrain > 0.5 && vFlag < 0.5 && uTextured < 0.5) {
+        float g = sin(vUv.x * 84.0 + sin(vUv.y * 12.0) * 1.4) * 0.020
+                + sin(vUv.y * 36.0) * 0.012;
+        base *= (1.0 + g);
+      }
+
+      metal = clamp(metal, 0.0, 0.95);
+      rough = clamp(rough, 0.14, 0.92);
+
+      // Studio analytic reflection: overhead softbox, dark horizon band, warm desk bounce
+      float topBox = smoothstep(0.20, 0.85, R.y);
+      float horizonBand = exp(-pow((R.y - 0.03) * 5.0, 2.0));
+      float floorBounce = smoothstep(-0.05, -0.65, R.y);
+      vec3 env = mix(vec3(0.52, 0.54, 0.50), vec3(1.07, 1.05, 1.00), topBox);
+      env = mix(env, vec3(0.13, 0.16, 0.15), horizonBand * 0.86);
+      env = mix(env, vec3(0.79, 0.80, 0.73), floorBounce * 0.75);
+
+      if (isTexFace) {
+        // High-legibility satin lacquer shading for dial faces so Chinese labels stay crisp
+        vec3 diffuse = base * (0.64 + key * 0.34 + fill * 0.10);
+        vec3 H = normalize(keyDir + viewDir);
+        float ndh = max(dot(n, H), 0.0);
+        float sheen = pow(ndh, 42.0) * 0.11 + pow(ndh, 12.0) * 0.04;
+        float rimGlow = pow(rim, 2.0) * pow(1.0 - ndv, 2.4) * 0.07;
+        vec3 lit = diffuse + env * 0.045 + vec3(sheen + rimGlow);
+        gl_FragColor = vec4(lit, 1.0);
+        return;
+      }
+
+      float diffuseScale = mix(1.0, 0.35, metal);
+      vec3 diffuse = base * diffuseScale * (0.48 + key * 0.42 + fill * 0.12);
+
+      vec3 specTint = mix(vec3(1.0), base * 1.24, metal);
+      float fresnel = metal + (1.0 - metal) * pow(1.0 - ndv, 4.0) * 0.55;
+      float envWeight = (0.08 + metal * 0.72) * (1.0 - rough * 0.62) * (0.55 + 0.45 * fresnel);
+
+      vec3 H = normalize(keyDir + viewDir);
+      float ndh = max(dot(n, H), 0.0);
+      float tightSpec = pow(ndh, mix(96.0, 14.0, rough)) * mix(0.64, 0.09, rough);
+      float broadSpec = pow(ndh, mix(18.0, 6.0, rough)) * mix(0.26, 0.07, rough);
+      float rimSpec = pow(rim, 1.8) * pow(1.0 - ndv, 2.2) * (0.12 + metal * 0.36);
+
+      vec3 lit = diffuse + env * specTint * envWeight + specTint * (tightSpec + broadSpec + rimSpec);
+      gl_FragColor = vec4(lit, 1.0);
+    }
+  `;
+
+  class Stage3D {
+    constructor(phoneEl, stageEl, glCanvas, shadowCanvas, camConfig) {
+      this.phoneEl = phoneEl;
+      this.stage = stageEl;
+      this.canvas = glCanvas;
+      this.shadow = shadowCanvas;
+      this.ctx = shadowCanvas.getContext('2d');
+      this.gl = glCanvas.getContext('webgl', { alpha: true, antialias: true, premultipliedAlpha: false });
+      if (!this.gl) throw new Error('WebGL unavailable');
+
+      const gl = this.gl;
+      this.anisoExt = gl.getExtension('EXT_texture_filter_anisotropic')
+        || gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
+      this.maxAniso = this.anisoExt ? Math.min(8, gl.getParameter(this.anisoExt.MAX_TEXTURE_MAX_ANISOTROPY_EXT)) : 0;
+
+      const compile = (type, src) => {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+        return s;
+      };
+      this.program = gl.createProgram();
+      gl.attachShader(this.program, compile(gl.VERTEX_SHADER, VERTEX_SRC));
+      gl.attachShader(this.program, compile(gl.FRAGMENT_SHADER, FRAGMENT_SRC));
+      gl.linkProgram(this.program);
+      if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(this.program));
+      gl.useProgram(this.program);
+
+      this.attribs = [['aPosition', 3, 0], ['aNormal', 3, 3], ['aUv', 2, 6], ['aFlag', 1, 8]]
+        .map(([name, size, offset]) => {
+          const loc = gl.getAttribLocation(this.program, name);
+          gl.enableVertexAttribArray(loc);
+          return [loc, size, offset];
+        });
+      const uNames = [
+        'uModel', 'uVP', 'uEye', 'uColor', 'uAccentColor', 'uTrimColor', 'uCavityColor',
+        'uMatMeta', 'uMatRough', 'uTex', 'uTextured', 'uGrain',
+      ];
+      this.uniforms = Object.fromEntries(uNames.map(n => [n, gl.getUniformLocation(this.program, n)]));
+
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.CULL_FACE);
+      gl.clearColor(0, 0, 0, 0);
+
+      this.meshes = [];
+      this.shadows = [];
+      this.tray = { halfX: 2.62, halfZ: 2.26, corner: 0.42 };
+
+      // Camera defaults tailored per scheme
+      this.defaultEye = camConfig.eye.slice();
+      this.defaultTarget = camConfig.target.slice();
+      this.closeupCam = camConfig.closeup;
+      const rel = sub(this.defaultEye, this.defaultTarget);
+      this.baseDist = Math.hypot(...rel);
+      this.baseYaw = Math.atan2(rel[0], rel[2]);
+      this.basePitch = Math.asin(rel[1] / this.baseDist);
+
+      this.target = this.defaultTarget.slice();
+      this.camYaw = this.baseYaw;
+      this.camPitch = this.basePitch;
+      this.camDist = this.baseDist;
+      this.updateCamera();
+
+      this.observer = new ResizeObserver(() => this.resize());
+      this.observer.observe(this.phoneEl);
+      this.observer.observe(this.stage);
+      window.addEventListener('resize', () => this.resize(), { passive: true });
+      this.resize();
+    }
+
+    updateCamera() {
+      const cp = Math.cos(this.camPitch);
+      this.eye = [
+        this.target[0] + this.camDist * cp * Math.sin(this.camYaw),
+        this.target[1] + this.camDist * Math.sin(this.camPitch),
+        this.target[2] + this.camDist * cp * Math.cos(this.camYaw),
+      ];
+      this.view = cameraMatrix(this.eye, this.target);
+      if (this.stageW && this.stageH) {
+        this.vp = multiply(perspective(this.stageW / this.stageH), this.view);
+      }
+    }
+
+    resetView() {
+      this.target = this.defaultTarget.slice();
+      this.camYaw = this.baseYaw;
+      this.camPitch = this.basePitch;
+      this.camDist = this.baseDist;
+      this.updateCamera();
+      this.draw();
+    }
+
+    setCloseupView(enabled) {
+      if (enabled) {
+        this.target = this.closeupCam.target.slice();
+        this.camYaw = this.closeupCam.yaw;
+        this.camPitch = this.closeupCam.pitch;
+        this.camDist = this.closeupCam.dist;
+      } else {
+        this.target = this.defaultTarget.slice();
+        this.camYaw = this.baseYaw;
+        this.camPitch = this.basePitch;
+        this.camDist = this.baseDist;
+      }
+      this.updateCamera();
+      this.draw();
+    }
+
+    setOrbit(yawDelta, pitchAbs) {
+      this.camYaw = this.baseYaw + yawDelta;
+      if (pitchAbs != null) this.camPitch = clamp(pitchAbs, 0.08, 1.44);
+      this.updateCamera();
+      this.draw();
+    }
+
+    orbitBy(dx, dy) {
+      this.camYaw -= dx * 0.011;
+      this.camPitch = clamp(this.camPitch + dy * 0.0085, 0.08, 1.44);
+      this.updateCamera();
+      this.draw();
+    }
+
+    addMesh(data, opts = {}) {
+      const gl = this.gl;
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+      const mDef = opts.metallic ?? 0.0;
+      const rDef = opts.roughness ?? 0.55;
+      const mesh = {
+        buffer,
+        count: data.length / 9,
+        color: opts.color || [0.3, 0.45, 0.35],
+        accent: opts.accent || [0.78, 0.64, 0.36],
+        trim: opts.trim || [0.44, 0.28, 0.19],
+        cavity: opts.cavity || [0.08, 0.11, 0.09],
+        matMeta: opts.matMeta || [mDef, mDef, mDef],
+        matRough: opts.matRough || [rDef, rDef, rDef],
+        texture: opts.texture || null,
+        grain: opts.grain ? 1 : 0,
+        q: [0, 0, 0, 1],
+        position: [0, 0, 0],
+        scale: opts.scale || 1,
+        visible: opts.visible !== false,
+        doubleSided: !!opts.doubleSided,
+      };
+      this.meshes.push(mesh);
+      return mesh;
+    }
+
+    createTextureFromCanvas(cnv) {
+      const gl = this.gl;
+      const t = gl.createTexture();
+      this.updateTextureFromCanvas(t, cnv);
+      return t;
+    }
+
+    updateTextureFromCanvas(tex, cnv) {
+      const gl = this.gl;
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cnv);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      const isPOT = (cnv.width & (cnv.width - 1)) === 0 && (cnv.height & (cnv.height - 1)) === 0;
+      if (isPOT) {
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      } else {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      }
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      if (this.anisoExt && this.maxAniso > 1) {
+        gl.texParameterf(gl.TEXTURE_2D, this.anisoExt.TEXTURE_MAX_ANISOTROPY_EXT, this.maxAniso);
+      }
+    }
+
+    resize() {
+      const sr = this.stage.getBoundingClientRect();
+      const pr = this.phoneEl.getBoundingClientRect();
+      if (sr.width < 1 || sr.height < 1 || pr.width < 1 || pr.height < 1) return;
+      this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      this.stageW = sr.width;
+      this.stageH = sr.height;
+      this.phoneW = pr.width;
+      this.phoneH = pr.height;
+      this.stageOffsetX = sr.left - pr.left;
+      this.stageOffsetY = sr.top - pr.top;
+
+      this.shadow.width = Math.round(sr.width * this.dpr);
+      this.shadow.height = Math.round(sr.height * this.dpr);
+      this.canvas.width = Math.round(pr.width * this.dpr);
+      this.canvas.height = Math.round(pr.height * this.dpr);
+
+      this.vp = multiply(perspective(this.stageW / this.stageH), this.view);
+      this.draw();
+    }
+
+    overlayProjection() {
+      const w = this.phoneW, h = this.phoneH;
+      const sx = this.stageW / w;
+      const sy = this.stageH / h;
+      const tx = (this.stageOffsetX * 2 + this.stageW) / w - 1;
+      const ty = 1 - (this.stageOffsetY * 2 + this.stageH) / h;
+      const remap = new Float32Array([
+        sx, 0, 0, 0,
+        0, sy, 0, 0,
+        0, 0, 1, 0,
+        tx, ty, 0, 1,
+      ]);
+      return multiply(remap, this.vp);
+    }
+
+    project(p) {
+      const m = this.vp;
+      const w = m[3] * p[0] + m[7] * p[1] + m[11] * p[2] + m[15];
+      return [
+        ((m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12]) / w) * (this.stageW / 2) + this.stageW / 2,
+        (-(m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13]) / w + 1) * (this.stageH / 2),
+      ];
+    }
+
+    floorPath(y = 0) {
+      const ctx = this.ctx, rx = this.tray.halfX, rz = this.tray.halfZ, r = this.tray.corner;
+      ctx.beginPath();
+      const corners = [
+        [-rx + r, -rz + r, Math.PI],
+        [rx - r, -rz + r, -Math.PI / 2],
+        [rx - r, rz - r, 0],
+        [-rx + r, rz - r, Math.PI / 2],
+      ];
+      let first = true;
+      for (const [cx, cz, angle] of corners) {
+        for (let i = 0; i <= 8; i++) {
+          const a = angle + (i * Math.PI) / 16;
+          const pt = this.project([cx + r * Math.cos(a), y, cz + r * Math.sin(a)]);
+          if (first) { ctx.moveTo(pt[0], pt[1]); first = false; }
+          else ctx.lineTo(pt[0], pt[1]);
+        }
+      }
+      ctx.closePath();
+    }
+
+    drawBlob(x3, z3, radiusFrac, opacity, air, stretchX = 1, stretchY = 0.48, angleRad = 0) {
+      const ctx = this.ctx;
+      const [sx, sy] = this.project([x3, 0, z3]);
+      const size = this.stageH * radiusFrac * (1 + air * 0.12);
+      ctx.save();
+      ctx.translate(sx + 5 + air * 9, sy + 3 + air * 3);
+      if (angleRad) ctx.rotate(angleRad);
+      ctx.scale(stretchX, stretchY);
+      const g = ctx.createRadialGradient(0, 0, size * 0.14, 0, 0, size);
+      g.addColorStop(0, `rgba(47, 62, 33, ${opacity})`);
+      g.addColorStop(0.45, `rgba(47, 62, 33, ${opacity * 0.54})`);
+      g.addColorStop(1, 'rgba(47, 62, 33, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, size, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    drawFloor() {
+      const ctx = this.ctx;
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      ctx.clearRect(0, 0, this.stageW, this.stageH);
+
+      this.floorPath(-0.065);
+      ctx.fillStyle = '#d7dccd';
+      ctx.fill();
+
+      this.floorPath(0);
+      const surface = ctx.createLinearGradient(0, this.stageH * 0.18, this.stageW, this.stageH * 0.92);
+      surface.addColorStop(0, '#f0f1e8');
+      surface.addColorStop(1, '#e6eadc');
+      ctx.fillStyle = surface;
+      ctx.fill();
+      ctx.strokeStyle = '#dce1d1';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.clip();
+      for (const s of this.shadows) {
+        if (!s.visible) continue;
+        const lift = Math.max(0, s.y);
+        const op = s.opacity / (1 + lift * 1.35);
+        this.drawBlob(s.x, s.z, s.radius, op, lift, s.stretch || 1, s.stretchY || 0.46, s.angle || 0);
+      }
+      ctx.restore();
+    }
+
+    draw() {
+      if (!this.vp) return;
+      const gl = this.gl, u = this.uniforms;
+      gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(this.program);
+      gl.uniformMatrix4fv(u.uVP, false, this.overlayProjection());
+      gl.uniform3fv(u.uEye, this.eye);
+
+      for (const m of this.meshes) {
+        if (!m.visible) continue;
+        if (m.doubleSided) gl.disable(gl.CULL_FACE);
+        else gl.enable(gl.CULL_FACE);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, m.buffer);
+        for (const [loc, size, offset] of this.attribs) {
+          gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 36, offset * 4);
+        }
+        gl.uniform3fv(u.uColor, m.color);
+        gl.uniform3fv(u.uAccentColor, m.accent);
+        gl.uniform3fv(u.uTrimColor, m.trim);
+        gl.uniform3fv(u.uCavityColor, m.cavity);
+        gl.uniform3fv(u.uMatMeta, m.matMeta);
+        gl.uniform3fv(u.uMatRough, m.matRough);
+        gl.uniform1f(u.uGrain, m.grain);
+        gl.uniform1f(u.uTextured, m.texture ? 1 : 0);
+        if (m.texture) {
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, m.texture);
+          gl.uniform1i(u.uTex, 0);
+        }
+        gl.uniformMatrix4fv(u.uModel, false, modelMatrix(m.q, m.position, m.scale));
+        gl.drawArrays(gl.TRIANGLES, 0, m.count);
+      }
+      this.drawFloor();
+    }
+  }
+
+  // ---- Geometry Builders (Outward CCW Winding Guaranteed) ----
+  function pushTri(out, p0, p1, p2, n, uv0, uv1, uv2, flag = 0) {
+    const cr = cross(sub(p1, p0), sub(p2, p0));
+    if (dot(cr, n) < 0) {
+      out.push(
+        p0[0], p0[1], p0[2], n[0], n[1], n[2], uv0[0], uv0[1], flag,
+        p2[0], p2[1], p2[2], n[0], n[1], n[2], uv2[0], uv2[1], flag,
+        p1[0], p1[1], p1[2], n[0], n[1], n[2], uv1[0], uv1[1], flag
+      );
+    } else {
+      out.push(
+        p0[0], p0[1], p0[2], n[0], n[1], n[2], uv0[0], uv0[1], flag,
+        p1[0], p1[1], p1[2], n[0], n[1], n[2], uv1[0], uv1[1], flag,
+        p2[0], p2[1], p2[2], n[0], n[1], n[2], uv2[0], uv2[1], flag
+      );
+    }
+  }
+
+  function pushTriSmooth(out, p0, p1, p2, n0, n1, n2, uv0, uv1, uv2, f0, f1, f2) {
+    const avgN = add(add(n0, n1), n2);
+    const cr = cross(sub(p1, p0), sub(p2, p0));
+    if (dot(cr, avgN) < 0) {
+      out.push(
+        p0[0], p0[1], p0[2], n0[0], n0[1], n0[2], uv0[0], uv0[1], f0,
+        p2[0], p2[1], p2[2], n2[0], n2[1], n2[2], uv2[0], uv2[1], f2,
+        p1[0], p1[1], p1[2], n1[0], n1[1], n1[2], uv1[0], uv1[1], f1
+      );
+    } else {
+      out.push(
+        p0[0], p0[1], p0[2], n0[0], n0[1], n0[2], uv0[0], uv0[1], f0,
+        p1[0], p1[1], p1[2], n1[0], n1[1], n1[2], uv1[0], uv1[1], f1,
+        p2[0], p2[1], p2[2], n2[0], n2[1], n2[2], uv2[0], uv2[1], f2
+      );
+    }
+  }
+
+  function pushQuad(out, p0, p1, p2, p3, n, uv0, uv1, uv2, uv3, flag = 0) {
+    pushTri(out, p0, p1, p2, n, uv0, uv1, uv2, flag);
+    pushTri(out, p0, p2, p3, n, uv0, uv2, uv3, flag);
+  }
+
+  function pushQuadSmooth(out, p0, p1, p2, p3, n0, n1, n2, n3, uv0, uv1, uv2, uv3, f0, f1, f2, f3) {
+    pushTriSmooth(out, p0, p1, p2, n0, n1, n2, uv0, uv1, uv2, f0, f1, f2);
+    pushTriSmooth(out, p0, p2, p3, n0, n2, n3, uv0, uv2, uv3, f0, f2, f3);
+  }
+
+  function appendBeveledBox(out, x0, x1, y0, y1, z0, z1, bevel = 0.015, flag = 0) {
+    const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+    const b = Math.min(bevel, dx * 0.28, dy * 0.28, dz * 0.28);
+    if (b <= 1e-5) {
+      pushQuad(out, [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [0, 0, 1], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [0, 0, -1], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [-1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0], [0, 1, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, -1, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      return;
+    }
+    const xi0 = x0 + b, xi1 = x1 - b, yi0 = y0 + b, yi1 = y1 - b, zi0 = z0 + b, zi1 = z1 - b;
+    pushQuad(out, [xi0, yi0, z1], [xi1, yi0, z1], [xi1, yi1, z1], [xi0, yi1, z1], [0, 0, 1], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi1, yi0, z0], [xi0, yi0, z0], [xi0, yi1, z0], [xi1, yi1, z0], [0, 0, -1], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x1, yi0, zi1], [x1, yi0, zi0], [x1, yi1, zi0], [x1, yi1, zi1], [1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x0, yi0, zi0], [x0, yi0, zi1], [x0, yi1, zi1], [x0, yi1, zi0], [-1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, y1, zi1], [xi1, y1, zi1], [xi1, y1, zi0], [xi0, y1, zi0], [0, 1, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, y0, zi0], [xi1, y0, zi0], [xi1, y0, zi1], [xi0, y0, zi1], [0, -1, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    const s2 = Math.SQRT1_2;
+    pushQuad(out, [xi1, yi1, z1], [x1, yi1, zi1], [x1, yi0, zi1], [xi1, yi0, z1], [s2, 0, s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x0, yi1, zi1], [xi0, yi1, z1], [xi0, yi0, z1], [x0, yi0, zi1], [-s2, 0, s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x1, yi1, zi0], [xi1, yi1, z0], [xi1, yi0, z0], [x1, yi0, zi0], [s2, 0, -s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, yi1, z0], [x0, yi1, zi0], [x0, yi0, zi0], [xi0, yi0, z0], [-s2, 0, -s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, yi1, z1], [xi1, yi1, z1], [xi1, y1, zi1], [xi0, y1, zi1], [0, s2, s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, y0, zi1], [xi1, y0, zi1], [xi1, yi0, z1], [xi0, yi0, z1], [0, -s2, s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi1, yi1, z0], [xi0, yi1, z0], [xi0, y1, zi0], [xi1, y1, zi0], [0, s2, -s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi1, y0, zi0], [xi0, y0, zi0], [xi0, yi0, z0], [xi1, yi0, z0], [0, -s2, -s2], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi1, y1, zi1], [x1, yi1, zi1], [x1, yi1, zi0], [xi1, y1, zi0], [s2, s2, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x0, yi1, zi1], [xi0, y1, zi1], [xi0, y1, zi0], [x0, yi1, zi0], [-s2, s2, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [x1, yi0, zi1], [xi1, y0, zi1], [xi1, y0, zi0], [x1, yi0, zi0], [s2, -s2, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    pushQuad(out, [xi0, y0, zi1], [x0, yi0, zi1], [x0, yi0, zi0], [xi0, y0, zi0], [-s2, -s2, 0], [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+          const px = sx > 0 ? [x1, xi1] : [x0, xi0];
+          const py = sy > 0 ? [y1, yi1] : [y0, yi0];
+          const pz = sz > 0 ? [z1, zi1] : [z0, zi0];
+          pushTri(out, [px[0], py[1], pz[1]], [px[1], py[0], pz[1]], [px[1], py[1], pz[0]], normalize([sx, sy, sz]), [0, 0], [1, 0], [0.5, 1], flag);
+        }
+      }
+    }
+  }
+
+  /**
+   * Builds a lathe along the Z-axis (used for Scheme A upright wheel drum, brass pegs, hub cap).
+   * Rings: { z, r, flag, sharp? }. Winding enforced strictly outward via pushQuadSmooth.
+   */
+  function appendLatheZ(out, rings, segs, offset = [0, 0, 0]) {
+    const runs = [];
+    let current = [rings[0]];
+    for (let i = 1; i < rings.length; i++) {
+      current.push(rings[i]);
+      if (rings[i].sharp && i < rings.length - 1) {
+        runs.push(current);
+        current = [rings[i]];
+      }
+    }
+    runs.push(current);
+
+    for (const prof of runs) {
+      const segNorms = [];
+      for (let i = 0; i < prof.length - 1; i++) {
+        const dz = prof[i + 1].z - prof[i].z;
+        const dr = prof[i + 1].r - prof[i].r;
+        const l = Math.hypot(dz, dr) || 1;
+        // Outward normal for profile walking from back (-Z) to front (+Z) along exterior:
+        // Wait: if dr > 0 as dz > 0 (flaring out), normal points back (-Z) & out (+R): [nz = -dr/l, nr = dz/l]
+        // Wait: if walking back along interior (dz < 0), nr = dz/l < 0 (points inward toward axis). Correct!
+        segNorms.push([-dr / l, dz / l]);
+      }
+      const pNorms = prof.map((_, i) => {
+        const a = segNorms[Math.max(0, i - 1)];
+        const b = segNorms[Math.min(segNorms.length - 1, i)];
+        const nz = a[0] + b[0], nr = a[1] + b[1];
+        const l = Math.hypot(nz, nr) || 1;
+        return [nz / l, nr / l];
+      });
+
+      const vert = (j, s) => {
+        const t = (s / segs) * TAU;
+        const rr = prof[j].r;
+        const cx = Math.cos(t), cy = Math.sin(t);
+        const [nz, nr] = pNorms[j];
+        const n = normalize([nr * cx, nr * cy, nz]);
+        return {
+          p: [rr * cx + offset[0], rr * cy + offset[1], prof[j].z + offset[2]],
+          n,
+          uv: [s / segs, (prof[j].z + 0.5)],
+          f: prof[j].flag,
+        };
+      };
+
+      for (let s = 0; s < segs; s++) {
+        for (let j = 0; j < prof.length - 1; j++) {
+          const a = vert(j, s), b = vert(j, s + 1), c = vert(j + 1, s + 1), d = vert(j + 1, s);
+          if (prof[j].r > 1e-4 || prof[j + 1].r > 1e-4) {
+            const segF = prof[j + 1].flag;
+            pushQuadSmooth(out, a.p, b.p, c.p, d.p, a.n, b.n, c.n, d.n, a.uv, b.uv, c.uv, d.uv, segF, segF, segF, segF);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Builds a lathe along the Y-axis (used for Scheme B tabletop bowl, platter, spindle).
+   * Rings walk from bottom center -> outer profile up -> top -> inner cavity down.
+   * For a profile where y increases along the outer wall, outward normal is [nr = +dy/l, ny = -dr/l].
+   */
+  function appendLatheY(out, rings, segs, offset = [0, 0, 0]) {
+    const runs = [];
+    let current = [rings[0]];
+    for (let i = 1; i < rings.length; i++) {
+      current.push(rings[i]);
+      if (rings[i].sharp && i < rings.length - 1) {
+        runs.push(current);
+        current = [rings[i]];
+      }
+    }
+    runs.push(current);
+
+    for (const prof of runs) {
+      const segNorms = [];
+      for (let i = 0; i < prof.length - 1; i++) {
+        const dy = prof[i + 1].y - prof[i].y;
+        const dr = prof[i + 1].r - prof[i].r;
+        const l = Math.hypot(dy, dr) || 1;
+        segNorms.push([dy / l, -dr / l]); // [nr, ny]
+      }
+      const pNorms = prof.map((_, i) => {
+        const a = segNorms[Math.max(0, i - 1)];
+        const b = segNorms[Math.min(segNorms.length - 1, i)];
+        const nr = a[0] + b[0], ny = a[1] + b[1];
+        const l = Math.hypot(nr, ny) || 1;
+        return [nr / l, ny / l];
+      });
+
+      const vert = (j, s) => {
+        const t = (s / segs) * TAU;
+        const rr = prof[j].r;
+        const cx = Math.cos(t), cz = Math.sin(t);
+        const [nr, ny] = pNorms[j];
+        const n = normalize([nr * cx, ny, nr * cz]);
+        return {
+          p: [rr * cx + offset[0], prof[j].y + offset[1], rr * cz + offset[2]],
+          n,
+          uv: [s / segs, prof[j].y],
+          f: prof[j].flag,
+        };
+      };
+
+      for (let s = 0; s < segs; s++) {
+        for (let j = 0; j < prof.length - 1; j++) {
+          const a = vert(j, s), b = vert(j, s + 1), c = vert(j + 1, s + 1), d = vert(j + 1, s);
+          if (prof[j].r > 1e-4 || prof[j + 1].r > 1e-4) {
+            const segF = prof[j + 1].flag;
+            pushQuadSmooth(out, a.p, b.p, c.p, d.p, a.n, b.n, c.n, d.n, a.uv, b.uv, c.uv, d.uv, segF, segF, segF, segF);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Builds a swept chamfered tube along a 3D polyline (for A-frame struts & swan-neck arch).
+   */
+  function appendTube3D(out, pts, rA, rB, flag = 0, closed = false) {
+    const P = 10;
+    const S = pts.length;
+    const rings = [];
+    for (let i = 0; i < S; i++) {
+      const pPrev = pts[closed ? (i + S - 1) % S : Math.max(0, i - 1)];
+      const pNext = pts[closed ? (i + 1) % S : Math.min(S - 1, i + 1)];
+      const tang = normalize(sub(pNext, pPrev));
+      const refUp = Math.abs(tang[0]) < 0.85 ? [1, 0, 0] : [0, 1, 0];
+      const uVec = normalize(cross(tang, refUp));
+      const vVec = normalize(cross(tang, uVec));
+      const tFrac = i / Math.max(1, S - 1);
+      const rX = rA * (1 - tFrac) + rB * tFrac;
+      const ring = [];
+      for (let j = 0; j < P; j++) {
+        const a = (j / P) * TAU;
+        const ca = Math.cos(a), sa = Math.sin(a);
+        const n = normalize(add(scale(uVec, ca), scale(vVec, sa)));
+        const p = add(pts[i], scale(n, rX));
+        ring.push({ p, n, uv: [j / P, tFrac] });
+      }
+      rings.push(ring);
+    }
+    const segCount = closed ? S : S - 1;
+    for (let i = 0; i < segCount; i++) {
+      const r0 = rings[i], r1 = rings[(i + 1) % S];
+      for (let j = 0; j < P; j++) {
+        const jn = (j + 1) % P;
+        const a = r0[j], b = r0[jn], c = r1[jn], d = r1[j];
+        pushQuadSmooth(out, a.p, b.p, c.p, d.p, a.n, b.n, c.n, d.n, a.uv, b.uv, c.uv, d.uv, flag, flag, flag, flag);
+      }
+    }
+    if (!closed) {
+      const tStart = normalize(sub(pts[0], pts[1]));
+      const tEnd = normalize(sub(pts[S - 1], pts[S - 2]));
+      for (let j = 0; j < P; j++) {
+        const jn = (j + 1) % P;
+        pushTri(out, pts[0], rings[0][j].p, rings[0][jn].p, tStart, [0.5, 0.5], [0, 0], [1, 0], flag);
+        pushTri(out, pts[S - 1], rings[S - 1][j].p, rings[S - 1][jn].p, tEnd, [0.5, 0.5], [0, 0], [1, 0], flag);
+      }
+    }
+  }
+
+  /**
+   * Builds a beveled XY extruded polygon (used for sculpted clapper pointer & nameplate).
+   */
+  function signedArea2D(pts) {
+    let s = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      s += a[0] * b[1] - b[0] * a[1];
+    }
+    return s * 0.5;
+  }
+
+  function pointInTri2D(p, a, b, c) {
+    const c1 = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+    const c2 = (c[0] - b[0]) * (p[1] - b[1]) - (c[1] - b[1]) * (p[0] - b[0]);
+    const c3 = (a[0] - c[0]) * (p[1] - c[1]) - (a[1] - c[1]) * (p[0] - c[0]);
+    return c1 >= -1e-6 && c2 >= -1e-6 && c3 >= -1e-6;
+  }
+
+  function triangulateCCW(poly) {
+    const idx = poly.map((_, i) => i);
+    const tris = [];
+    let guard = 0;
+    while (idx.length > 3 && guard++ < poly.length * poly.length) {
+      let clipped = false;
+      for (let i = 0; i < idx.length; i++) {
+        const ia = idx[(i + idx.length - 1) % idx.length];
+        const ib = idx[i];
+        const ic = idx[(i + 1) % idx.length];
+        const a = poly[ia], b = poly[ib], c = poly[ic];
+        if ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) <= 1e-6) continue;
+        let hasInside = false;
+        for (let k = 0; k < idx.length; k++) {
+          const id = idx[k];
+          if (id === ia || id === ib || id === ic) continue;
+          if (pointInTri2D(poly[id], a, b, c)) { hasInside = true; break; }
+        }
+        if (!hasInside) {
+          tris.push([ia, ib, ic]);
+          idx.splice(i, 1);
+          clipped = true;
+          break;
+        }
+      }
+      if (!clipped) break;
+    }
+    if (idx.length === 3) tris.push([idx[0], idx[1], idx[2]]);
+    return tris;
+  }
+
+  function appendExtrudedXY(out, rawPoly, z0, z1, bevel = 0.012, flag = 0) {
+    const poly = signedArea2D(rawPoly) >= 0 ? rawPoly.slice() : rawPoly.slice().reverse();
+    const N = poly.length;
+    const b = Math.min(bevel, (z1 - z0) * 0.36);
+    const zF = z1, zFB = z1 - b, zBB = z0 + b, zB = z0;
+
+    const inner = poly.map((_, i) => {
+      const pPrev = poly[(i + N - 1) % N], pCurr = poly[i], pNext = poly[(i + 1) % N];
+      const e1 = normalize([pCurr[0] - pPrev[0], pCurr[1] - pPrev[1], 0]);
+      const e2 = normalize([pNext[0] - pCurr[0], pNext[1] - pCurr[1], 0]);
+      const nIn1 = [-e1[1], e1[0]];
+      const nIn2 = [-e2[1], e2[0]];
+      const bis = [nIn1[0] + nIn2[0], nIn1[1] + nIn2[1]];
+      const bl = Math.hypot(bis[0], bis[1]) || 1;
+      const d = Math.min(b * 0.72, 0.020);
+      return [pCurr[0] + (bis[0] / bl) * d, pCurr[1] + (bis[1] / bl) * d];
+    });
+
+    const tris = triangulateCCW(inner);
+    for (const [ia, ib, ic] of tris) {
+      const a = inner[ia], bPt = inner[ib], c = inner[ic];
+      pushTri(out, [a[0], a[1], zF], [bPt[0], bPt[1], zF], [c[0], c[1], zF], [0, 0, 1], [0, 0], [1, 0], [0.5, 1], flag);
+      pushTri(out, [c[0], c[1], zB], [bPt[0], bPt[1], zB], [a[0], a[1], zB], [0, 0, -1], [0, 0], [1, 0], [0.5, 1], flag);
+    }
+
+    for (let i = 0; i < N; i++) {
+      const j = (i + 1) % N;
+      const o0 = poly[i], o1 = poly[j];
+      const i0 = inner[i], i1 = inner[j];
+      const ex = o1[0] - o0[0], ey = o1[1] - o0[1];
+      const ns = normalize([ey, -ex, 0]);
+      const nf = normalize([ns[0] * 0.68, ns[1] * 0.68, 0.73]);
+      const nb = normalize([ns[0] * 0.68, ns[1] * 0.68, -0.73]);
+      pushQuad(out, [o0[0], o0[1], zFB], [o1[0], o1[1], zFB], [i1[0], i1[1], zF], [i0[0], i0[1], zF], nf, [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [o0[0], o0[1], zBB], [o1[0], o1[1], zBB], [o1[0], o1[1], zFB], [o0[0], o0[1], zFB], ns, [0, 0], [1, 0], [1, 1], [0, 1], flag);
+      pushQuad(out, [i0[0], i0[1], zB], [i1[0], i1[1], zB], [o1[0], o1[1], zBB], [o0[0], o0[1], zBB], nb, [0, 0], [1, 0], [1, 1], [0, 1], flag);
+    }
+  }
+
+  // =========================================================================
+  // SCHEME A GEOMETRIES · 立式黄铜嘉年华大转盘 (Upright Carnival Wheel)
+  // =========================================================================
+  const WHEEL_A_Y = 1.46;
+  const WHEEL_A_R = 1.20;
+  const WHEEL_A_FACE_R = 1.115;
+  const WHEEL_A_PEG_R = 1.055;
+  const WHEEL_A_FACE_Z = 0.165;
+
+  function buildCarnivalStandGeo() {
+    const out = [];
+    // 1. Stepped chamfered base plinth sitting squarely on desk y = 0
+    appendBeveledBox(out, -1.16, 1.16, 0.00, 0.125, -0.58, 0.56, 0.032, 0);
+    // Upper recessed brass trim lip around plinth
+    appendBeveledBox(out, -1.07, 1.07, 0.115, 0.165, -0.50, 0.48, 0.016, 2);
+    // Front brass escutcheon badge on base front face
+    appendBeveledBox(out, -0.34, 0.34, 0.035, 0.105, 0.54, 0.59, 0.012, 2);
+
+    // 2. Twin sculpted flared A-frame legs (strictly at z <= -0.11 above y = 0.22 -> zero collision with wheel)
+    for (const sgn of [-1, 1]) {
+      // Foot pad anchored on plinth
+      appendBeveledBox(out, sgn > 0 ? 0.72 : -1.02, sgn > 0 ? 1.02 : -0.72, 0.15, 0.23, -0.44, 0.24, 0.018, 2);
+      // Primary swept A-frame leg rising from plinth flanks inward to rear axle housing
+      const mainLeg = [
+        [sgn * 0.86, 0.18, -0.18],
+        [sgn * 0.78, 0.48, -0.19],
+        [sgn * 0.60, 0.88, -0.20],
+        [sgn * 0.38, 1.24, -0.21],
+        [sgn * 0.22, WHEEL_A_Y, -0.21],
+      ];
+      appendTube3D(out, mainLeg, 0.078, 0.056, 0);
+
+      // Rear tripod stabilizer brace
+      const rearBrace = [
+        [sgn * 0.54, 0.17, -0.42],
+        [sgn * 0.36, 0.78, -0.34],
+        [sgn * 0.16, WHEEL_A_Y - 0.04, -0.25],
+      ];
+      appendTube3D(out, rearBrace, 0.052, 0.042, 0);
+
+      // Brass foot collar & mid-leg brass accent sleeve
+      appendBeveledBox(out, sgn * 0.86 - 0.09, sgn * 0.86 + 0.09, 0.19, 0.28, -0.27, -0.09, 0.014, 2);
+    }
+
+    // 3. Turned horizontal brass cross-tie rod uniting the two A-frame legs
+    const tiePts = [[-0.68, 0.62, -0.20], [0.68, 0.62, -0.20]];
+    appendTube3D(out, tiePts, 0.036, 0.036, 2);
+    // Decorative center brass medallion on tie-bar
+    appendLatheZ(out, [
+      { z: -0.25, r: 0.001, flag: 2 },
+      { z: -0.25, r: 0.075, flag: 2, sharp: true },
+      { z: -0.15, r: 0.075, flag: 2, sharp: true },
+      { z: -0.15, r: 0.001, flag: 2 },
+    ], 24, [0, 0.62, 0]);
+
+    // 4. Turned rear axle bearing housing + forward spindle connecting to wheel back
+    appendLatheZ(out, [
+      { z: -0.34, r: 0.001, flag: 2 },
+      { z: -0.34, r: 0.13, flag: 2, sharp: true },
+      { z: -0.30, r: 0.21, flag: 2 },
+      { z: -0.26, r: 0.23, flag: 0, sharp: true },
+      { z: -0.12, r: 0.23, flag: 0, sharp: true },
+      { z: -0.10, r: 0.15, flag: 2, sharp: true },
+      { z: -0.02, r: 0.11, flag: 2, sharp: true },
+      { z: -0.02, r: 0.001, flag: 2 },
+    ], 36, [0, WHEEL_A_Y, 0]);
+
+    return new Float32Array(out);
+  }
+
+  function buildCarnivalBracketGeo() {
+    const out = [];
+    // Graceful swan-neck brass arch rising from rear axle housing up & over 12 o'clock
+    const archPts = [
+      [0, WHEEL_A_Y + 0.16, -0.21],
+      [0, WHEEL_A_Y + 0.80, -0.23],
+      [0, WHEEL_A_Y + 1.24, -0.20],
+      [0, WHEEL_A_Y + 1.38, -0.06],
+      [0, WHEEL_A_Y + 1.40, 0.12],
+      [0, WHEEL_A_Y + 1.32, 0.245],
+    ];
+    appendTube3D(out, archPts, 0.052, 0.040, 2);
+
+    // Machined brass clapper pivot barrel at [0, WHEEL_A_Y + 1.28, 0.245]
+    appendLatheZ(out, [
+      { z: 0.17, r: 0.001, flag: 2 },
+      { z: 0.17, r: 0.090, flag: 2, sharp: true },
+      { z: 0.29, r: 0.090, flag: 2, sharp: true },
+      { z: 0.315, r: 0.062, flag: 3, sharp: true },
+      { z: 0.325, r: 0.044, flag: 2 },
+      { z: 0.33, r: 0.001, flag: 2 },
+    ], 28, [0, WHEEL_A_Y + 1.28, 0]);
+
+    // Decorative finial spire crowning the arch apex
+    appendLatheY(out, [
+      { y: WHEEL_A_Y + 1.38, r: 0.001, flag: 2 },
+      { y: WHEEL_A_Y + 1.38, r: 0.062, flag: 2, sharp: true },
+      { y: WHEEL_A_Y + 1.44, r: 0.042, flag: 2 },
+      { y: WHEEL_A_Y + 1.50, r: 0.056, flag: 2 },
+      { y: WHEEL_A_Y + 1.57, r: 0.022, flag: 2 },
+      { y: WHEEL_A_Y + 1.61, r: 0.001, flag: 2 },
+    ], 24, [0, 0, 0.10]);
+
+    return new Float32Array(out);
+  }
+
+  function buildCarnivalClapperGeo() {
+    const out = [];
+    // Local origin is the top pivot [0, 0, 0]; blade hangs down to y = -0.375
+    // Sculpted teardrop lancet body (flag = 2 brass)
+    const outerPoly = [
+      [0.00, 0.075],
+      [0.074, 0.042],
+      [0.088, -0.025],
+      [0.056, -0.185],
+      [0.020, -0.352],
+      [0.00, -0.378],
+      [-0.020, -0.352],
+      [-0.056, -0.185],
+      [-0.088, -0.025],
+      [-0.074, 0.042],
+    ];
+    appendExtrudedXY(out, outerPoly, -0.032, 0.032, 0.012, 2);
+
+    // Contrasting recessed enamel arrow inlay on front face (flag = 3 vermilion/accent)
+    const inlayPoly = [
+      [0.00, -0.012],
+      [0.046, -0.068],
+      [0.014, -0.305],
+      [0.00, -0.332],
+      [-0.014, -0.305],
+      [-0.046, -0.068],
+    ];
+    appendExtrudedXY(out, inlayPoly, 0.022, 0.044, 0.006, 3);
+
+    return new Float32Array(out);
+  }
+
+  function buildCarnivalDrumGeo() {
+    const out = [];
+    // 96-segment precision beveled wheel chassis along Z (centered at local origin)
+    appendLatheZ(out, [
+      { z: -0.055, r: 0.001, flag: 0 },
+      { z: -0.055, r: 0.28, flag: 2, sharp: true },
+      { z: -0.040, r: 0.30, flag: 2, sharp: true },
+      { z: -0.040, r: 1.13, flag: 0, sharp: true },
+      { z: -0.018, r: WHEEL_A_R, flag: 0, sharp: true },
+      { z: 0.035, r: WHEEL_A_R, flag: 0, sharp: true },
+      // Central raised brushed-brass equatorial band around the drum perimeter
+      { z: 0.045, r: WHEEL_A_R + 0.016, flag: 2, sharp: true },
+      { z: 0.115, r: WHEEL_A_R + 0.016, flag: 2, sharp: true },
+      { z: 0.125, r: WHEEL_A_R, flag: 0, sharp: true },
+      // Front stepped brass bezel lip framing the recessed dial face
+      { z: 0.168, r: WHEEL_A_R, flag: 2, sharp: true },
+      { z: 0.205, r: 1.175, flag: 2, sharp: true },
+      { z: 0.212, r: 1.135, flag: 2, sharp: true },
+      { z: 0.175, r: 1.105, flag: 2, sharp: true },
+      // Inner recessed seat behind dial face
+      { z: 0.145, r: 1.105, flag: 1, sharp: true },
+      { z: 0.145, r: 0.001, flag: 1 },
+    ], 96);
+    return new Float32Array(out);
+  }
+
+  function buildCarnivalFaceGeo() {
+    const out = [];
+    const segs = 96;
+    const R = WHEEL_A_FACE_R;
+    const zF = WHEEL_A_FACE_Z;
+    const zB = WHEEL_A_FACE_Z - 0.022;
+
+    // Front textured face (+Z): u = 0.5 + x/(2R), v = 0.5 + y/(2R) -> upright & non-mirrored!
+    for (let s = 0; s < segs; s++) {
+      const a0 = (s / segs) * TAU;
+      const a1 = ((s + 1) / segs) * TAU;
+      const x0 = R * Math.cos(a0), y0 = R * Math.sin(a0);
+      const x1 = R * Math.cos(a1), y1 = R * Math.sin(a1);
+      pushTri(
+        out,
+        [0, 0, zF], [x0, y0, zF], [x1, y1, zF],
+        [0, 0, 1],
+        [0.5, 0.5],
+        [0.5 + x0 / (2 * R), 0.5 + y0 / (2 * R)],
+        [0.5 + x1 / (2 * R), 0.5 + y1 / (2 * R)],
+        0
+      );
+      // Solid backing wafer (-Z) so exploded view looks cleanly machined from every angle
+      pushTri(
+        out,
+        [0, 0, zB], [x1, y1, zB], [x0, y0, zB],
+        [0, 0, -1],
+        [0.5, 0.5], [0, 0], [1, 0],
+        2
+      );
+      // Perimeter rim of wafer
+      const n0 = [Math.cos(a0), Math.sin(a0), 0];
+      const n1 = [Math.cos(a1), Math.sin(a1), 0];
+      pushQuadSmooth(
+        out,
+        [x0, y0, zB], [x1, y1, zB], [x1, y1, zF], [x0, y0, zF],
+        n0, n1, n1, n0,
+        [0, 0], [1, 0], [1, 1], [0, 1],
+        2, 2, 2, 2
+      );
+    }
+    return new Float32Array(out);
+  }
+
+  function buildCarnivalPegsGeo(count) {
+    const out = [];
+    for (let k = 0; k < count; k++) {
+      // Exact sector boundary angle phi_k clockwise from 12 o'clock: x = R sin(phi), y = R cos(phi)
+      const phi = (k / count) * TAU;
+      const px = WHEEL_A_PEG_R * Math.sin(phi);
+      const py = WHEEL_A_PEG_R * Math.cos(phi);
+      appendLatheZ(out, [
+        { z: WHEEL_A_FACE_Z - 0.005, r: 0.001, flag: 2 },
+        { z: WHEEL_A_FACE_Z - 0.005, r: 0.044, flag: 2, sharp: true },
+        { z: WHEEL_A_FACE_Z + 0.022, r: 0.042, flag: 2, sharp: true },
+        { z: WHEEL_A_FACE_Z + 0.030, r: 0.026, flag: 2 },
+        { z: WHEEL_A_FACE_Z + 0.095, r: 0.027, flag: 2 },
+        { z: WHEEL_A_FACE_Z + 0.112, r: 0.036, flag: 2 },
+        { z: WHEEL_A_FACE_Z + 0.130, r: 0.026, flag: 2 },
+        { z: WHEEL_A_FACE_Z + 0.140, r: 0.001, flag: 2 },
+      ], 16, [px, py, 0]);
+    }
+    return new Float32Array(out);
+  }
+
+  function buildCarnivalHubGeo() {
+    const out = [];
+    // Multi-tiered lathe-turned brass hub cap
+    appendLatheZ(out, [
+      { z: WHEEL_A_FACE_Z, r: 0.001, flag: 2 },
+      { z: WHEEL_A_FACE_Z, r: 0.275, flag: 2, sharp: true },
+      { z: WHEEL_A_FACE_Z + 0.030, r: 0.265, flag: 2, sharp: true },
+      { z: WHEEL_A_FACE_Z + 0.044, r: 0.228, flag: 3, sharp: true },
+      { z: WHEEL_A_FACE_Z + 0.056, r: 0.210, flag: 2, sharp: true },
+      { z: WHEEL_A_FACE_Z + 0.088, r: 0.195, flag: 2 },
+      { z: WHEEL_A_FACE_Z + 0.125, r: 0.155, flag: 2 },
+      { z: WHEEL_A_FACE_Z + 0.152, r: 0.092, flag: 2 },
+      { z: WHEEL_A_FACE_Z + 0.168, r: 0.036, flag: 2 },
+      { z: WHEEL_A_FACE_Z + 0.172, r: 0.001, flag: 2 },
+    ], 48);
+    // 6 decorative brass perimeter bolts around the hub flange
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU;
+      const bx = 0.238 * Math.cos(a), by = 0.238 * Math.sin(a);
+      appendLatheZ(out, [
+        { z: WHEEL_A_FACE_Z + 0.025, r: 0.001, flag: 2 },
+        { z: WHEEL_A_FACE_Z + 0.025, r: 0.022, flag: 2, sharp: true },
+        { z: WHEEL_A_FACE_Z + 0.044, r: 0.020, flag: 2 },
+        { z: WHEEL_A_FACE_Z + 0.052, r: 0.001, flag: 2 },
+      ], 12, [bx, by, 0]);
+    }
+    return new Float32Array(out);
+  }
+
+  // =========================================================================
+  // SCHEME B GEOMETRIES · 卧式精钢桌面罗盘转台 (Tabletop Precision Compass)
+  // =========================================================================
+  const COMPASS_BOWL_R = 1.66;
+  const COMPASS_FACE_R = 1.315;
+  const COMPASS_FACE_Y = 0.395;
+
+  function buildCompassBowlGeo() {
+    const out = [];
+    // 96-segment chamfered precision bevel bowl resting squarely on tray y = 0
+    appendLatheY(out, [
+      { y: 0.00, r: 0.001, flag: 3 },
+      { y: 0.00, r: 1.40, flag: 3, sharp: true },
+      { y: 0.045, r: 1.44, flag: 3, sharp: true },
+      { y: 0.055, r: 1.49, flag: 0, sharp: true },
+      { y: 0.18, r: 1.65, flag: 0 },
+      { y: 0.23, r: COMPASS_BOWL_R, flag: 0, sharp: true },
+      // Recessed seat for knurled outer ring
+      { y: 0.235, r: 1.615, flag: 1, sharp: true },
+      { y: 0.395, r: 1.615, flag: 1, sharp: true },
+      // Broad 45° architectural upper chamfered bezel crown
+      { y: 0.405, r: 1.67, flag: 0, sharp: true },
+      { y: 0.465, r: 1.59, flag: 0, sharp: true },
+      { y: 0.482, r: 1.49, flag: 0, sharp: true },
+      // Bright machined inner metallic bezel chamfer
+      { y: 0.482, r: 1.465, flag: 2, sharp: true },
+      { y: 0.445, r: 1.415, flag: 2, sharp: true },
+      // Deep shadow recess groove around the inner rotating platter
+      { y: 0.30, r: 1.415, flag: 1, sharp: true },
+      { y: 0.22, r: 1.38, flag: 1, sharp: true },
+      { y: 0.22, r: 0.001, flag: 1 },
+    ], 96);
+
+    // 4 machined compass cardinal lugs around the outer bowl skirt (E, S, W, N)
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * TAU;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const rIn = 1.56, rOut = 1.74;
+      const hw = 0.095;
+      // Oriented lug prism using local basis (radial, tangential)
+      const rad = [ca, 0, sa];
+      const tan = [-sa, 0, ca];
+      const pt = (r, t, y) => [rad[0] * r + tan[0] * t, y, rad[2] * r + tan[2] * t];
+      const y0 = 0.08, y1 = 0.24;
+      const p00 = pt(rIn, -hw, y0), p10 = pt(rOut, -hw * 0.72, y0);
+      const p11 = pt(rOut, hw * 0.72, y0), p01 = pt(rIn, hw, y0);
+      const q00 = pt(rIn, -hw, y1), q10 = pt(rOut, -hw * 0.72, y1);
+      const q11 = pt(rOut, hw * 0.72, y1), q01 = pt(rIn, hw, y1);
+      pushQuad(out, q00, q10, q11, q01, [0, 1, 0], [0, 0], [1, 0], [1, 1], [0, 1], 2);
+      pushQuad(out, p00, p01, p11, p10, [0, -1, 0], [0, 0], [1, 0], [1, 1], [0, 1], 2);
+      pushQuad(out, p10, p11, q11, q10, rad, [0, 0], [1, 0], [1, 1], [0, 1], 2);
+      pushQuad(out, p00, p10, q10, q00, scale(tan, -1), [0, 0], [1, 0], [1, 1], [0, 1], 2);
+      pushQuad(out, p11, p01, q01, q11, tan, [0, 0], [1, 0], [1, 1], [0, 1], 2);
+    }
+
+    return new Float32Array(out);
+  }
+
+  function buildCompassKnurlRingGeo() {
+    const out = [];
+    // True 72-tooth precision machined knurled metallic grip ring wrapping the bowl rim
+    const teeth = 72;
+    const steps = teeth * 2;
+    const rInner = 1.61;
+    const rValley = 1.655;
+    const rPeak = 1.710;
+    const yBot = 0.238;
+    const yBotBev = 0.258;
+    const yTopBev = 0.376;
+    const yTop = 0.396;
+
+    const rAt = s => (s % 2 === 0 ? rPeak : rValley);
+    for (let s = 0; s < steps; s++) {
+      const sn = (s + 1) % steps;
+      const a0 = (s / steps) * TAU;
+      const a1 = ((s + 1) / steps) * TAU;
+      const r0 = rAt(s), r1 = rAt(sn);
+      const c0 = Math.cos(a0), s0 = Math.sin(a0);
+      const c1 = Math.cos(a1), s1 = Math.sin(a1);
+
+      const p0B = [r0 * c0, yBotBev, r0 * s0];
+      const p1B = [r1 * c1, yBotBev, r1 * s1];
+      const p1T = [r1 * c1, yTopBev, r1 * s1];
+      const p0T = [r0 * c0, yTopBev, r0 * s0];
+
+      // Crisp tooth facet normal catches bright studio metallic glints!
+      const nSide = normalize(cross(sub(p1B, p0B), sub(p0T, p0B)));
+      const outDir = [Math.cos((a0 + a1) * 0.5), 0, Math.sin((a0 + a1) * 0.5)];
+      const nFac = dot(nSide, outDir) >= 0 ? nSide : scale(nSide, -1);
+      pushQuad(out, p0B, p1B, p1T, p0T, nFac, [0, 0], [1, 0], [1, 1], [0, 1], 2);
+
+      // Top & bottom knurl bevel chamfers
+      const t0 = [(r0 - 0.028) * c0, yTop, (r0 - 0.028) * s0];
+      const t1 = [(r1 - 0.028) * c1, yTop, (r1 - 0.028) * s1];
+      const b0 = [(r0 - 0.028) * c0, yBot, (r0 - 0.028) * s0];
+      const b1 = [(r1 - 0.028) * c1, yBot, (r1 - 0.028) * s1];
+      pushQuad(out, p0T, p1T, t1, t0, normalize([outDir[0] * 0.65, 0.76, outDir[2] * 0.65]), [0, 0], [1, 0], [1, 1], [0, 1], 2);
+      pushQuad(out, b0, b1, p1B, p0B, normalize([outDir[0] * 0.65, -0.76, outDir[2] * 0.65]), [0, 0], [1, 0], [1, 1], [0, 1], 2);
+
+      // Top & bottom flat seat rings back to rInner
+      const ti0 = [rInner * c0, yTop, rInner * s0], ti1 = [rInner * c1, yTop, rInner * s1];
+      const bi0 = [rInner * c0, yBot, rInner * s0], bi1 = [rInner * c1, yBot, rInner * s1];
+      pushQuad(out, t0, t1, ti1, ti0, [0, 1, 0], [0, 0], [1, 0], [1, 1], [0, 1], 2);
+      pushQuad(out, bi0, bi1, b1, b0, [0, -1, 0], [0, 0], [1, 0], [1, 1], [0, 1], 2);
+    }
+    return new Float32Array(out);
+  }
+
+  function buildCompassPlatterGeo(detentCount) {
+    const out = [];
+    // Rotating metallic platter chassis + inner raised brushed retaining lip
+    appendLatheY(out, [
+      { y: 0.24, r: 0.001, flag: 2 },
+      { y: 0.24, r: 1.375, flag: 2, sharp: true },
+      { y: 0.375, r: 1.385, flag: 2, sharp: true },
+      { y: 0.422, r: 1.375, flag: 2, sharp: true },
+      { y: 0.428, r: 1.335, flag: 2, sharp: true },
+      { y: 0.398, r: 1.310, flag: 2, sharp: true },
+      { y: 0.372, r: 1.310, flag: 1, sharp: true },
+      { y: 0.372, r: 0.001, flag: 1 },
+    ], 96);
+
+    // Precision metallic perimeter index pips aligned to exact sector boundaries
+    for (let k = 0; k < detentCount; k++) {
+      const phi = (k / detentCount) * TAU;
+      const px = 1.352 * Math.sin(phi);
+      const pz = -1.352 * Math.cos(phi);
+      appendLatheY(out, [
+        { y: 0.422, r: 0.001, flag: 2 },
+        { y: 0.422, r: 0.028, flag: 2, sharp: true },
+        { y: 0.448, r: 0.024, flag: 2 },
+        { y: 0.460, r: 0.012, flag: 2 },
+        { y: 0.464, r: 0.001, flag: 2 },
+      ], 12, [px, 0, pz]);
+    }
+    return new Float32Array(out);
+  }
+
+  function buildCompassFaceGeo() {
+    const out = [];
+    const segs = 96;
+    const R = COMPASS_FACE_R;
+    const yT = COMPASS_FACE_Y;
+    const yB = COMPASS_FACE_Y - 0.024;
+
+    // Top textured face (+Y): u = 0.5 + x/(2R), v = 0.5 - z/(2R)
+    // Check: -Z (12 o'clock / screen UP) -> v = 1 (Canvas TOP). +X (screen RIGHT) -> u = 1 (Canvas RIGHT).
+    // Guaranteed upright and non-mirrored!
+    for (let s = 0; s < segs; s++) {
+      const a0 = (s / segs) * TAU;
+      const a1 = ((s + 1) / segs) * TAU;
+      const x0 = R * Math.cos(a0), z0 = R * Math.sin(a0);
+      const x1 = R * Math.cos(a1), z1 = R * Math.sin(a1);
+      pushTri(
+        out,
+        [0, yT, 0], [x1, yT, z1], [x0, yT, z0],
+        [0, 1, 0],
+        [0.5, 0.5],
+        [0.5 + x1 / (2 * R), 0.5 - z1 / (2 * R)],
+        [0.5 + x0 / (2 * R), 0.5 - z0 / (2 * R)],
+        0
+      );
+      // Underside disc cap for solid exploded view
+      pushTri(
+        out,
+        [0, yB, 0], [x0, yB, z0], [x1, yB, z1],
+        [0, -1, 0],
+        [0.5, 0.5], [0, 0], [1, 0],
+        2
+      );
+      const n0 = [Math.cos(a0), 0, Math.sin(a0)];
+      const n1 = [Math.cos(a1), 0, Math.sin(a1)];
+      pushQuadSmooth(
+        out,
+        [x0, yB, z0], [x1, yB, z1], [x1, yT, z1], [x0, yT, z0],
+        n0, n1, n1, n0,
+        [0, 0], [1, 0], [1, 1], [0, 1],
+        2, 2, 2, 2
+      );
+    }
+    return new Float32Array(out);
+  }
+
+  function buildCompassSpindleGeo() {
+    const out = [];
+    // Chronometer-grade concentric center compass cap
+    appendLatheY(out, [
+      { y: COMPASS_FACE_Y, r: 0.001, flag: 2 },
+      { y: COMPASS_FACE_Y, r: 0.285, flag: 2, sharp: true },
+      { y: COMPASS_FACE_Y + 0.032, r: 0.270, flag: 2, sharp: true },
+      { y: COMPASS_FACE_Y + 0.045, r: 0.228, flag: 0, sharp: true },
+      { y: COMPASS_FACE_Y + 0.068, r: 0.218, flag: 0, sharp: true },
+      { y: COMPASS_FACE_Y + 0.088, r: 0.190, flag: 2, sharp: true },
+      { y: COMPASS_FACE_Y + 0.132, r: 0.135, flag: 2 },
+      { y: COMPASS_FACE_Y + 0.165, r: 0.064, flag: 2 },
+      { y: COMPASS_FACE_Y + 0.180, r: 0.001, flag: 2 },
+    ], 48);
+    // Machined center screw slot crest bar
+    appendBeveledBox(out, -0.09, 0.09, COMPASS_FACE_Y + 0.140, COMPASS_FACE_Y + 0.172, -0.018, 0.018, 0.006, 3);
+    return new Float32Array(out);
+  }
+
+  function buildCompassPointerHousingGeo() {
+    const out = [];
+    // Sculpted 12-o'clock (North, z = -1.55) machined bridge anchored cleanly to bowl crown
+    appendBeveledBox(out, -0.22, 0.22, 0.43, 0.56, -1.66, -1.42, 0.022, 0);
+    // Raised brass bezel collar cap
+    appendBeveledBox(out, -0.15, 0.15, 0.53, 0.60, -1.61, -1.45, 0.014, 2);
+    // Flanking machined screws
+    for (const sx of [-0.155, 0.155]) {
+      appendLatheY(out, [
+        { y: 0.555, r: 0.001, flag: 2 },
+        { y: 0.555, r: 0.028, flag: 2, sharp: true },
+        { y: 0.580, r: 0.026, flag: 2 },
+        { y: 0.588, r: 0.001, flag: 2 },
+      ], 14, [sx, 0, -1.53]);
+    }
+    return new Float32Array(out);
+  }
+
+  function buildCompassNeedleGeo() {
+    const out = [];
+    // Local origin is pivot [0, 0, 0] at [0, 0.50, -1.46]; faceted needle points inward (+Z) to z = +0.41
+    const yTop = 0.062, yMid = 0.012, yBot = -0.026;
+    const zBack = -0.07, zShould = 0.05, zTip = 0.41;
+    const hw = 0.108;
+    const tip = [0, yMid, zTip];
+    const topRidge = [0, yTop, zShould];
+    const backRidge = [0, yTop, zBack];
+    const leftS = [-hw, yMid, zShould];
+    const rightS = [hw, yMid, zShould];
+    const leftB = [-hw * 0.76, yMid, zBack];
+    const rightB = [hw * 0.76, yMid, zBack];
+    const botC = [0, yBot, zShould];
+    const botB = [0, yBot, zBack];
+
+    const triFace = (a, b, c, f) => {
+      const n = normalize(cross(sub(b, a), sub(c, a)));
+      pushTri(out, a, b, c, n, [0, 0], [1, 0], [0.5, 1], f);
+    };
+    // Faceted vermilion/copper arrowhead (flag = 3)
+    triFace(topRidge, leftS, tip, 3);
+    triFace(topRidge, tip, rightS, 3);
+    triFace(botC, tip, leftS, 3);
+    triFace(botC, rightS, tip, 3);
+    // Machined metallic tail collar (flag = 2)
+    triFace(backRidge, leftB, leftS, 2);
+    triFace(backRidge, leftS, topRidge, 2);
+    triFace(backRidge, topRidge, rightS, 2);
+    triFace(backRidge, rightS, rightB, 2);
+    triFace(botB, leftS, leftB, 2);
+    triFace(botB, botC, leftS, 2);
+    triFace(botB, rightB, rightS, 2);
+    triFace(botB, rightS, botC, 2);
+    pushQuad(out, leftB, backRidge, rightB, botB, [0, 0, -1], [0, 0], [1, 0], [1, 1], [0, 1], 2);
+
+    return new Float32Array(out);
+  }
+
+  // Build shared static geometries once
+  const GEOS_A = {
+    stand: buildCarnivalStandGeo(),
+    bracket: buildCarnivalBracketGeo(),
+    clapper: buildCarnivalClapperGeo(),
+    drum: buildCarnivalDrumGeo(),
+    face: buildCarnivalFaceGeo(),
+    pegs12: buildCarnivalPegsGeo(12),
+    pegs10: buildCarnivalPegsGeo(10),
+    hub: buildCarnivalHubGeo(),
+  };
+
+  const GEOS_B = {
+    bowl: buildCompassBowlGeo(),
+    knurl: buildCompassKnurlRingGeo(),
+    platter12: buildCompassPlatterGeo(12),
+    platter10: buildCompassPlatterGeo(10),
+    face: buildCompassFaceGeo(),
+    spindle: buildCompassSpindleGeo(),
+    pointerHousing: buildCompassPointerHousingGeo(),
+    needle: buildCompassNeedleGeo(),
+  };
+
+  // =========================================================================
+  // HIGH-RES 1024×1024 CANVAS DIAL TEXTURES (Crisp Upright Chinese Labels)
+  // =========================================================================
+  function renderCarnivalDialTexture(spec, layout, finish) {
+    const S = 1024, cx = S / 2, cy = S / 2, R = S * 0.5;
+    const c = document.createElement('canvas');
+    c.width = S;
+    c.height = S;
+    const ctx = c.getContext('2d');
+    const sectors = buildSectors(spec, layout);
+
+    // Base fill
+    ctx.fillStyle = finish.dialRestBg;
+    ctx.fillRect(0, 0, S, S);
+
+    // 1. Paint exact proportional sectors clockwise from 12 o'clock (-PI/2)
+    for (const sec of sectors) {
+      const a0 = sec.startRad - Math.PI / 2;
+      const a1 = sec.endRad - Math.PI / 2;
+      const grad = ctx.createRadialGradient(cx, cy, R * 0.14, cx, cy, R);
+      if (sec.isTrain) {
+        grad.addColorStop(0, finish.dialTrainInner);
+        grad.addColorStop(1, finish.dialTrainOuter);
+      } else {
+        grad.addColorStop(0, finish.dialRestInner);
+        grad.addColorStop(1, finish.dialRestOuter);
+      }
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, R, a0, a1, false);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    // 2. Subtle decorative radial wood/enamel sheen rings
+    ctx.strokeStyle = 'rgba(255, 252, 240, 0.14)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 0.885, 0, TAU);
+    ctx.stroke();
+
+    // Outer brass beaded chapter ring
+    ctx.strokeStyle = finish.dialGold;
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 0.945, 0, TAU);
+    ctx.stroke();
+
+    // 3. Sector divider lines (strictly at boundary angles)
+    const N = spec.slotCount;
+    if (layout === 'slots') {
+      for (let i = 0; i < N; i++) {
+        const phi = (i / N) * TAU;
+        const a = phi - Math.PI / 2;
+        ctx.strokeStyle = finish.dialDivider;
+        ctx.lineWidth = 4.5;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * R * 0.25, cy + Math.sin(a) * R * 0.25);
+        ctx.lineTo(cx + Math.cos(a) * R * 0.945, cy + Math.sin(a) * R * 0.945);
+        ctx.stroke();
+      }
+    } else {
+      // Subtle hairline subdivisions for visual proportion reading
+      for (let i = 0; i < N; i++) {
+        const phi = (i / N) * TAU;
+        const a = phi - Math.PI / 2;
+        ctx.strokeStyle = 'rgba(204, 178, 108, 0.24)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * R * 0.85, cy + Math.sin(a) * R * 0.85);
+        ctx.lineTo(cx + Math.cos(a) * R * 0.945, cy + Math.sin(a) * R * 0.945);
+        ctx.stroke();
+      }
+      // Crisp bold gold boundary lines between Train and Rest arcs
+      if (spec.trainCount > 0 && spec.trainCount < spec.slotCount) {
+        for (const phi of [0, spec.exactProb * TAU]) {
+          const a = phi - Math.PI / 2;
+          ctx.strokeStyle = finish.dialGold;
+          ctx.lineWidth = 7;
+          ctx.beginPath();
+          ctx.moveTo(cx + Math.cos(a) * R * 0.25, cy + Math.sin(a) * R * 0.25);
+          ctx.lineTo(cx + Math.cos(a) * R * 0.945, cy + Math.sin(a) * R * 0.945);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // 4. Peg socket rings on the canvas matching 3D peg positions
+    for (let i = 0; i < N; i++) {
+      const phi = (i / N) * TAU;
+      const pr = R * (WHEEL_A_PEG_R / WHEEL_A_FACE_R);
+      const px = cx + pr * Math.sin(phi);
+      const py = cy - pr * Math.cos(phi);
+      ctx.fillStyle = 'rgba(28, 36, 30, 0.32)';
+      ctx.beginPath();
+      ctx.arc(px, py, 16, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = finish.dialGold;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    // 5. Crisp upright radial Chinese labels (oriented radially outward so when rotated to 12 o'clock they read 100% upright!)
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const drawRadialLabel = (phi, isTrain, fontSize, radiusRatio, subText) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(phi);
+      const yPos = -R * radiusRatio;
+      ctx.fillStyle = isTrain ? finish.dialTrainText : finish.dialRestText;
+      ctx.font = `700 ${fontSize}px "Songti SC", "STSong", "Noto Serif CJK SC", "PingFang SC", serif`;
+      ctx.fillText(isTrain ? '练' : '歇', 0, yPos);
+
+      // Decorative pip near outer edge
+      ctx.fillStyle = isTrain ? 'rgba(232, 214, 154, 0.82)' : 'rgba(89, 110, 128, 0.42)';
+      ctx.beginPath();
+      ctx.arc(0, -R * 0.835, 5.5, 0, TAU);
+      ctx.fill();
+
+      if (subText) {
+        ctx.fillStyle = isTrain ? 'rgba(244, 240, 222, 0.80)' : 'rgba(72, 92, 108, 0.72)';
+        ctx.font = '600 28px -apple-system, "PingFang SC", "Noto Sans CJK SC", sans-serif';
+        ctx.fillText(subText, 0, -R * 0.445);
+      }
+      ctx.restore();
+    };
+
+    if (layout === 'slots') {
+      const fontSize = N <= 10 ? 84 : 74;
+      for (const sec of sectors) {
+        const mid = (sec.startRad + sec.endRad) * 0.5;
+        drawRadialLabel(mid, sec.isTrain, fontSize, 0.64, null);
+      }
+    } else {
+      for (const sec of sectors) {
+        const span = sec.endRad - sec.startRad;
+        const anchors = arcLabelAngles(sec.startRad, sec.endRad);
+        const fontSize = span < 0.75 ? 74 : span < 1.3 ? 90 : 104;
+        const pctStr = sec.isTrain
+          ? (spec.pct === 33 ? '1/3' : spec.pct === 67 ? '2/3' : `${spec.pct}%`)
+          : (spec.pct === 33 ? '2/3' : spec.pct === 67 ? '1/3' : `${100 - spec.pct}%`);
+        anchors.forEach((phi, idx) => {
+          const showSub = anchors.length <= 2 || idx % 2 === 0;
+          drawRadialLabel(phi, sec.isTrain, fontSize, 0.645, showSub ? pctStr : null);
+        });
+      }
+    }
+
+    // 6. Inner vintage sunburst collar around the central brass hub
+    ctx.fillStyle = finish.dialHubCollar;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 0.30, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = finish.dialGold;
+    ctx.lineWidth = 6;
+    ctx.stroke();
+
+    return c;
+  }
+
+  function renderCompassDialTexture(spec, layout, finish) {
+    const S = 1024, cx = S / 2, cy = S / 2, R = S * 0.5;
+    const c = document.createElement('canvas');
+    c.width = S;
+    c.height = S;
+    const ctx = c.getContext('2d');
+    const sectors = buildSectors(spec, layout);
+
+    ctx.fillStyle = finish.dialChapterBg;
+    ctx.fillRect(0, 0, S, S);
+
+    // 1. Inner sector dial disc (r = 0..0.845 * R)
+    const sectorR = R * 0.848;
+    for (const sec of sectors) {
+      const a0 = sec.startRad - Math.PI / 2;
+      const a1 = sec.endRad - Math.PI / 2;
+      const grad = ctx.createRadialGradient(cx, cy, R * 0.16, cx, cy, sectorR);
+      if (sec.isTrain) {
+        grad.addColorStop(0, finish.dialTrainInner);
+        grad.addColorStop(1, finish.dialTrainOuter);
+      } else {
+        grad.addColorStop(0, finish.dialRestInner);
+        grad.addColorStop(1, finish.dialRestOuter);
+      }
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, sectorR, a0, a1, false);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    // 2. Outer precision horological degree chapter ring (r = 0.848..1.0 * R)
+    ctx.strokeStyle = finish.dialRingLine;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, sectorR, 0, TAU);
+    ctx.stroke();
+
+    const N = spec.slotCount;
+    const majorTicks = N;
+    const subPerMajor = N === 12 ? 6 : 6; // 72 or 60 crisp ticks
+    const totalTicks = majorTicks * subPerMajor;
+    for (let i = 0; i < totalTicks; i++) {
+      const phi = (i / totalTicks) * TAU;
+      const a = phi - Math.PI / 2;
+      const isMajor = i % subPerMajor === 0;
+      const isHalf = i % (subPerMajor / 2) === 0;
+      const r0 = sectorR + 4;
+      const r1 = isMajor ? R * 0.965 : isHalf ? R * 0.928 : R * 0.896;
+      ctx.strokeStyle = isMajor ? finish.dialTickMajor : finish.dialTickMinor;
+      ctx.lineWidth = isMajor ? 5 : isHalf ? 3 : 1.8;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
+      ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+      ctx.stroke();
+    }
+
+    // Subtle brushed concentric compass hairlines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 0.77, 0, TAU);
+    ctx.stroke();
+
+    // 3. Sector dividers
+    if (layout === 'slots') {
+      for (let i = 0; i < N; i++) {
+        const phi = (i / N) * TAU;
+        const a = phi - Math.PI / 2;
+        ctx.strokeStyle = finish.dialDivider;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * R * 0.27, cy + Math.sin(a) * R * 0.27);
+        ctx.lineTo(cx + Math.cos(a) * sectorR, cy + Math.sin(a) * sectorR);
+        ctx.stroke();
+      }
+    } else if (spec.trainCount > 0 && spec.trainCount < spec.slotCount) {
+      for (const phi of [0, spec.exactProb * TAU]) {
+        const a = phi - Math.PI / 2;
+        ctx.strokeStyle = finish.dialRingLine;
+        ctx.lineWidth = 6.5;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * R * 0.27, cy + Math.sin(a) * R * 0.27);
+        ctx.lineTo(cx + Math.cos(a) * sectorR, cy + Math.sin(a) * sectorR);
+        ctx.stroke();
+      }
+    }
+
+    // 4. Crisp upright compass typography
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const drawCompassLabel = (phi, isTrain, fontSize, subText) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(phi);
+      ctx.fillStyle = isTrain ? finish.dialTrainText : finish.dialRestText;
+      ctx.font = `700 ${fontSize}px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif`;
+      ctx.fillText(isTrain ? '练' : '歇', 0, -R * 0.595);
+
+      // Precision triangle index tick pointing outward to bezel
+      ctx.fillStyle = isTrain ? finish.dialAccentPip : 'rgba(89, 110, 128, 0.50)';
+      ctx.beginPath();
+      ctx.moveTo(0, -R * 0.815);
+      ctx.lineTo(-10, -R * 0.768);
+      ctx.lineTo(10, -R * 0.768);
+      ctx.closePath();
+      ctx.fill();
+
+      if (subText) {
+        ctx.fillStyle = isTrain ? 'rgba(244, 246, 236, 0.78)' : 'rgba(72, 92, 108, 0.74)';
+        ctx.font = '600 25px ui-monospace, SFMono-Regular, Menlo, sans-serif';
+        ctx.fillText(subText, 0, -R * 0.405);
+      }
+      ctx.restore();
+    };
+
+    if (layout === 'slots') {
+      const fontSize = N <= 10 ? 78 : 70;
+      for (const sec of sectors) {
+        const mid = (sec.startRad + sec.endRad) * 0.5;
+        drawCompassLabel(mid, sec.isTrain, fontSize, null);
+      }
+    } else {
+      for (const sec of sectors) {
+        const span = sec.endRad - sec.startRad;
+        const anchors = arcLabelAngles(sec.startRad, sec.endRad);
+        const fontSize = span < 0.75 ? 70 : span < 1.3 ? 86 : 98;
+        const pctStr = sec.isTrain
+          ? (spec.pct === 33 ? '1/3' : spec.pct === 67 ? '2/3' : `${spec.pct}%`)
+          : (spec.pct === 33 ? '2/3' : spec.pct === 67 ? '1/3' : `${100 - spec.pct}%`);
+        anchors.forEach((phi, idx) => {
+          const showSub = anchors.length <= 2 || idx % 2 === 0;
+          drawCompassLabel(phi, sec.isTrain, fontSize, showSub ? pctStr : null);
+        });
+      }
+    }
+
+    // 5. Concentric chronometer inner rose ring around the center spindle
+    ctx.fillStyle = finish.dialHubCollar;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 0.285, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = finish.dialRingLine;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    return c;
+  }
+
+  // =========================================================================
+  // CURATED STUDIO FINISHES (2 per Scheme)
+  // =========================================================================
+  const FINISHES_A = [
+    {
+      name: '墨绿漆盘 + 拉丝黄铜',
+      stand: {
+        color: [0.18, 0.32, 0.24], accent: [0.81, 0.67, 0.36], trim: [0.44, 0.29, 0.19], cavity: [0.05, 0.08, 0.06],
+        matMeta: [0.22, 0.90, 0.12], matRough: [0.34, 0.22, 0.50], grain: false,
+      },
+      drum: {
+        color: [0.19, 0.34, 0.25], accent: [0.82, 0.68, 0.37], trim: [0.46, 0.30, 0.19], cavity: [0.05, 0.08, 0.06],
+        matMeta: [0.26, 0.91, 0.50], matRough: [0.28, 0.21, 0.36],
+      },
+      brass: {
+        color: [0.82, 0.68, 0.37], accent: [0.84, 0.70, 0.38], trim: [0.74, 0.27, 0.21], cavity: [0.06, 0.06, 0.05],
+        matMeta: [0.91, 0.92, 0.14], matRough: [0.21, 0.20, 0.34],
+      },
+      dialTrainInner: '#3f694e', dialTrainOuter: '#2d4f3a', dialTrainText: '#fafbf4',
+      dialRestInner: '#f7f4ea', dialRestOuter: '#e8e4d6', dialRestBg: '#f2efe4', dialRestText: '#495f70',
+      dialGold: '#cfa958', dialDivider: '#c8a556', dialHubCollar: '#284533',
+    },
+    {
+      name: '象牙米白 + 暖胡桃木',
+      stand: {
+        color: [0.43, 0.28, 0.18], accent: [0.78, 0.62, 0.34], trim: [0.34, 0.21, 0.13], cavity: [0.07, 0.05, 0.04],
+        matMeta: [0.08, 0.88, 0.12], matRough: [0.48, 0.24, 0.55], grain: true,
+      },
+      drum: {
+        color: [0.91, 0.89, 0.82], accent: [0.78, 0.63, 0.34], trim: [0.44, 0.28, 0.18], cavity: [0.08, 0.08, 0.07],
+        matMeta: [0.12, 0.88, 0.18], matRough: [0.32, 0.24, 0.44],
+      },
+      brass: {
+        color: [0.78, 0.62, 0.34], accent: [0.80, 0.64, 0.35], trim: [0.22, 0.38, 0.28], cavity: [0.07, 0.06, 0.05],
+        matMeta: [0.88, 0.88, 0.22], matRough: [0.24, 0.24, 0.36],
+      },
+      dialTrainInner: '#436d52', dialTrainOuter: '#31543d', dialTrainText: '#fafbf5',
+      dialRestInner: '#f8f5ec', dialRestOuter: '#eae5d8', dialRestBg: '#f3efe4', dialRestText: '#4c6172',
+      dialGold: '#c2994c', dialDivider: '#bd964d', dialHubCollar: '#543723',
+    },
+  ];
+
+  const FINISHES_B = [
+    {
+      name: '烤蓝精钢 + 橄榄绿盘',
+      bowl: {
+        color: [0.21, 0.28, 0.36], accent: [0.77, 0.80, 0.82], trim: [0.17, 0.20, 0.23], cavity: [0.24, 0.30, 0.36],
+        matMeta: [0.82, 0.90, 0.28], matRough: [0.24, 0.21, 0.56],
+      },
+      metal: {
+        color: [0.77, 0.80, 0.82], accent: [0.80, 0.83, 0.85], trim: [0.77, 0.30, 0.22], cavity: [0.36, 0.40, 0.44],
+        matMeta: [0.90, 0.91, 0.24], matRough: [0.22, 0.20, 0.32],
+      },
+      dialChapterBg: '#dde2db', dialRingLine: '#8f9c88', dialTickMajor: '#28392f', dialTickMinor: '#738176',
+      dialTrainInner: '#3e684d', dialTrainOuter: '#2d4e39', dialTrainText: '#fafbf5',
+      dialRestInner: '#f4f5ef', dialRestOuter: '#e4e8df', dialRestText: '#4a6072',
+      dialDivider: '#b7c2b0', dialAccentPip: '#d9c585', dialHubCollar: '#283746',
+    },
+    {
+      name: '哑光黑曜 + 复古古铜',
+      bowl: {
+        color: [0.19, 0.21, 0.22], accent: [0.76, 0.59, 0.33], trim: [0.13, 0.14, 0.15], cavity: [0.22, 0.23, 0.24],
+        matMeta: [0.58, 0.90, 0.20], matRough: [0.38, 0.24, 0.62],
+      },
+      metal: {
+        color: [0.76, 0.59, 0.33], accent: [0.79, 0.62, 0.35], trim: [0.76, 0.32, 0.22], cavity: [0.34, 0.29, 0.22],
+        matMeta: [0.90, 0.90, 0.28], matRough: [0.24, 0.23, 0.34],
+      },
+      dialChapterBg: '#dfd9c9', dialRingLine: '#b89452', dialTickMajor: '#322b22', dialTickMinor: '#7a7060',
+      dialTrainInner: '#3c624a', dialTrainOuter: '#2a4836', dialTrainText: '#faf8f0',
+      dialRestInner: '#f4efe2', dialRestOuter: '#e5decb', dialRestText: '#4e5f6d',
+      dialDivider: '#bfa062', dialAccentPip: '#e0be72', dialHubCollar: '#2b2926',
+    },
+  ];
+
+  // =========================================================================
+  // WHEEL SCENE FACTORY (Shared Physics + Distinct 3D Rigs for A & B)
+  // =========================================================================
+  function createWheelScene(schemeKey, getSpec, getLayout) {
+    const isCarnival = schemeKey === 'carnival';
+    const finishes = isCarnival ? FINISHES_A : FINISHES_B;
+
+    // Camera calibration: Scheme A framed to showcase upright carnival wheel cleanly inside tray;
+    // Scheme B framed at tabletop tray pitch matching 6-spatial dice/lots camera.
+    const camConfig = isCarnival
+      ? {
+          eye: [1.38, 4.75, 9.25],
+          target: [0, 1.36, 0.04],
+          closeup: { target: [0.0, 1.46, 0.10], yaw: 0.14, pitch: 0.20, dist: 7.05 },
+        }
+      : {
+          eye: [1.36, 6.85, 8.05],
+          target: [0, 0.34, 0.0],
+          closeup: { target: [0.0, 0.36, -0.02], yaw: 0.16, pitch: 0.68, dist: 6.75 },
+        };
+
+    const stage = new Stage3D(
+      document.getElementById(`phone-${schemeKey}`),
+      document.getElementById(`stage-${schemeKey}`),
+      document.getElementById(`gl-${schemeKey}`),
+      document.getElementById(`shadow-${schemeKey}`),
+      camConfig
+    );
+    if (isCarnival) {
+      stage.tray = { halfX: 2.48, halfZ: 1.72, corner: 0.40 };
+    }
+
+    let finishIdx = 0;
+    const f0 = finishes[finishIdx];
+
+    const dialTex = stage.createTextureFromCanvas(
+      isCarnival
+        ? renderCarnivalDialTexture(getSpec(), getLayout(), f0)
+        : renderCompassDialTexture(getSpec(), getLayout(), f0)
+    );
+
+    // Create meshes per scheme
+    let meshes = {};
+    if (isCarnival) {
+      meshes = {
+        stand: stage.addMesh(GEOS_A.stand, { ...f0.stand }),
+        bracket: stage.addMesh(GEOS_A.bracket, { ...f0.brass }),
+        clapper: stage.addMesh(GEOS_A.clapper, { ...f0.brass }),
+        drum: stage.addMesh(GEOS_A.drum, { ...f0.drum }),
+        face: stage.addMesh(GEOS_A.face, {
+          color: [1, 1, 1], accent: f0.brass.accent, trim: f0.brass.accent,
+          matMeta: [0.05, 0.88, 0.88], matRough: [0.40, 0.24, 0.24],
+          texture: dialTex,
+        }),
+        pegs12: stage.addMesh(GEOS_A.pegs12, { ...f0.brass }),
+        pegs10: stage.addMesh(GEOS_A.pegs10, { ...f0.brass, visible: false }),
+        hub: stage.addMesh(GEOS_A.hub, { ...f0.brass }),
+      };
+      stage.shadows.push(
+        { x: 0, y: 0, z: 0.02, radius: 0.27, opacity: 0.30, stretch: 1.48, stretchY: 0.44, visible: true },
+        { x: 0, y: 0.14, z: -0.18, radius: 0.20, opacity: 0.18, stretch: 1.25, stretchY: 0.38, visible: true }
+      );
+    } else {
+      meshes = {
+        bowl: stage.addMesh(GEOS_B.bowl, { ...f0.bowl }),
+        knurl: stage.addMesh(GEOS_B.knurl, { ...f0.metal }),
+        platter12: stage.addMesh(GEOS_B.platter12, { ...f0.metal }),
+        platter10: stage.addMesh(GEOS_B.platter10, { ...f0.metal, visible: false }),
+        face: stage.addMesh(GEOS_B.face, {
+          color: [1, 1, 1], accent: f0.metal.accent, trim: f0.metal.accent,
+          matMeta: [0.06, 0.88, 0.88], matRough: [0.38, 0.24, 0.24],
+          texture: dialTex,
+        }),
+        spindle: stage.addMesh(GEOS_B.spindle, { ...f0.metal }),
+        pointerHousing: stage.addMesh(GEOS_B.pointerHousing, { ...f0.bowl }),
+        needle: stage.addMesh(GEOS_B.needle, { ...f0.metal }),
+      };
+      stage.shadows.push(
+        { x: 0, y: 0, z: 0.02, radius: 0.37, opacity: 0.34, stretch: 1.16, stretchY: 0.62, visible: true }
+      );
+    }
+
+    // State
+    let wheelCW = 0;         // Clockwise wheel angle (radians)
+    let clapperAngle = 0;    // Elastic pointer deflection (radians)
+    let clapperVel = 0;      // Clapper angular velocity for spring dynamics
+    let explodeAmt = 0;
+    let lastOutcome = null;  // null | 'train' | 'rest'
+    let currentMode = 'idle';
+    let animId = 0;
+    let spinning = false;
+
+    function syncPegVisibility() {
+      const use10 = getSpec().slotCount === 10;
+      if (isCarnival) {
+        meshes.pegs12.visible = !use10;
+        meshes.pegs10.visible = use10;
+      } else {
+        meshes.platter12.visible = !use10;
+        meshes.platter10.visible = use10;
+      }
+    }
+
+    function applyFinish(idx) {
+      finishIdx = idx;
+      const f = finishes[idx];
+      if (isCarnival) {
+        Object.assign(meshes.stand, f.stand);
+        Object.assign(meshes.bracket, f.brass);
+        Object.assign(meshes.clapper, f.brass);
+        Object.assign(meshes.drum, f.drum);
+        meshes.face.accent = f.brass.accent;
+        meshes.face.trim = f.brass.accent;
+        Object.assign(meshes.pegs12, f.brass);
+        Object.assign(meshes.pegs10, f.brass);
+        Object.assign(meshes.hub, f.brass);
+      } else {
+        Object.assign(meshes.bowl, f.bowl);
+        Object.assign(meshes.knurl, f.metal);
+        Object.assign(meshes.platter12, f.metal);
+        Object.assign(meshes.platter10, f.metal);
+        meshes.face.accent = f.metal.accent;
+        meshes.face.trim = f.metal.accent;
+        Object.assign(meshes.spindle, f.metal);
+        Object.assign(meshes.pointerHousing, f.bowl);
+        Object.assign(meshes.needle, f.metal);
+      }
+      refreshDialTexture();
+    }
+
+    function refreshDialTexture() {
+      syncPegVisibility();
+      const f = finishes[finishIdx];
+      const cnv = isCarnival
+        ? renderCarnivalDialTexture(getSpec(), getLayout(), f)
+        : renderCompassDialTexture(getSpec(), getLayout(), f);
+      stage.updateTextureFromCanvas(dialTex, cnv);
+      poseAssembly();
+      stage.draw();
+    }
+
+    function poseAssembly() {
+      const ex = explodeAmt;
+      if (isCarnival) {
+        // Upright Carnival Wheel:
+        // Stand sits at y=0, wheel center at [0, WHEEL_A_Y, 0] rotating around +Z by -wheelCW.
+        const standZ = -ex * 0.42;
+        meshes.stand.position = [0, 0, standZ];
+        meshes.stand.q = [0, 0, 0, 1];
+
+        meshes.bracket.position = [0, ex * 0.24, standZ + ex * 0.16];
+        meshes.bracket.q = [0, 0, 0, 1];
+
+        meshes.clapper.position = [0, WHEEL_A_Y + 1.28 + ex * 0.44, 0.245 + ex * 0.54];
+        meshes.clapper.q = qAxis([0, 0, 1], clapperAngle);
+
+        const qSpin = qAxis([0, 0, 1], -wheelCW);
+        meshes.drum.position = [0, WHEEL_A_Y, ex * 0.18];
+        meshes.drum.q = qSpin;
+
+        meshes.face.position = [0, WHEEL_A_Y, ex * 0.62];
+        meshes.face.q = qSpin;
+
+        meshes.pegs12.position = [0, WHEEL_A_Y, ex * 1.04];
+        meshes.pegs12.q = qSpin;
+        meshes.pegs10.position = [0, WHEEL_A_Y, ex * 1.04];
+        meshes.pegs10.q = qSpin;
+
+        meshes.hub.position = [0, WHEEL_A_Y, ex * 1.44];
+        meshes.hub.q = qSpin;
+      } else {
+        // Tabletop Precision Compass:
+        // Concentric layers stacked cleanly along +Y, inner platter & dial rotate around +Y by -wheelCW.
+        const qSpin = qAxis([0, 1, 0], -wheelCW);
+        meshes.bowl.position = [0, 0, 0];
+        meshes.bowl.q = [0, 0, 0, 1];
+
+        meshes.knurl.position = [0, ex * 0.38, 0];
+        meshes.knurl.q = [0, 0, 0, 1];
+
+        meshes.platter12.position = [0, ex * 0.80, 0];
+        meshes.platter12.q = qSpin;
+        meshes.platter10.position = [0, ex * 0.80, 0];
+        meshes.platter10.q = qSpin;
+
+        meshes.face.position = [0, ex * 1.24, 0];
+        meshes.face.q = qSpin;
+
+        meshes.spindle.position = [0, ex * 1.66, 0];
+        meshes.spindle.q = qSpin;
+
+        meshes.pointerHousing.position = [0, ex * 1.04, -ex * 0.22];
+        meshes.pointerHousing.q = [0, 0, 0, 1];
+
+        meshes.needle.position = [0, 0.50 + ex * 1.04, -1.46 - ex * 0.22];
+        // Subtle elastic yaw twitch as platter index pips glide under the needle
+        meshes.needle.q = qAxis([0, 1, 0], clapperAngle * 0.42);
+      }
+    }
+
+    /**
+     * Updates the elastic brass clapper / compass detent needle physics based on
+     * angular proximity of pegs passing 12 o'clock and wheel angular velocity.
+     */
+    function stepClapperPhysics(omega, dt) {
+      const N = getSpec().slotCount;
+      const step = TAU / N;
+      const phi = pointerDialAngle(wheelCW);
+      const phase = phi % step;
+      const d = phase > step * 0.5 ? phase - step : phase; // signed distance of nearest peg from 12:00
+      const engageZone = 0.145;
+
+      let target = 0;
+      if (Math.abs(d) < engageZone) {
+        const proximity = 1 - Math.abs(d) / engageZone;
+        const dir = omega >= 0 ? -1 : 1; // clockwise wheel motion pushes hanging tip toward +X (CCW z-rot or negative? check!)
+        // Wait: on Scheme A, hanging blade extends toward -Y. Rotating by +angle around +Z swings tip toward +X (right)!
+        // Wait: when wheel spins CLOCKWISE, top pegs move from LEFT (-X) to RIGHT (+X) -> pushes tip toward +X (+angle)!
+        // Let's verify: x' = -y sin(a) = +0.34 sin(a). So positive clapperAngle swings tip to +X (RIGHT), matching clockwise peg motion!
+        const pushSign = Math.abs(omega) > 0.05 ? (omega > 0 ? 1 : -1) : (d >= 0 ? 1 : -1);
+        const speedGain = clamp(0.45 + Math.abs(omega) * 0.06, 0.45, 1.0);
+        target = pushSign * Math.pow(proximity, 0.72) * 0.56 * speedGain;
+      }
+
+      // Spring-damper integration (sub-stepped for unconditional stability)
+      const subSteps = 3;
+      const h = Math.min(dt, 0.04) / subSteps;
+      const k = 320;
+      const damp = 19;
+      for (let i = 0; i < subSteps; i++) {
+        const acc = (target - clapperAngle) * k - clapperVel * damp;
+        clapperVel += acc * h;
+        clapperAngle += clapperVel * h;
+      }
+      clapperAngle = clamp(clapperAngle, -0.68, 0.68);
+    }
+
+    function idleAngleForCurrentConfig() {
+      const spec = getSpec();
+      const layout = getLayout();
+      const step = TAU / spec.slotCount;
+      if (layout === 'arc') {
+        // Park cleanly half a peg pitch into the primary visible zone so clapper sits between pegs
+        // and the continuous green arc starting at 12:00 sweeps clearly clockwise in the top-right.
+        const phi = spec.trainCount === 0 ? step * 0.5
+          : spec.trainCount === spec.slotCount ? step * 0.5
+          : Math.min(step * 0.5, spec.exactProb * TAU * 0.5);
+        return -phi;
+      }
+      // In slots mode, center slot 0 cleanly beneath the pointer between two pegs
+      return -(step * 0.5);
+    }
+
+    function updateUI(resText, btnText, cls, busy) {
+      const resEl = document.getElementById(`result-${schemeKey}`);
+      const btn = document.getElementById(`btn-${schemeKey}`);
+      const lbl = document.getElementById(`btn-label-${schemeKey}`);
+      resEl.textContent = resText;
+      resEl.className = 'result-line ' + cls;
+      lbl.textContent = btnText;
+      btn.disabled = busy;
+    }
+
+    function updateHint() {
+      const spec = getSpec();
+      const layout = getLayout();
+      const layoutStr = layout === 'arc' ? '整块弧形占比' : `交错 ${spec.slotCount} 等分格`;
+      const pctLabel = spec.pct === 33 ? '33.3% (1/3)' : spec.pct === 67 ? '66.7% (2/3)' : `${spec.pct}%`;
+      document.getElementById(`hint-${schemeKey}`).textContent =
+        `拨动盘面旋转 · 拖外圈 360° 观察 · 练 ${pctLabel}`;
+      if (!spinning && lastOutcome === null && currentMode === 'idle') {
+        const line = spec.trainCount === 0
+          ? `训练概率 0% · 全盘歇一歇（${layoutStr}）`
+          : spec.trainCount === spec.slotCount
+          ? `训练概率 100% · 全盘去练（${layoutStr}）`
+          : `训练概率 ${pctLabel} · ${layoutStr}`;
+        updateUI(line, '拨动转盘', '', false);
+      }
+    }
+
+    function applyIdle() {
+      animId++;
+      spinning = false;
+      currentMode = 'idle';
+      lastOutcome = null;
+      explodeAmt = 0;
+      wheelCW = idleAngleForCurrentConfig();
+      clapperAngle = 0;
+      clapperVel = 0;
+      syncPegVisibility();
+      poseAssembly();
+      updateHint();
+      stage.draw();
+    }
+
+    function applyExplode() {
+      animId++;
+      spinning = false;
+      currentMode = 'explode';
+      explodeAmt = 1.0;
+      wheelCW = idleAngleForCurrentConfig();
+      clapperAngle = 0.10;
+      clapperVel = 0;
+      syncPegVisibility();
+      poseAssembly();
+      updateUI('3D 拆解视图 · 拖拽画布 360° 观察结构', '拨动转盘', '', false);
+      stage.draw();
+    }
+
+    function applyRevealed(isTrain, targetPhi = null) {
+      animId++;
+      spinning = false;
+      currentMode = isTrain ? 'train' : 'rest';
+      lastOutcome = currentMode;
+      explodeAmt = 0;
+      const spec = getSpec();
+      const layout = getLayout();
+      const phi = targetPhi != null ? targetPhi : pickLandingAngle(spec, layout, isTrain, true);
+      wheelCW = normAngle(TAU - phi);
+      clapperAngle = 0;
+      clapperVel = 0;
+      syncPegVisibility();
+      poseAssembly();
+      if (isTrain) {
+        updateUI('走吧，练一点。', '再拨一次', 'answer', false);
+      } else {
+        updateUI('今天，歇一歇。', '再拨一次', 'answer rest', false);
+      }
+      stage.draw();
+    }
+
+    function playSpinLoop() {
+      const id = ++animId;
+      spinning = true;
+      currentMode = 'spin';
+      explodeAmt = 0;
+      updateUI('转盘飞旋中，听分度拨片哒哒作响…', '旋转中…', '', true);
+      let lastT = performance.now();
+      const omega = 8.4; // steady visual showcase speed
+      const tick = now => {
+        if (id !== animId) return;
+        const dt = Math.min(0.05, Math.max(0.004, (now - lastT) / 1000));
+        lastT = now;
+        wheelCW += omega * dt;
+        stepClapperPhysics(omega, dt);
+        poseAssembly();
+        stage.draw();
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    function snapSpinFreeze() {
+      animId++;
+      spinning = false;
+      currentMode = 'spin';
+      explodeAmt = 0;
+      const step = TAU / getSpec().slotCount;
+      // Place a peg right in the clapper contact zone so deflection is visibly frozen
+      wheelCW = step * 0.04;
+      clapperAngle = 0.44;
+      clapperVel = 0;
+      syncPegVisibility();
+      poseAssembly();
+      updateUI('转盘飞旋中，听分度拨片哒哒作响…', '旋转中…', '', true);
+      stage.draw();
+    }
+
+    /**
+     * Launches a realistic decelerating spin that deterministically lands strictly
+     * inside a sector matching the pre-drawn (or forced preview) outcome.
+     */
+    function launchSpin(forcedOutcome = null, flickDir = 1, flickSpeed = 1.0) {
+      const id = ++animId;
+      spinning = true;
+      explodeAmt = 0;
+      const spec = getSpec();
+      const layout = getLayout();
+
+      // Strict transparent draw (never cheats probability!)
+      const isTrain = forcedOutcome != null ? forcedOutcome : drawExactOutcome(spec);
+      currentMode = isTrain ? 'train' : 'rest';
+      lastOutcome = currentMode;
+
+      const targetPhi = pickLandingAngle(spec, layout, isTrain, false);
+      const targetMod = normAngle(TAU - targetPhi);
+      const startCW = wheelCW;
+      const curMod = normAngle(startCW);
+
+      const dir = flickDir >= 0 ? 1 : -1;
+      const extraTurns = clamp(Math.round(4 + flickSpeed * 1.6), 4, 7);
+      let delta;
+      if (dir > 0) {
+        const rem = normAngle(targetMod - curMod);
+        delta = extraTurns * TAU + (rem < 0.4 ? rem + TAU : rem);
+      } else {
+        const rem = normAngle(curMod - targetMod);
+        delta = -(extraTurns * TAU + (rem < 0.4 ? rem + TAU : rem));
+      }
+
+      const endCW = startCW + delta;
+      const durationMs = clamp(2100 + Math.abs(delta) * 14, 2150, 2650);
+      const t0 = performance.now();
+      let lastT = t0;
+      let prevCW = startCW;
+
+      updateUI('转盘旋转中…', '旋转中…', '', true);
+
+      const tick = now => {
+        if (id !== animId) return;
+        const dt = Math.min(0.05, Math.max(0.004, (now - lastT) / 1000));
+        lastT = now;
+        const u = clamp((now - t0) / durationMs, 0, 1);
+
+        // Quintic/quartic inertial deceleration + subtle micro settle bounce within safe margin
+        let eased = easeOutSpin(u);
+        let settle = 0;
+        if (u > 0.92) {
+          const su = (u - 0.92) / 0.08;
+          settle = Math.sin(su * Math.PI * 1.5) * (1 - su) * 0.012 * dir;
+        }
+        wheelCW = startCW + delta * eased + settle;
+        const omega = (wheelCW - prevCW) / dt;
+        prevCW = wheelCW;
+
+        stepClapperPhysics(omega, dt);
+        poseAssembly();
+        stage.draw();
+
+        if (u < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          // Final exact lock inside the chosen sector
+          wheelCW = endCW;
+          clapperAngle = 0;
+          clapperVel = 0;
+          spinning = false;
+          poseAssembly();
+          if (isTrain) {
+            updateUI('走吧，练一点。', '再拨一次', 'answer', false);
+          } else {
+            updateUI('今天，歇一歇。', '再拨一次', 'answer rest', false);
+          }
+          stage.draw();
+        }
+      };
+      requestAnimationFrame(tick);
+    }
+
+    // ---- Direct Wheel Flick-Spin + Outer-Zone 360° Orbit Pointer Handling ----
+    function bindInteraction() {
+      let drag = null;
+      const stageEl = stage.stage;
+
+      const wheelScreenCenterAndRadius = () => {
+        const cWorld = isCarnival ? [0, WHEEL_A_Y, WHEEL_A_FACE_Z] : [0, COMPASS_FACE_Y, 0];
+        const edgeWorld = isCarnival ? [WHEEL_A_R, WHEEL_A_Y, WHEEL_A_FACE_Z] : [COMPASS_FACE_R, COMPASS_FACE_Y, 0];
+        const c2 = stage.project(cWorld);
+        const e2 = stage.project(edgeWorld);
+        return { cx: c2[0], cy: c2[1], r: Math.max(48, Math.hypot(e2[0] - c2[0], e2[1] - c2[1])) };
+      };
+
+      stageEl.addEventListener('pointerdown', e => {
+        if (drag) return;
+        e.preventDefault();
+        stageEl.setPointerCapture(e.pointerId);
+        const rect = stageEl.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const { cx, cy, r } = wheelScreenCenterAndRadius();
+        const dist = Math.hypot(sx - cx, sy - cy);
+        // Dragging on the wheel disc flicks/spins it (unless in explode mode or shift/right-click);
+        // dragging outside the wheel disc orbits the 3D camera 360°.
+        const isWheelDrag = explodeAmt < 0.1 && e.button === 0 && !e.shiftKey && dist <= r * 0.96;
+
+        if (isWheelDrag) {
+          animId++;
+          spinning = false;
+        }
+        drag = {
+          id: e.pointerId,
+          mode: isWheelDrag ? 'wheel' : 'orbit',
+          x: e.clientX,
+          y: e.clientY,
+          cx,
+          cy,
+          prevAng: Math.atan2(sy - cy, sx - cx),
+          prevT: performance.now(),
+          smoothOmega: 0,
+          totalTurned: 0,
+        };
+        stageEl.classList.add('is-dragging');
+      });
+
+      stageEl.addEventListener('pointermove', e => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const now = performance.now();
+        const dt = Math.max(0.004, (now - drag.prevT) / 1000);
+        drag.prevT = now;
+
+        if (drag.mode === 'orbit') {
+          const dx = e.clientX - drag.x;
+          const dy = e.clientY - drag.y;
+          drag.x = e.clientX;
+          drag.y = e.clientY;
+          stage.orbitBy(dx, dy);
+          return;
+        }
+
+        // Direct hand-driven wheel rotation!
+        const rect = stageEl.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
+        const ang = Math.atan2(sy - drag.cy, sx - drag.cx);
+        let dAng = ang - drag.prevAng;
+        if (dAng > Math.PI) dAng -= TAU;
+        if (dAng < -Math.PI) dAng += TAU;
+        drag.prevAng = ang;
+
+        // Screen atan2 increases CLOCKWISE (because screen +Y points down), matching wheelCW!
+        wheelCW += dAng;
+        drag.totalTurned += Math.abs(dAng);
+        const instOmega = dAng / dt;
+        drag.smoothOmega = drag.smoothOmega * 0.65 + instOmega * 0.35;
+
+        stepClapperPhysics(drag.smoothOmega, dt);
+        poseAssembly();
+        stage.draw();
+      });
+
+      const stop = e => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const finished = drag;
+        drag = null;
+        stageEl.classList.remove('is-dragging');
+        if (finished.mode === 'wheel') {
+          if (Math.abs(finished.smoothOmega) > 1.4 || finished.totalTurned > 0.22) {
+            const dir = finished.smoothOmega >= 0 ? 1 : -1;
+            const speed = clamp(Math.abs(finished.smoothOmega) / 6.0, 0.6, 2.2);
+            launchSpin(null, dir, speed);
+          } else {
+            // Tiny tap/nudge settles clapper cleanly
+            clapperAngle = 0;
+            clapperVel = 0;
+            poseAssembly();
+            stage.draw();
+          }
+        }
+      };
+      stageEl.addEventListener('pointerup', stop);
+      stageEl.addEventListener('pointercancel', stop);
+    }
+
+    bindInteraction();
+
+    // Wire per-scheme controls
+    const col = document.querySelector(`[data-scheme="${schemeKey}"]`);
+    col.querySelectorAll('[data-finish]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        col.querySelectorAll('[data-finish]').forEach(b => b.setAttribute('aria-pressed', 'false'));
+        btn.setAttribute('aria-pressed', 'true');
+        applyFinish(Number(btn.dataset.finish));
+      });
+    });
+
+    const closeupBtn = col.querySelector('[data-toggle-closeup]');
+    closeupBtn.addEventListener('click', () => {
+      const next = closeupBtn.getAttribute('aria-pressed') !== 'true';
+      closeupBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
+      stage.setCloseupView(next);
+    });
+
+    col.querySelector('[data-reset-view]').addEventListener('click', () => {
+      closeupBtn.setAttribute('aria-pressed', 'false');
+      stage.resetView();
+    });
+
+    document.getElementById(`btn-${schemeKey}`).addEventListener('click', () => {
+      launchSpin(null, 1, 1.15);
+    });
+
+    applyIdle();
+
+    return {
+      setMode(mode) {
+        if (mode === 'idle') applyIdle();
+        else if (mode === 'spin') playSpinLoop();
+        else if (mode === 'train') launchSpin(true, 1, 1.0);
+        else if (mode === 'rest') launchSpin(false, 1, 1.0);
+        else if (mode === 'explode') applyExplode();
+      },
+      snapMode(mode) {
+        if (mode === 'idle') applyIdle();
+        else if (mode === 'spin') snapSpinFreeze();
+        else if (mode === 'train') applyRevealed(true);
+        else if (mode === 'rest') applyRevealed(false);
+        else if (mode === 'explode') applyExplode();
+      },
+      setFinish(idx) {
+        const clamped = clamp(Math.round(idx), 0, finishes.length - 1);
+        col.querySelectorAll('[data-finish]').forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.finish) === clamped ? 'true' : 'false'));
+        applyFinish(clamped);
+      },
+      setCloseup(enabled) {
+        closeupBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+        stage.setCloseupView(enabled);
+      },
+      onConfigChanged() {
+        refreshDialTexture();
+        if (currentMode === 'idle') {
+          wheelCW = idleAngleForCurrentConfig();
+          poseAssembly();
+          updateHint();
+          stage.draw();
+        } else if (currentMode === 'explode') {
+          wheelCW = idleAngleForCurrentConfig();
+          poseAssembly();
+          stage.draw();
+        } else {
+          updateHint();
+        }
+      },
+      getPointerInfo() {
+        const spec = getSpec();
+        const layout = getLayout();
+        const sectors = buildSectors(spec, layout);
+        const phi = pointerDialAngle(wheelCW);
+        const sec = sectorAtDialAngle(sectors, phi);
+        return {
+          wheelCW,
+          pointerDialAngle: phi,
+          pointerDeg: (phi * 180) / Math.PI,
+          sectorIsTrain: sec.isTrain,
+          lastOutcome,
+          currentMode,
+          spinning,
+        };
+      },
+      stage,
+    };
+  }
+
+  // =========================================================================
+  // BOOTSTRAP, LIVE GEOMETRY STATS & GLOBAL CONTROLS
+  // =========================================================================
+  let activeProbPct = 50;
+  let activeLayout = 'arc'; // 'arc' | 'slots'
+  let activeMode = 'idle';
+
+  const getSpec = () => getProbSpec(activeProbPct);
+  const getLayout = () => activeLayout;
+
+  // Compute exact live vertex / triangle stats for both schemes
+  const countStats = list => {
+    const verts = list.reduce((acc, g) => acc + g.length / 9, 0);
+    return { verts: Math.round(verts), tris: Math.round(verts / 3) };
+  };
+  const statsA = countStats([GEOS_A.stand, GEOS_A.bracket, GEOS_A.clapper, GEOS_A.drum, GEOS_A.face, GEOS_A.pegs12, GEOS_A.hub]);
+  const statsB = countStats([GEOS_B.bowl, GEOS_B.knurl, GEOS_B.platter12, GEOS_B.face, GEOS_B.spindle, GEOS_B.pointerHousing, GEOS_B.needle]);
+  document.getElementById('stats-carnival').textContent =
+    `方案 A 实测：${statsA.verts.toLocaleString()} 顶点 · ${statsA.tris.toLocaleString()} 三角面 · 7 个独立装配构件 · 1024×1024 动态盘面贴图`;
+  document.getElementById('stats-compass').textContent =
+    `方案 B 实测：${statsB.verts.toLocaleString()} 顶点 · ${statsB.tris.toLocaleString()} 三角面 · 7 个同心精密构件 · 1024×1024 Mipmap 罗盘贴图`;
+
+  const carnivalPhone = createWheelScene('carnival', getSpec, getLayout);
+  const compassPhone = createWheelScene('compass', getSpec, getLayout);
+
+  const modeBtns = document.querySelectorAll('.global-controls .pill[data-mode]');
+  const layoutBtns = document.querySelectorAll('.global-controls .pill[data-layout]');
+  const probBtns = document.querySelectorAll('.global-controls .pill[data-prob]');
+  const globalCloseupBtn = document.getElementById('btn-closeup');
+
+  function setModeUI(mode) {
+    activeMode = mode;
+    modeBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === mode ? 'true' : 'false'));
+  }
+
+  function syncProbAndLayoutUI() {
+    const spec = getSpec();
+    probBtns.forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.prob) === activeProbPct ? 'true' : 'false'));
+    layoutBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.layout === activeLayout ? 'true' : 'false'));
+
+    const pctExact = (spec.exactProb * 100).toFixed(1);
+    const degStr = spec.deg.toFixed(1);
+    const restCount = spec.slotCount - spec.trainCount;
+    const readout = activeLayout === 'arc'
+      ? `练 ${pctExact}%（${spec.shortFrac} · ${degStr}° 连续弧）`
+      : `练 ${pctExact}%（${spec.trainCount}/${spec.slotCount} 格 · ${spec.trainCount} 练 ${restCount} 歇）`;
+    document.getElementById('prob-readout').textContent = readout;
+
+    carnivalPhone.onConfigChanged();
+    compassPhone.onConfigChanged();
+  }
+
+  function setProb(pct) {
+    activeProbPct = clamp(Math.round(pct), 0, 100);
+    syncProbAndLayoutUI();
+    if (activeMode === 'train' && getSpec().trainCount === 0) {
+      setModeUI('idle');
+      carnivalPhone.snapMode('idle');
+      compassPhone.snapMode('idle');
+    } else if (activeMode === 'rest' && getSpec().trainCount === getSpec().slotCount) {
+      setModeUI('idle');
+      carnivalPhone.snapMode('idle');
+      compassPhone.snapMode('idle');
+    } else if (activeMode === 'train' || activeMode === 'rest') {
+      carnivalPhone.snapMode(activeMode);
+      compassPhone.snapMode(activeMode);
+    }
+  }
+
+  function setLayout(mode) {
+    if (mode !== 'arc' && mode !== 'slots') return;
+    activeLayout = mode;
+    syncProbAndLayoutUI();
+    if (activeMode === 'train' || activeMode === 'rest') {
+      carnivalPhone.snapMode(activeMode);
+      compassPhone.snapMode(activeMode);
+    }
+  }
+
+  function setCloseup(enabled) {
+    globalCloseupBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    carnivalPhone.setCloseup(enabled);
+    compassPhone.setCloseup(enabled);
+  }
+
+  function ensurePreviewPossible(mode) {
+    const spec = getSpec();
+    if (mode === 'train' && spec.trainCount === 0) {
+      activeProbPct = 50;
+      syncProbAndLayoutUI();
+    } else if (mode === 'rest' && spec.trainCount === spec.slotCount) {
+      activeProbPct = 50;
+      syncProbAndLayoutUI();
+    }
+  }
+
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.mode;
+      ensurePreviewPossible(mode);
+      setModeUI(mode);
+      carnivalPhone.setMode(mode);
+      compassPhone.setMode(mode);
+    });
+  });
+
+  probBtns.forEach(btn => btn.addEventListener('click', () => setProb(Number(btn.dataset.prob))));
+  layoutBtns.forEach(btn => btn.addEventListener('click', () => setLayout(btn.dataset.layout)));
+  globalCloseupBtn.addEventListener('click', () => {
+    const next = globalCloseupBtn.getAttribute('aria-pressed') !== 'true';
+    setCloseup(next);
+  });
+
+  syncProbAndLayoutUI();
+
+  // ---- Debug & Verification Hook ----
+  window.__wheelDebug = {
+    snap(mode) {
+      ensurePreviewPossible(mode);
+      setModeUI(mode);
+      carnivalPhone.snapMode(mode);
+      compassPhone.snapMode(mode);
+    },
+    setProb,
+    setLayout,
+    setFinish(scheme, idx) {
+      if (scheme === 'carnival' || scheme === 'a' || scheme === 0) carnivalPhone.setFinish(idx);
+      else if (scheme === 'compass' || scheme === 'b' || scheme === 1) compassPhone.setFinish(idx);
+      else {
+        carnivalPhone.setFinish(idx);
+        compassPhone.setFinish(idx);
+      }
+    },
+    setCloseup,
+    orbit(az, el) {
+      carnivalPhone.stage.setOrbit(az, el);
+      compassPhone.stage.setOrbit(az, el);
+    },
+    resetView() {
+      setCloseup(false);
+      carnivalPhone.stage.resetView();
+      compassPhone.stage.resetView();
+    },
+    getState() {
+      const spec = getSpec();
+      const sectors = buildSectors(spec, activeLayout);
+      const trainRad = sectors.filter(s => s.isTrain).reduce((a, s) => a + (s.endRad - s.startRad), 0);
+      return {
+        probPct: activeProbPct,
+        exactProb: spec.exactProb,
+        visualTrainRatio: trainRad / TAU,
+        trainCount: spec.trainCount,
+        slotCount: spec.slotCount,
+        layout: activeLayout,
+        mode: activeMode,
+        stats: { carnival: statsA, compass: statsB },
+        carnival: carnivalPhone.getPointerInfo(),
+        compass: compassPhone.getPointerInfo(),
+      };
+    },
+    testDraw(pct, trials = 200) {
+      const spec = getProbSpec(pct);
+      let trainHits = 0;
+      for (let i = 0; i < trials; i++) {
+        if (drawExactOutcome(spec)) trainHits++;
+      }
+      return { pct, exactProb: spec.exactProb, trainHits, trials };
+    },
+  };
+})();
+</script>
+</body>
+</html>

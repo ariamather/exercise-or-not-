@@ -7,6 +7,7 @@ import com.exerciseornot.app.data.db.WorkoutEntity
 import com.exerciseornot.app.data.db.WorkoutExerciseEntity
 import com.exerciseornot.app.chance.ChanceGames
 import com.exerciseornot.app.chance.ChanceSettings
+import com.exerciseornot.app.chance.RevolverDraw
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.int
@@ -100,7 +101,8 @@ object BackupCodec {
         val target = f.settings.chanceTarget ?: (faces.size / 6.0)
         if (target.isNaN() || target !in 0.0..1.0) fail("练的概率超出 0–100%")
         // A game this version doesn't know (from a newer app) falls back to the default one.
-        val chance = ChanceSettings(ChanceGames.resolve(f.settings.chanceGame).id, target)
+        val revolverStop = RevolverDraw.stopForTarget(f.settings.chanceRevolverStopKey, target)
+        val chance = ChanceSettings(ChanceGames.resolve(f.settings.chanceGame).id, target, revolverStop?.key)
 
         // Memory belongs to models, not games; it is kept as is, even for a model this version
         // doesn't know, and each model starts afresh from anything it can't read.

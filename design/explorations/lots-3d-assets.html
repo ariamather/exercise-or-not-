@@ -1,0 +1,2406 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>练不练 · 抽签三维资产设计探索</title>
+<style>
+  :root {
+    color-scheme: light;
+    --desk: #e8eae3;
+    --paper: #f6f5f0;
+    --card: #fbfcf7;
+    --ink: #28392f;
+    --ink-2: #536052;
+    --muted: #7d847b;
+    --line: #dce0d4;
+    --soft: #e9eddf;
+    --accent: #365b43;
+    --accent-hover: #294b36;
+    --on-accent: #fafbf5;
+    --rest: #596e80;
+    --focus: #9dac67;
+    --shadow: 0 24px 70px rgba(40, 57, 47, 0.12);
+    font-family: -apple-system, BlinkMacSystemFont, "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--desk); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; border: 0; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  button:disabled { cursor: default; opacity: 0.58; }
+
+  .workspace {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 28px 24px 56px;
+  }
+
+  /* Top control header */
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px 24px;
+    margin-bottom: 26px;
+  }
+  .topbar-copy .eyebrow {
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    font-weight: 600;
+    color: #7c886b;
+    margin-bottom: 6px;
+  }
+  .topbar-copy h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.6px;
+  }
+  .topbar-copy p {
+    margin: 6px 0 0;
+    font-size: 13px;
+    color: var(--ink-2);
+    line-height: 1.6;
+  }
+
+  .controls-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  @media (max-width: 860px) {
+    .controls-stack { align-items: stretch; }
+  }
+  .global-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 5px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+  }
+  .controls-label {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 0 6px 0 8px;
+    font-weight: 500;
+  }
+  .pill {
+    padding: 8px 14px;
+    border-radius: 11px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-2);
+    transition: background 0.18s, color 0.18s;
+  }
+  .pill.sm { padding: 6px 11px; font-size: 11.5px; }
+  .pill:hover:not(:disabled) { background: var(--soft); color: var(--ink); }
+  .pill[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+  .pill.cycle-btn {
+    border: 1px dashed #bcc5af;
+    color: var(--accent);
+    margin-left: 2px;
+  }
+
+  /* Two-column phone showcase */
+  .comparison {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 420px));
+    justify-content: center;
+    gap: 28px 32px;
+  }
+  @media (max-width: 860px) {
+    .comparison { grid-template-columns: minmax(0, 420px); }
+    .workspace { padding: 18px 14px 44px; }
+  }
+
+  .scheme-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .scheme-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    padding: 0 6px;
+  }
+  .scheme-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .scheme-title strong { font-size: 15px; font-weight: 600; }
+  .scheme-title span { font-size: 11px; color: var(--muted); }
+
+  .scheme-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .mini-chip {
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .mini-chip:hover { background: var(--soft); }
+  .mini-chip[aria-pressed="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--on-accent);
+  }
+
+  /* Phone frame matching 6-spatial shell.css */
+  .phone {
+    position: relative;
+    width: 100%;
+    background: var(--paper);
+    border-radius: 34px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(40, 57, 47, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 690px;
+  }
+  .gl-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  .phone header {
+    height: 66px;
+    padding: 10px 26px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: none;
+    position: relative;
+    z-index: 2;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .brand-mark {
+    width: 26px;
+    height: 26px;
+    background: var(--accent);
+    color: var(--paper);
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    margin-right: 9px;
+    font: 24px Georgia, serif;
+    line-height: 20px;
+    padding-bottom: 4px;
+    transform: rotate(-8deg);
+  }
+  .brand-dot { color: #8d9a67; margin-left: 2px; }
+  .icon-button {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--ink);
+  }
+  .icon-button:hover { background: var(--soft); }
+  .icon-button svg { width: 22px; height: 22px; }
+  .icon-button circle { fill: var(--paper); }
+
+  .phone main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-bottom: 18px;
+    position: relative;
+    z-index: 2;
+  }
+  .phone h2.hero-q {
+    margin: 10px 30px 0;
+    font-size: 44px;
+    line-height: 1.2;
+    letter-spacing: -2px;
+    font-weight: 550;
+  }
+  .phone h2.hero-q span { color: #8a9a72; font-weight: 350; }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 292px;
+    flex: none;
+    touch-action: none;
+    cursor: grab;
+    z-index: 5;
+  }
+  .stage.is-orbiting { cursor: grabbing; }
+  .stage canvas.shadow-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .stage-hint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 6px;
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 0.8px;
+    color: #929787;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .stage.is-orbiting .stage-hint { opacity: 0.25; }
+
+  .result-line {
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: 2px 20px 16px;
+    font-size: 19px;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    color: var(--ink);
+  }
+  .result-line.answer { font-size: 25px; font-weight: 550; }
+  .result-line.rest { color: var(--rest); }
+
+  .actions { padding: 0 30px; }
+  .primary {
+    width: 100%;
+    min-height: 53px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    background: var(--accent);
+    border-radius: 17px;
+    color: var(--on-accent);
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    transition: background 0.16s, transform 0.14s;
+  }
+  .primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .primary:active:not(:disabled) { transform: scale(0.985); }
+  .shortcut {
+    width: 100%;
+    min-height: 44px;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 10px 4px;
+  }
+
+  /* Specs & notes footer */
+  .specs {
+    max-width: 872px;
+    margin: 28px auto 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 28px;
+  }
+  @media (max-width: 720px) {
+    .specs { grid-template-columns: 1fr; padding: 18px; }
+  }
+  .spec-block h3 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .spec-block p, .spec-block li {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.75;
+    color: var(--ink-2);
+  }
+  .spec-block ul {
+    margin: 0;
+    padding-left: 16px;
+  }
+  .spec-stats {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+</head>
+<body>
+<div class="workspace">
+  <header class="topbar">
+    <div class="topbar-copy">
+      <div class="eyebrow">EXERCISE OR NOT · 3D ASSET EXPLORATION</div>
+      <h1>抽签玩法 · 三维资产双方案对比</h1>
+      <p>沿用 <code>6-spatial</code> 视觉语言、主辅光照与托盘比例。出签后签体飞向镜头前方放大展示，支持切换 4 套签面谚语风格并 360° 拖拽查看细节。</p>
+    </div>
+    <div class="controls-stack">
+      <div class="global-controls" role="group" aria-label="全局状态切换">
+        <button class="pill" data-mode="idle" aria-pressed="true">待命静置</button>
+        <button class="pill" data-mode="shake" aria-pressed="false">摇签动画</button>
+        <button class="pill" data-mode="train" aria-pressed="false">出签 · 练</button>
+        <button class="pill" data-mode="rest" aria-pressed="false">出签 · 歇</button>
+        <button class="pill" data-mode="explode" aria-pressed="false">3D 拆解视图</button>
+      </div>
+      <div class="global-controls" role="group" aria-label="签面谚语风格切换">
+        <span class="controls-label">签面谚语</span>
+        <button class="pill sm" data-style="ancient" aria-pressed="true">古意俗谚</button>
+        <button class="pill sm" data-style="wuxia" aria-pressed="false">江湖武林</button>
+        <button class="pill sm" data-style="modern" aria-pressed="false">现代举铁</button>
+        <button class="pill sm" data-style="minimal" aria-pressed="false">极简吉语</button>
+        <button class="pill sm cycle-btn" id="btn-next-proverb">换一句谚语 ↻</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="comparison" aria-label="双方案实时 3D 对比">
+    <!-- Scheme A -->
+    <div class="scheme-col" data-scheme="bamboo">
+      <div class="scheme-meta">
+        <div class="scheme-title">
+          <strong>方案 A · 青竹签筒（群签探首）</strong>
+          <span>车削竹节筒身 + 10 支扁竹签束 + 弧顶主签</span>
+        </div>
+        <div class="scheme-tools">
+          <button class="mini-chip" data-finish="0" aria-pressed="true">墨绿漆筒</button>
+          <button class="mini-chip" data-finish="1" aria-pressed="false">原竹暖木</button>
+          <button class="mini-chip" data-reset-view>复位视角</button>
+        </div>
+      </div>
+
+      <article class="phone" id="phone-bamboo">
+        <canvas class="gl-overlay" id="gl-bamboo" aria-hidden="true"></canvas>
+        <header>
+          <div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
+          <button class="icon-button" aria-label="设置训练概率">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg>
+          </button>
+        </header>
+        <main>
+          <h2 class="hero-q">今天，<br>练不练<span>？</span></h2>
+          <div class="stage" id="stage-bamboo" role="img" aria-label="方案 A 青竹签筒三维舞台">
+            <canvas class="shadow-canvas" id="shadow-bamboo" aria-hidden="true"></canvas>
+            <div class="stage-hint" id="hint-bamboo">拖动画布 360° 观察 · 点按钮试抽</div>
+          </div>
+          <div class="result-line" id="result-bamboo">轻摇签筒，抽一支签。</div>
+          <div class="actions">
+            <button class="primary" id="btn-bamboo"><span id="btn-label-bamboo">抽一签</span><span aria-hidden="true">→</span></button>
+            <button class="shortcut">已经决定了，直接记录 ↗</button>
+          </div>
+        </main>
+      </article>
+    </div>
+
+    <!-- Scheme B -->
+    <div class="scheme-col" data-scheme="octagon">
+      <div class="scheme-meta">
+        <div class="scheme-title">
+          <strong>方案 B · 八角木匣（密孔出签）</strong>
+          <span>倒角八棱摇匣 + 铜口出签孔 + 圭首厚木签牌</span>
+        </div>
+        <div class="scheme-tools">
+          <button class="mini-chip" data-finish="0" aria-pressed="true">白釉墨绿顶</button>
+          <button class="mini-chip" data-finish="1" aria-pressed="false">墨绿嵌暖木</button>
+          <button class="mini-chip" data-reset-view>复位视角</button>
+        </div>
+      </div>
+
+      <article class="phone" id="phone-octagon">
+        <canvas class="gl-overlay" id="gl-octagon" aria-hidden="true"></canvas>
+        <header>
+          <div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
+          <button class="icon-button" aria-label="设置训练概率">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg>
+          </button>
+        </header>
+        <main>
+          <h2 class="hero-q">今天，<br>练不练<span>？</span></h2>
+          <div class="stage" id="stage-octagon" role="img" aria-label="方案 B 八角木匣三维舞台">
+            <canvas class="shadow-canvas" id="shadow-octagon" aria-hidden="true"></canvas>
+            <div class="stage-hint" id="hint-octagon">拖动画布 360° 观察 · 点按钮试抽</div>
+          </div>
+          <div class="result-line" id="result-octagon">晃动木匣，听签声落下。</div>
+          <div class="actions">
+            <button class="primary" id="btn-octagon"><span id="btn-label-octagon">摇一签</span><span aria-hidden="true">→</span></button>
+            <button class="shortcut">已经决定了，直接记录 ↗</button>
+          </div>
+        </main>
+      </article>
+    </div>
+  </section>
+
+  <section class="specs" aria-label="资产设计说明">
+    <div class="spec-block">
+      <h3>方案 A · 青竹签筒（器物感与热闹层次）</h3>
+      <ul>
+        <li><strong>筒身造型</strong>：64 段高精车削（Lathe），底配内收圈足，腰部含双竹节浅槽与嵌金铜箍，口沿外翻圆润厚唇，内腔做深色遮蔽渐变。</li>
+        <li><strong>群签构图</strong>：筒内错落插入 10 支扁圆顶竹签，呈内外两圈放射倾角，漆冠交替朱砂、墨绿、苔青，静态也有视觉焦点。</li>
+        <li><strong>出签演出</strong>：摇晃时签筒退居左后方，选定主签从筒口跃出并推进放大至镜头正前方悬浮展示，正面双列竖排呈现主字与短谚语、朱文方印。</li>
+      </ul>
+      <div class="spec-stats" id="stats-bamboo">几何体统计计算中…</div>
+    </div>
+    <div class="spec-block">
+      <h3>方案 B · 八角木匣（几何雕塑感与神秘仪式）</h3>
+      <ul>
+        <li><strong>匣体造型</strong>：8 个宽阔平面与 8 条斜棱倒角（Bevel Chamfer）分明受光；顶底配阶梯封边，顶盖嵌青金铜圈出签口，正面镶窄竖铭牌。</li>
+        <li><strong>出签悬念</strong>：静置时仅藏半截签尖于幽深孔内，晃动时签尖探头试探（类似骰盅开盅前的留白感）。</li>
+        <li><strong>厚木签牌</strong>：出签后木匣退居左后，厚实 3D 圭首木牌飞向镜头前放大展示，清晰呈现书法感「练 / 歇」大字与短谚语批注。</li>
+      </ul>
+      <div class="spec-stats" id="stats-octagon">几何体统计计算中…</div>
+    </div>
+    <div class="spec-block" style="grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 16px;">
+      <h3>四套签面谚语风格候选（点击顶部可实时切换预览）</h3>
+      <ul id="proverb-catalog">
+        <li><strong>1 · 古意俗谚（节气农谚风）</strong>：温润典雅、契合竹筒与木牌材质。练如「流水不腐，户枢不蠹」「千里之行，始于足下」；歇如「一张一弛，文武之道」「秋收冬藏，静水深流」。</li>
+        <li><strong>2 · 江湖武林（禅意口诀风）</strong>：带一点练功房与武侠仪式感。练如「拳怕少壮，铁怕常举」「筋骨微热，诸事皆顺」；歇如「高手过招，亦需回气」「茶已温好，今日免战」。</li>
+        <li><strong>3 · 现代举铁（反焦虑白话风）</strong>：最贴合本 App「不制造负担、减少纠结」的现代幽默。练如「去都去了，先推两组」「多举半斤，也是进步」；歇如「肌肉是在休息时长大的」「少练一天，天塌不下来」。</li>
+        <li><strong>4 · 极简吉语（四字大签风）</strong>：文字最少、最醒目，小屏 WebView 也一眼可读。练如「动则有功」「日拱一卒」；歇如「养精蓄锐」「松弛有度」。</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  window.__errors = [];
+  window.addEventListener('error', e => window.__errors.push(e.message || String(e)));
+  window.addEventListener('unhandledrejection', e => window.__errors.push(String(e.reason)));
+
+  const TAU = Math.PI * 2;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  const easeInOut = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+  // ---- Vector & Matrix Math (matching app/src/main/assets/chance/lib/gl.js) ----
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const scale = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+  const normalize = a => {
+    const l = Math.hypot(a[0], a[1], a[2]) || 1;
+    return [a[0] / l, a[1] / l, a[2] / l];
+  };
+
+  function multiply(a, b) {
+    const o = new Float32Array(16);
+    for (let c = 0; c < 4; c++) {
+      for (let r = 0; r < 4; r++) {
+        let s = 0;
+        for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k];
+        o[c * 4 + r] = s;
+      }
+    }
+    return o;
+  }
+
+  function qAxis(axis, angle) {
+    const u = normalize(axis);
+    const s = Math.sin(angle / 2);
+    return [u[0] * s, u[1] * s, u[2] * s, Math.cos(angle / 2)];
+  }
+
+  function qMultiply(a, b) {
+    const ax = a[0], ay = a[1], az = a[2], aw = a[3];
+    const bx = b[0], by = b[1], bz = b[2], bw = b[3];
+    return [
+      aw * bx + ax * bw + ay * bz - az * by,
+      aw * by - ax * bz + ay * bw + az * bx,
+      aw * bz + ax * by - ay * bx + az * bw,
+      aw * bw - ax * bx - ay * by - az * bz,
+    ];
+  }
+
+  function qSlerp(a, b, t) {
+    let d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+    if (d < 0) { b = [-b[0], -b[1], -b[2], -b[3]]; d = -d; }
+    if (d > 0.9995) {
+      const r = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t];
+      const l = Math.hypot(...r) || 1;
+      return r.map(v => v / l);
+    }
+    const angle = Math.acos(clamp(d, -1, 1));
+    const s0 = Math.sin((1 - t) * angle) / Math.sin(angle);
+    const s1 = Math.sin(t * angle) / Math.sin(angle);
+    return [a[0] * s0 + b[0] * s1, a[1] * s0 + b[1] * s1, a[2] * s0 + b[2] * s1, a[3] * s0 + b[3] * s1];
+  }
+
+  function modelMatrix(q, p, s = 1) {
+    const [x, y, z, w] = q;
+    const xx = x * x, yy = y * y, zz = z * z;
+    return new Float32Array([
+      (1 - 2 * (yy + zz)) * s, (2 * (x * y + z * w)) * s, (2 * (x * z - y * w)) * s, 0,
+      (2 * (x * y - z * w)) * s, (1 - 2 * (xx + zz)) * s, (2 * (y * z + x * w)) * s, 0,
+      (2 * (x * z + y * w)) * s, (2 * (y * z - x * w)) * s, (1 - 2 * (xx + yy)) * s, 0,
+      p[0], p[1], p[2], 1,
+    ]);
+  }
+
+  function cameraMatrix(eye, target) {
+    const z = normalize(add(eye, scale(target, -1)));
+    const x = normalize(cross([0, 1, 0], z));
+    const y = cross(z, x);
+    return new Float32Array([
+      x[0], y[0], z[0], 0,
+      x[1], y[1], z[1], 0,
+      x[2], y[2], z[2], 0,
+      -dot(x, eye), -dot(y, eye), -dot(z, eye), 1,
+    ]);
+  }
+
+  function perspective(aspect) {
+    const f = 1 / Math.tan((30 * Math.PI) / 360);
+    const n = 0.1, far = 60;
+    return new Float32Array([
+      f / aspect, 0, 0, 0,
+      0, f, 0, 0,
+      0, 0, (far + n) / (n - far), -1,
+      0, 0, (2 * far * n) / (n - far), 0,
+    ]);
+  }
+
+  // ---- WebGL Stage Engine (EonGL-compatible lighting + multi-material flag + orbit camera) ----
+  const VERTEX_SRC = `
+    attribute vec3 aPosition;
+    attribute vec3 aNormal;
+    attribute vec2 aUv;
+    attribute float aFlag;
+    uniform mat4 uModel;
+    uniform mat4 uVP;
+    varying vec3 vNormal;
+    varying vec3 vWorld;
+    varying vec2 vUv;
+    varying float vFlag;
+    void main() {
+      vec4 p = uModel * vec4(aPosition, 1.0);
+      vWorld = p.xyz;
+      vNormal = mat3(uModel) * aNormal;
+      vUv = aUv;
+      vFlag = aFlag;
+      gl_Position = uVP * p;
+    }
+  `;
+
+  const FRAGMENT_SRC = `
+    precision highp float;
+    varying vec3 vNormal;
+    varying vec3 vWorld;
+    varying vec2 vUv;
+    varying float vFlag;
+    uniform vec3 uEye;
+    uniform vec3 uColor;
+    uniform vec3 uAccentColor;
+    uniform vec3 uTrimColor;
+    uniform vec3 uCavityColor;
+    uniform sampler2D uTex;
+    uniform float uTextured;
+    uniform float uGrain;
+    void main() {
+      vec3 n = normalize(vNormal);
+      vec3 keyDir = normalize(vec3(-3.0, 7.0, 5.0));
+      vec3 fillDir = normalize(vec3(5.0, 1.0, 2.0));
+      vec3 viewDir = normalize(uEye - vWorld);
+
+      float key = max(dot(n, keyDir), 0.0);
+      float fill = max(dot(n, fillDir), 0.0);
+      float spec = pow(max(dot(n, normalize(keyDir + viewDir)), 0.0), 36.0) * 0.14;
+      float fresnel = pow(1.0 - abs(dot(n, viewDir)), 3.0) * 0.06;
+
+      if (vFlag > 0.5 && vFlag < 1.5) {
+        // Interior cavity: deep muted occlusion
+        float depthShade = mix(0.68, 1.0, clamp(vUv.y, 0.0, 1.0));
+        vec3 cav = uCavityColor * (0.28 + key * 0.14 + fill * 0.06) * depthShade;
+        gl_FragColor = vec4(cav, 1.0);
+        return;
+      }
+
+      vec3 base = uColor;
+      if (vFlag < 0.5 && uTextured > 0.5) {
+        base = texture2D(uTex, vUv).rgb;
+      } else if (vFlag > 1.5 && vFlag < 2.5) {
+        base = uAccentColor;
+      } else if (vFlag > 2.5) {
+        base = uTrimColor;
+      }
+
+      if (uGrain > 0.5 && vFlag < 0.5 && uTextured < 0.5) {
+        float g = sin(vUv.x * 90.0 + sin(vUv.y * 14.0) * 1.4) * 0.018
+                + sin(vUv.y * 42.0) * 0.010;
+        base *= (1.0 + g);
+      }
+
+      vec3 lit = base * (0.50 + key * 0.44 + fill * 0.10);
+      lit += spec + fresnel;
+      gl_FragColor = vec4(lit, 1.0);
+    }
+  `;
+
+  const DEFAULT_EYE = [2.8, 7.5, 10.2];
+  const DEFAULT_TARGET = [0, 0.72, 0];
+  const BASE_REL = add(DEFAULT_EYE, scale(DEFAULT_TARGET, -1));
+  const BASE_DIST = Math.hypot(...BASE_REL);
+  const BASE_YAW = Math.atan2(BASE_REL[0], BASE_REL[2]);
+  const BASE_PITCH = Math.asin(BASE_REL[1] / BASE_DIST);
+
+  class LotsStage {
+    constructor(phoneEl, stageEl, glCanvas, shadowCanvas) {
+      this.phoneEl = phoneEl;
+      this.stage = stageEl;
+      this.canvas = glCanvas;
+      this.shadow = shadowCanvas;
+      this.ctx = shadowCanvas.getContext('2d');
+      this.gl = glCanvas.getContext('webgl', { alpha: true, antialias: true, premultipliedAlpha: false });
+      if (!this.gl) throw new Error('WebGL unavailable');
+
+      const gl = this.gl;
+      const compile = (type, src) => {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+        return s;
+      };
+      this.program = gl.createProgram();
+      gl.attachShader(this.program, compile(gl.VERTEX_SHADER, VERTEX_SRC));
+      gl.attachShader(this.program, compile(gl.FRAGMENT_SHADER, FRAGMENT_SRC));
+      gl.linkProgram(this.program);
+      if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(this.program));
+      gl.useProgram(this.program);
+
+      this.attribs = [['aPosition', 3, 0], ['aNormal', 3, 3], ['aUv', 2, 6], ['aFlag', 1, 8]]
+        .map(([name, size, offset]) => {
+          const loc = gl.getAttribLocation(this.program, name);
+          gl.enableVertexAttribArray(loc);
+          return [loc, size, offset];
+        });
+      const uNames = ['uModel', 'uVP', 'uEye', 'uColor', 'uAccentColor', 'uTrimColor', 'uCavityColor', 'uTex', 'uTextured', 'uGrain'];
+      this.uniforms = Object.fromEntries(uNames.map(n => [n, gl.getUniformLocation(this.program, n)]));
+
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.CULL_FACE);
+      gl.clearColor(0, 0, 0, 0);
+
+      this.meshes = [];
+      this.shadows = [];
+      this.tray = { halfX: 2.85, halfZ: 2.5, corner: 0.44 };
+      this.target = DEFAULT_TARGET.slice();
+      this.camYaw = BASE_YAW;
+      this.camPitch = BASE_PITCH;
+      this.camDist = BASE_DIST;
+      this.updateCamera();
+
+      this.observer = new ResizeObserver(() => this.resize());
+      this.observer.observe(this.phoneEl);
+      this.observer.observe(this.stage);
+      window.addEventListener('resize', () => this.resize(), { passive: true });
+      this.bindOrbit();
+      this.resize();
+    }
+
+    updateCamera() {
+      const cp = Math.cos(this.camPitch);
+      this.eye = [
+        this.target[0] + this.camDist * cp * Math.sin(this.camYaw),
+        this.target[1] + this.camDist * Math.sin(this.camPitch),
+        this.target[2] + this.camDist * cp * Math.cos(this.camYaw),
+      ];
+      this.view = cameraMatrix(this.eye, this.target);
+      if (this.stageW && this.stageH) {
+        this.vp = multiply(perspective(this.stageW / this.stageH), this.view);
+      }
+    }
+
+    resetView() {
+      this.camYaw = BASE_YAW;
+      this.camPitch = BASE_PITCH;
+      this.camDist = BASE_DIST;
+      this.updateCamera();
+      this.draw();
+    }
+
+    setOrbit(yawDelta, pitchAbs) {
+      this.camYaw = BASE_YAW + yawDelta;
+      if (pitchAbs != null) this.camPitch = clamp(pitchAbs, 0.1, 1.42);
+      this.updateCamera();
+      this.draw();
+    }
+
+    bindOrbit() {
+      let drag = null;
+      this.stage.addEventListener('pointerdown', e => {
+        if (drag) return;
+        e.preventDefault();
+        this.stage.setPointerCapture(e.pointerId);
+        drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+        this.stage.classList.add('is-orbiting');
+      });
+      this.stage.addEventListener('pointermove', e => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const dx = e.clientX - drag.x;
+        const dy = e.clientY - drag.y;
+        drag.x = e.clientX;
+        drag.y = e.clientY;
+        this.camYaw -= dx * 0.011;
+        this.camPitch = clamp(this.camPitch + dy * 0.0085, 0.1, 1.42);
+        this.updateCamera();
+        this.draw();
+      });
+      const stop = e => {
+        if (!drag || e.pointerId !== drag.id) return;
+        drag = null;
+        this.stage.classList.remove('is-orbiting');
+      };
+      this.stage.addEventListener('pointerup', stop);
+      this.stage.addEventListener('pointercancel', stop);
+    }
+
+    addMesh(data, opts = {}) {
+      const gl = this.gl;
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+      const mesh = {
+        buffer,
+        count: data.length / 9,
+        color: opts.color || [0.3, 0.45, 0.35],
+        accent: opts.accent || [0.6, 0.65, 0.43],
+        trim: opts.trim || [0.9, 0.87, 0.78],
+        cavity: opts.cavity || [0.16, 0.25, 0.18],
+        texture: opts.texture || null,
+        grain: opts.grain ? 1 : 0,
+        q: [0, 0, 0, 1],
+        position: [0, 0, 0],
+        scale: opts.scale || 1,
+        visible: opts.visible !== false,
+        doubleSided: !!opts.doubleSided,
+      };
+      this.meshes.push(mesh);
+      return mesh;
+    }
+
+    createTextureFromCanvas(cnv) {
+      const gl = this.gl;
+      const t = gl.createTexture();
+      this.updateTextureFromCanvas(t, cnv);
+      return t;
+    }
+
+    updateTextureFromCanvas(tex, cnv) {
+      const gl = this.gl;
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cnv);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    }
+
+    resize() {
+      const sr = this.stage.getBoundingClientRect();
+      const pr = this.phoneEl.getBoundingClientRect();
+      if (sr.width < 1 || sr.height < 1 || pr.width < 1 || pr.height < 1) return;
+      this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      this.stageW = sr.width;
+      this.stageH = sr.height;
+      this.phoneW = pr.width;
+      this.phoneH = pr.height;
+      this.stageOffsetX = sr.left - pr.left;
+      this.stageOffsetY = sr.top - pr.top;
+
+      this.shadow.width = Math.round(sr.width * this.dpr);
+      this.shadow.height = Math.round(sr.height * this.dpr);
+      this.canvas.width = Math.round(pr.width * this.dpr);
+      this.canvas.height = Math.round(pr.height * this.dpr);
+
+      this.vp = multiply(perspective(this.stageW / this.stageH), this.view);
+      this.draw();
+    }
+
+    overlayProjection() {
+      const w = this.phoneW, h = this.phoneH;
+      const sx = this.stageW / w;
+      const sy = this.stageH / h;
+      const tx = (this.stageOffsetX * 2 + this.stageW) / w - 1;
+      const ty = 1 - (this.stageOffsetY * 2 + this.stageH) / h;
+      const remap = new Float32Array([
+        sx, 0, 0, 0,
+        0, sy, 0, 0,
+        0, 0, 1, 0,
+        tx, ty, 0, 1,
+      ]);
+      return multiply(remap, this.vp);
+    }
+
+    project(p) {
+      const m = this.vp;
+      const w = m[3] * p[0] + m[7] * p[1] + m[11] * p[2] + m[15];
+      return [
+        ((m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12]) / w) * (this.stageW / 2) + this.stageW / 2,
+        (-(m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13]) / w + 1) * (this.stageH / 2),
+      ];
+    }
+
+    floorPath(y = 0) {
+      const ctx = this.ctx, rx = this.tray.halfX, rz = this.tray.halfZ, r = this.tray.corner;
+      ctx.beginPath();
+      const corners = [
+        [-rx + r, -rz + r, Math.PI],
+        [rx - r, -rz + r, -Math.PI / 2],
+        [rx - r, rz - r, 0],
+        [-rx + r, rz - r, Math.PI / 2],
+      ];
+      let first = true;
+      for (const [cx, cz, angle] of corners) {
+        for (let i = 0; i <= 8; i++) {
+          const a = angle + (i * Math.PI) / 16;
+          const pt = this.project([cx + r * Math.cos(a), y, cz + r * Math.sin(a)]);
+          if (first) { ctx.moveTo(pt[0], pt[1]); first = false; }
+          else ctx.lineTo(pt[0], pt[1]);
+        }
+      }
+      ctx.closePath();
+    }
+
+    drawBlob(x3, z3, radiusFrac, opacity, air, stretchX = 1, angleRad = 0) {
+      const ctx = this.ctx;
+      const [sx, sy] = this.project([x3, 0, z3]);
+      const size = this.stageH * radiusFrac * (1 + air * 0.12);
+      ctx.save();
+      ctx.translate(sx + 5 + air * 9, sy + 3 + air * 3);
+      if (angleRad) ctx.rotate(angleRad);
+      ctx.scale(stretchX, 0.43);
+      const g = ctx.createRadialGradient(0, 0, size * 0.12, 0, 0, size);
+      g.addColorStop(0, `rgba(47, 62, 33, ${opacity})`);
+      g.addColorStop(0.4, `rgba(47, 62, 33, ${opacity * 0.56})`);
+      g.addColorStop(1, 'rgba(47, 62, 33, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, size, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    drawFloor() {
+      const ctx = this.ctx;
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      ctx.clearRect(0, 0, this.stageW, this.stageH);
+
+      this.floorPath(-0.065);
+      ctx.fillStyle = '#d7dccd';
+      ctx.fill();
+
+      this.floorPath(0);
+      const surface = ctx.createLinearGradient(0, this.stageH * 0.18, this.stageW, this.stageH * 0.92);
+      surface.addColorStop(0, '#f0f1e8');
+      surface.addColorStop(1, '#e6eadc');
+      ctx.fillStyle = surface;
+      ctx.fill();
+      ctx.strokeStyle = '#dce1d1';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.clip();
+      for (const s of this.shadows) {
+        if (!s.visible) continue;
+        if (s.seg) {
+          this.drawSegmentShadow(s.seg[0], s.seg[1], s.radius, s.opacity, Math.max(0, s.y));
+        } else {
+          const lift = Math.max(0, s.y);
+          const op = s.opacity / (1 + lift * 1.35);
+          this.drawBlob(s.x, s.z, s.radius, op, lift, s.stretch || 1, s.angle || 0);
+        }
+      }
+      ctx.restore();
+    }
+
+    drawSegmentShadow(p0, p1, radiusFrac, baseOpacity, air) {
+      const ctx = this.ctx;
+      const a = this.project([p0[0], 0, p0[2]]);
+      const b = this.project([p1[0], 0, p1[2]]);
+      const dx = b[0] - a[0], dy = b[1] - a[1];
+      const len = Math.hypot(dx, dy);
+      const cx = (a[0] + b[0]) * 0.5 + 5 + air * 9;
+      const cy = (a[1] + b[1]) * 0.5 + 3 + air * 3;
+      const r = this.stageH * radiusFrac * (1 + air * 0.14);
+      const op = baseOpacity / (1 + air * 1.35);
+      const halfL = len * 0.5;
+      const ang = Math.atan2(dy, dx);
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(ang);
+      for (let pass = 0; pass < 2; pass++) {
+        const rr = pass === 0 ? r * 1.18 : r * 0.72;
+        const alpha = pass === 0 ? op * 0.42 : op * 0.55;
+        ctx.fillStyle = `rgba(47, 62, 33, ${alpha})`;
+        ctx.beginPath();
+        ctx.roundRect(-halfL - rr * 0.65, -rr, len + rr * 1.3, rr * 2, rr);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    draw() {
+      if (!this.vp) return;
+      const gl = this.gl, u = this.uniforms;
+      gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(this.program);
+      gl.uniformMatrix4fv(u.uVP, false, this.overlayProjection());
+      gl.uniform3fv(u.uEye, this.eye);
+
+      for (const m of this.meshes) {
+        if (!m.visible) continue;
+        if (m.doubleSided) gl.disable(gl.CULL_FACE);
+        else gl.enable(gl.CULL_FACE);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, m.buffer);
+        for (const [loc, size, offset] of this.attribs) {
+          gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 36, offset * 4);
+        }
+        gl.uniform3fv(u.uColor, m.color);
+        gl.uniform3fv(u.uAccentColor, m.accent);
+        gl.uniform3fv(u.uTrimColor, m.trim);
+        gl.uniform3fv(u.uCavityColor, m.cavity);
+        gl.uniform1f(u.uGrain, m.grain);
+        gl.uniform1f(u.uTextured, m.texture ? 1 : 0);
+        if (m.texture) {
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, m.texture);
+          gl.uniform1i(u.uTex, 0);
+        }
+        gl.uniformMatrix4fv(u.uModel, false, modelMatrix(m.q, m.position, m.scale));
+        gl.drawArrays(gl.TRIANGLES, 0, m.count);
+      }
+      this.drawFloor();
+    }
+  }
+
+  // ---- Geometry Builders (Outward CCW winding + crisp split crease normals) ----
+
+  /**
+   * Builds a multi-segment lathe mesh.
+   * Each ring in `rings` is { r, y, flag, sharp? }.
+   * If `sharp` is true, normals are split across that ring for crisp architectural edges.
+   * `radiusFn(theta)` allows non-circular sections (default: circular = 1).
+   */
+  function buildLathe(rings, segs, radiusFn) {
+    const out = [];
+    // Build split segments so sharp transitions get independent face normals.
+    const runs = [];
+    let current = [rings[0]];
+    for (let i = 1; i < rings.length; i++) {
+      current.push(rings[i]);
+      if (rings[i].sharp && i < rings.length - 1) {
+        runs.push(current);
+        current = [rings[i]];
+      }
+    }
+    runs.push(current);
+
+    const maxY = rings.reduce((m, p) => Math.max(m, p.y), 0.001);
+
+    for (const prof of runs) {
+      const segNorms = [];
+      for (let i = 0; i < prof.length - 1; i++) {
+        const dr = prof[i + 1].r - prof[i].r;
+        const dy = prof[i + 1].y - prof[i].y;
+        const l = Math.hypot(dr, dy) || 1;
+        segNorms.push([dy / l, -dr / l]);
+      }
+      const pNorms = prof.map((_, i) => {
+        const a = segNorms[Math.max(0, i - 1)];
+        const b = segNorms[Math.min(segNorms.length - 1, i)];
+        const nx = a[0] + b[0], ny = a[1] + b[1];
+        const l = Math.hypot(nx, ny) || 1;
+        return [nx / l, ny / l];
+      });
+
+      const vert = (j, s) => {
+        const t = (s / segs) * TAU;
+        const mod = radiusFn ? radiusFn(t) : { c: Math.cos(t), s: Math.sin(t), nx: Math.cos(t), nz: Math.sin(t) };
+        const { r, y, flag } = prof[j];
+        const [nr, ny] = pNorms[j];
+        const n = normalize([nr * mod.nx, ny, nr * mod.nz]);
+        return [r * mod.c, y, r * mod.s, n[0], n[1], n[2], s / segs, y / maxY, flag];
+      };
+
+      for (let s = 0; s < segs; s++) {
+        for (let j = 0; j < prof.length - 1; j++) {
+          const a = vert(j, s);
+          const b = vert(j, s + 1);
+          const c = vert(j + 1, s + 1);
+          const d = vert(j + 1, s);
+          out.push(...a, ...c, ...b, ...a, ...d, ...c);
+        }
+      }
+    }
+    return new Float32Array(out);
+  }
+
+  /**
+   * Builds a solid octagonal beveled body with crisp 8 flat sides + 8 corner chamfers,
+   * transitioning cleanly at the top deck to a circular extraction port.
+   */
+  function buildOctagonShakerBody() {
+    const out = [];
+    // 16 corners around an octagon (each corner split by +/- chamfer angle for crisp bevels)
+    // Angle offset so flat faces align with cardinal axes (front flat face at +Z, angle PI/2).
+    const CHAMFER = 0.085; // radians half-width of corner bevel
+    const ringPts = [];
+    const octRadiusAt = (ang) => 1 / Math.cos(((ang % (Math.PI / 4)) + Math.PI / 4) % (Math.PI / 4) - Math.PI / 8);
+
+    // 8 faces * 2 sub-segments = 16 perimeter points; duplicate sharp facet boundaries cleanly per facet
+    // Better yet: generate 8 flat panels and 8 chamfer strips explicitly so normals on flat faces are dead flat!
+    const corners = [];
+    for (let k = 0; k < 8; k++) {
+      const faceCenter = Math.PI / 2 + k * (Math.PI / 4);
+      const aLeft = faceCenter - Math.PI / 8 + CHAMFER;
+      const aRight = faceCenter + Math.PI / 8 - CHAMFER;
+      const rEdge = 1 / Math.cos(Math.PI / 8 - CHAMFER);
+      // Wait: to keep a true flat octagon side, radius at angle delta from faceCenter is 1 / cos(delta)
+      const rVal = 1 / Math.cos(Math.PI / 8 - CHAMFER);
+      corners.push({
+        faceAngle: faceCenter,
+        a0: faceCenter - Math.PI / 8 + CHAMFER,
+        a1: faceCenter + Math.PI / 8 - CHAMFER,
+        rEdge: rVal,
+        p0: [rVal * Math.cos(aLeft), rVal * Math.sin(aLeft)],
+        p1: [rVal * Math.cos(aRight), rVal * Math.sin(aRight)],
+        fnx: Math.cos(faceCenter),
+        fnz: Math.sin(faceCenter),
+      });
+    }
+
+    // Vertical profile runs (split at sharp shoulders so top/bottom collars look machined)
+    const runs = [
+      // Bottom chamfer & foot plinth (flag 2 = accent)
+      [
+        { s: 0.90, y: 0.00, flag: 2 },
+        { s: 0.94, y: 0.04, flag: 2 },
+        { s: 0.94, y: 0.21, flag: 2 },
+        { s: 0.90, y: 0.23, flag: 2 },
+      ],
+      // Main octagonal tapered body (flag 0)
+      [
+        { s: 0.90, y: 0.23, flag: 0 },
+        { s: 0.87, y: 1.88, flag: 0 },
+      ],
+      // Upper stepped shoulder & octagonal crown collar (flag 2)
+      [
+        { s: 0.87, y: 1.88, flag: 2 },
+        { s: 0.91, y: 1.91, flag: 2 },
+        { s: 0.91, y: 2.09, flag: 2 },
+        { s: 0.84, y: 2.15, flag: 2 },
+      ],
+    ];
+
+    const pushOctStrip = (prof, pA, pB, nA, nB, u0, u1) => {
+      const segNorms = [];
+      for (let i = 0; i < prof.length - 1; i++) {
+        const dr = prof[i + 1].s - prof[i].s;
+        const dy = prof[i + 1].y - prof[i].y;
+        const l = Math.hypot(dr, dy) || 1;
+        segNorms.push([dy / l, -dr / l]);
+      }
+      const pNorms = prof.map((_, i) => {
+        const a = segNorms[Math.max(0, i - 1)];
+        const b = segNorms[Math.min(segNorms.length - 1, i)];
+        const nx = a[0] + b[0], ny = a[1] + b[1];
+        const l = Math.hypot(nx, ny) || 1;
+        return [nx / l, ny / l];
+      });
+      for (let j = 0; j < prof.length - 1; j++) {
+        const r0 = prof[j].s, y0 = prof[j].y, f0 = prof[j].flag;
+        const r1 = prof[j + 1].s, y1 = prof[j + 1].y, f1 = prof[j + 1].flag;
+        const [nr0, ny0] = pNorms[j];
+        const [nr1, ny1] = pNorms[j + 1];
+        const na0 = normalize([nr0 * nA[0], ny0, nr0 * nA[1]]);
+        const nb0 = normalize([nr0 * nB[0], ny0, nr0 * nB[1]]);
+        const na1 = normalize([nr1 * nA[0], ny1, nr1 * nA[1]]);
+        const nb1 = normalize([nr1 * nB[0], ny1, nr1 * nB[1]]);
+        const a = [r0 * pA[0], y0, r0 * pA[1], na0[0], na0[1], na0[2], u0, y0 / 2.15, f0];
+        const b = [r0 * pB[0], y0, r0 * pB[1], nb0[0], nb0[1], nb0[2], u1, y0 / 2.15, f0];
+        const c = [r1 * pB[0], y1, r1 * pB[1], nb1[0], nb1[1], nb1[2], u1, y1 / 2.15, f1];
+        const d = [r1 * pA[0], y1, r1 * pA[1], na1[0], na1[1], na1[2], u0, y1 / 2.15, f1];
+        out.push(...a, ...c, ...b, ...a, ...d, ...c);
+      }
+    };
+
+    for (const prof of runs) {
+      for (let k = 0; k < 8; k++) {
+        const cur = corners[k];
+        const nxt = corners[(k + 1) % 8];
+        // Flat face (sharp normal)
+        pushOctStrip(prof, cur.p0, cur.p1, [cur.fnx, cur.fnz], [cur.fnx, cur.fnz], k / 8, (k + 0.75) / 8);
+        // Chamfer bridge between cur.p1 and nxt.p0
+        const midAngle = cur.faceAngle + Math.PI / 8;
+        const cmx = Math.cos(midAngle), cmz = Math.sin(midAngle);
+        pushOctStrip(prof, cur.p1, nxt.p0, [cmx, cmz], [cmx, cmz], (k + 0.75) / 8, (k + 1) / 8);
+      }
+    }
+
+    // Bottom cap (y = 0, facing -Y)
+    const botS = 0.90;
+    for (let k = 0; k < 8; k++) {
+      const cur = corners[k], nxt = corners[(k + 1) % 8];
+      const o = [0, 0, 0, 0, -1, 0, 0.5, 0.5, 2];
+      const p0 = [botS * cur.p0[0], 0, botS * cur.p0[1], 0, -1, 0, 0.5, 0.5, 2];
+      const p1 = [botS * cur.p1[0], 0, botS * cur.p1[1], 0, -1, 0, 0.5, 0.5, 2];
+      const p2 = [botS * nxt.p0[0], 0, botS * nxt.p0[1], 0, -1, 0, 0.5, 0.5, 2];
+      out.push(...o, ...p0, ...p1, ...o, ...p1, ...p2);
+    }
+
+    // Top deck connecting octagonal outer rim (s = 0.84, y = 2.15) to circular inner hole (r = 0.26, y = 2.15)
+    const topS = 0.84, topY = 2.15, holeR = 0.26;
+    const perim = [];
+    for (let k = 0; k < 8; k++) {
+      const cur = corners[k];
+      perim.push([topS * cur.p0[0], topS * cur.p0[1], cur.a0]);
+      perim.push([topS * cur.p1[0], topS * cur.p1[1], cur.a1]);
+    }
+    for (let i = 0; i < perim.length; i++) {
+      const A = perim[i];
+      const B = perim[(i + 1) % perim.length];
+      const ia = [holeR * Math.cos(A[2]), holeR * Math.sin(A[2])];
+      const ib = [holeR * Math.cos(B[2]), holeR * Math.sin(B[2])];
+      const vA = [A[0], topY, A[1], 0, 1, 0, 0.5, 0.5, 2];
+      const vB = [B[0], topY, B[1], 0, 1, 0, 0.5, 0.5, 2];
+      const vIB = [ib[0], topY, ib[1], 0, 1, 0, 0.5, 0.5, 2];
+      const vIA = [ia[0], topY, ia[1], 0, 1, 0, 0.5, 0.5, 2];
+      // CCW from +Y looking down: A -> IB -> B, A -> IA -> IB
+      out.push(...vA, ...vIB, ...vB, ...vA, ...vIA, ...vIB);
+    }
+
+    return new Float32Array(out);
+  }
+
+  /**
+   * Builds a beveled 2D-outline slab (for arched tally sticks and gable wooden plaques).
+   * Front face (+Z) gets UV [0..1, 0..1] and flag=0 for crisp typography texture.
+   * Side bevels/walls/back get sideFlag (or tipFlag above tipRatio).
+   */
+  function buildBeveledSlab(outline, thickness, bevelXY, bevelZ, sideFlag = 3, tipRatio = 2, tipFlag = 2) {
+    const out = [];
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const [x, y] of outline) {
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+    const W = maxX - minX || 1, H = maxY - minY || 1;
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    const halfT = thickness / 2;
+    const zF = halfT, zFB = halfT - bevelZ, zBB = -halfT + bevelZ, zB = -halfT;
+
+    // Inset outline along inward vertex normals for bevel
+    const N = outline.length;
+    const edgeOut = outline.map((p, i) => {
+      const q = outline[(i + 1) % N];
+      const dx = q[0] - p[0], dy = q[1] - p[1];
+      const l = Math.hypot(dx, dy) || 1;
+      // CCW outline in XY -> outward normal is (dy, -dx)
+      return [dy / l, -dx / l];
+    });
+    const vertOut = outline.map((_, i) => {
+      const a = edgeOut[(i - 1 + N) % N];
+      const b = edgeOut[i];
+      const nx = a[0] + b[0], ny = a[1] + b[1];
+      const l = Math.hypot(nx, ny) || 1;
+      return [nx / l, ny / l];
+    });
+    const inner = outline.map((p, i) => [p[0] - vertOut[i][0] * bevelXY, p[1] - vertOut[i][1] * bevelXY]);
+
+    const uvOf = (x, y) => [(x - minX) / W, (y - minY) / H];
+    const flagAt = y => ((y - minY) / H >= tipRatio ? tipFlag : sideFlag);
+
+    // 1. Front flat face (+Z) - textured (flag 0)
+    const [cu, cv] = uvOf(cx, cy);
+    for (let i = 0; i < N; i++) {
+      const a = inner[i], b = inner[(i + 1) % N];
+      const [ua, va] = uvOf(a[0], a[1]);
+      const [ub, vb] = uvOf(b[0], b[1]);
+      out.push(
+        cx, cy, zF, 0, 0, 1, cu, cv, 0,
+        a[0], a[1], zF, 0, 0, 1, ua, va, 0,
+        b[0], b[1], zF, 0, 0, 1, ub, vb, 0
+      );
+    }
+
+    // 2. Back flat face (-Z) - non-textured
+    for (let i = 0; i < N; i++) {
+      const a = inner[i], b = inner[(i + 1) % N];
+      const fc = flagAt(cy), fa = flagAt(a[1]), fb = flagAt(b[1]);
+      const [ua, va] = uvOf(a[0], a[1]);
+      const [ub, vb] = uvOf(b[0], b[1]);
+      out.push(
+        cx, cy, zB, 0, 0, -1, cu, cv, fc,
+        b[0], b[1], zB, 0, 0, -1, ub, vb, fb,
+        a[0], a[1], zB, 0, 0, -1, ua, va, fa
+      );
+    }
+
+    // Helper for quad ring with outward normals
+    const ringQuad = (p0, p1, q0, q1, n0, n1, m0, m1, f0, f1) => {
+      const [u0, v0] = uvOf(p0[0], p0[1]);
+      const [u1, v1] = uvOf(p1[0], p1[1]);
+      const a = [p0[0], p0[1], p0[2], n0[0], n0[1], n0[2], u0, v0, f0];
+      const b = [p1[0], p1[1], p1[2], n1[0], n1[1], n1[2], u1, v1, f1];
+      const c = [q1[0], q1[1], q1[2], m1[0], m1[1], m1[2], u1, v1, f1];
+      const d = [q0[0], q0[1], q0[2], m0[0], m0[1], m0[2], u0, v0, f0];
+      out.push(...a, ...b, ...c, ...a, ...c, ...d);
+    };
+
+    for (let i = 0; i < N; i++) {
+      const j = (i + 1) % N;
+      const o0 = outline[i], o1 = outline[j];
+      const i0 = inner[i], i1 = inner[j];
+      const vo0 = vertOut[i], vo1 = vertOut[j];
+      const nSide0 = [vo0[0], vo0[1], 0], nSide1 = [vo1[0], vo1[1], 0];
+      const nFrontBev0 = normalize([vo0[0] * 0.65, vo0[1] * 0.65, 0.76]);
+      const nFrontBev1 = normalize([vo1[0] * 0.65, vo1[1] * 0.65, 0.76]);
+      const nBackBev0 = normalize([vo0[0] * 0.65, vo0[1] * 0.65, -0.76]);
+      const nBackBev1 = normalize([vo1[0] * 0.65, vo1[1] * 0.65, -0.76]);
+      const f0 = flagAt(o0[1]), f1 = flagAt(o1[1]);
+
+      // Front chamfer (outer zFB -> inner zF, CCW outward: o0->o1->i1->i0)
+      ringQuad([o0[0], o0[1], zFB], [o1[0], o1[1], zFB], [i1[0], i1[1], zF], [i0[0], i0[1], zF],
+        nFrontBev0, nFrontBev1, nFrontBev1, nFrontBev0, f0, f1);
+      // Outer side wall (zBB -> zFB, CCW outward)
+      ringQuad([o0[0], o0[1], zBB], [o1[0], o1[1], zBB], [o1[0], o1[1], zFB], [o0[0], o0[1], zFB],
+        nSide0, nSide1, nSide1, nSide0, f0, f1);
+      // Back chamfer (inner zB -> outer zBB, CCW outward)
+      ringQuad([i0[0], i0[1], zB], [i1[0], i1[1], zB], [o1[0], o1[1], zBB], [o0[0], o0[1], zBB],
+        nBackBev0, nBackBev1, nBackBev1, nBackBev0, f0, f1);
+    }
+
+    return new Float32Array(out);
+  }
+
+  // CCW outline of an arched-top bamboo tally stick centered around X=0, Y in [0, L]
+  function bambooStickOutline(w, len) {
+    const hw = w / 2;
+    const archR = hw;
+    const bodyTop = len - archR;
+    const pts = [];
+    // Bottom rounded corners
+    const br = 0.05;
+    for (let i = 0; i <= 4; i++) {
+      const a = Math.PI + (i / 4) * (Math.PI / 2);
+      pts.push([-hw + br + br * Math.cos(a), br + br * Math.sin(a)]);
+    }
+    for (let i = 0; i <= 4; i++) {
+      const a = -Math.PI / 2 + (i / 4) * (Math.PI / 2);
+      pts.push([hw - br + br * Math.cos(a), br + br * Math.sin(a)]);
+    }
+    // Semicircular arched top
+    for (let i = 0; i <= 14; i++) {
+      const a = (i / 14) * Math.PI;
+      pts.push([archR * Math.cos(a), bodyTop + archR * Math.sin(a)]);
+    }
+    return pts;
+  }
+
+  // CCW outline of a thick gable-crested (圭首) wooden plaque, Y in [0, L]
+  function plaqueOutline(w, len) {
+    const hw = w / 2;
+    const shoulderY = len - w * 0.48;
+    return [
+      [-hw + 0.04, 0],
+      [hw - 0.04, 0],
+      [hw, 0.04],
+      [hw, shoulderY],
+      [0.055, len],
+      [-0.055, len],
+      [-hw, shoulderY],
+      [-hw, 0.04],
+    ];
+  }
+
+  function centerOutlineY(pts) {
+    let minY = Infinity, maxY = -Infinity;
+    for (const [, y] of pts) {
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    const mid = (minY + maxY) * 0.5;
+    return pts.map(([x, y]) => [x, y - mid]);
+  }
+
+  // ---- Four Proverb Styles ----
+  const PROVERB_STYLES = {
+    ancient: {
+      name: '古意俗谚',
+      train: [
+        { rank: '上 · 吉', lines: ['流水不腐', '户枢不蠹'], note: '今日宜动 · 筋骨舒展', seal: '起行', sign: '第 陆 签' },
+        { rank: '中 · 吉', lines: ['千里之行', '始于足下'], note: '迈出一步 · 自成气候', seal: '行健', sign: '第 叁 签' },
+        { rank: '上 · 吉', lines: ['春生夏长', '顺时而动'], note: '顺势发力 · 微汗即止', seal: '顺势', sign: '第 玖 签' },
+      ],
+      rest: [
+        { rank: '安 · 闲', lines: ['一张一弛', '文武之道'], note: '今日宜静 · 留力他日', seal: '止息', sign: '第 贰 签' },
+        { rank: '平 · 安', lines: ['久行必息', '蓄势待发'], note: '松弛有度 · 来日方长', seal: '养锐', sign: '第 伍 签' },
+        { rank: '安 · 闲', lines: ['秋收冬藏', '静水深流'], note: '安然小憩 · 不必自责', seal: '归藏', sign: '第 捌 签' },
+      ],
+    },
+    wuxia: {
+      name: '江湖武林',
+      train: [
+        { rank: '出 · 招', lines: ['拳怕少壮', '铁怕常举'], note: '进门热身 · 两组也算', seal: '出招', sign: '第 壹 签' },
+        { rank: '顺 · 势', lines: ['筋骨微热', '诸事皆顺'], note: '不必力竭 · 动即得气', seal: '得气', sign: '第 肆 签' },
+        { rank: '精 · 进', lines: ['今日有劲', '莫负身手'], note: '趁热打铁 · 稳稳加码', seal: '试锋', sign: '第 柒 签' },
+      ],
+      rest: [
+        { rank: '收 · 招', lines: ['高手过招', '亦需回气'], note: '今日封刀 · 明日再战', seal: '收招', sign: '第 贰 签' },
+        { rank: '免 · 战', lines: ['茶已温好', '今日免战'], note: '暂且挂牌 · 养神为上', seal: '品茗', sign: '第 陆 签' },
+        { rank: '清 · 闲', lines: ['偷得浮生', '半日清闲'], note: '江湖暂别 · 早些安寝', seal: '自在', sign: '第 拾 签' },
+      ],
+    },
+    modern: {
+      name: '现代举铁',
+      train: [
+        { rank: '宜 · 开练', lines: ['去都去了', '先推两组'], note: '万事开头难 · 动了就不难', seal: '开动', sign: '今日签' },
+        { rank: '宜 · 渐进', lines: ['多举半斤', '也是进步'], note: '不跟人比 · 只超上次', seal: '渐进', sign: '今日签' },
+        { rank: '宜 · 出门', lines: ['纠结结束', '换鞋出门'], note: '把决定交给手气', seal: '出发', sign: '今日签' },
+      ],
+      rest: [
+        { rank: '宜 · 恢复', lines: ['肌肉都在', '睡梦里长'], note: '超量恢复 · 今天算正事', seal: '生长', sign: '休整签' },
+        { rank: '宜 · 放空', lines: ['少练一天', '天塌不了'], note: '不强迫打卡 · 明天再说', seal: '放空', sign: '休整签' },
+        { rank: '宜 · 早睡', lines: ['今日最佳', '早点睡觉'], note: '睡饱比硬撑更划算', seal: '好眠', sign: '休整签' },
+      ],
+    },
+    minimal: {
+      name: '极简吉语',
+      train: [
+        { rank: '上 · 吉', lines: ['动则有功'], note: '行胜于言 · 顺势而为', seal: '上吉', sign: '吉 签' },
+        { rank: '中 · 吉', lines: ['日拱一卒'], note: '积跬步 · 不靠热情', seal: '笃行', sign: '吉 签' },
+        { rank: '上 · 吉', lines: ['身轻如燕'], note: '热身到位 · 举重若轻', seal: '起行', sign: '吉 签' },
+      ],
+      rest: [
+        { rank: '安 · 吉', lines: ['养精蓄锐'], note: '松弛有度 · 来日方长', seal: '安吉', sign: '休 签' },
+        { rank: '平 · 安', lines: ['心安是福'], note: '今天不练 · 照样很好', seal: '自在', sign: '休 签' },
+        { rank: '安 · 吉', lines: ['松弛有度'], note: '蓄力待发 · 细水长流', seal: '止息', sign: '休 签' },
+      ],
+    },
+  };
+
+  // ---- High-Res Offscreen Canvas Textures (true aspect ratios: 1:4 stick, 1:3 plaque) ----
+  function makeBambooStickTexture(isTrain, entry) {
+    const W = 384, H = 1536;
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    const ctx = c.getContext('2d');
+
+    ctx.fillStyle = '#f4edda';
+    ctx.fillRect(0, 0, W, H);
+    for (let x = 0; x < W; x += 6) {
+      ctx.fillStyle = x % 12 === 0 ? 'rgba(130, 112, 74, 0.045)' : 'rgba(255, 252, 244, 0.16)';
+      ctx.fillRect(x, 0, 3, H);
+    }
+
+    const accent = isTrain ? '#b5493a' : '#365b43';
+    const ink = isTrain ? '#24372c' : '#435869';
+
+    // Top painted crown (top 17% matching 3D cap tipRatio=0.83)
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, 0, W, 260);
+    ctx.fillStyle = '#c8be82';
+    ctx.fillRect(0, 256, W, 16);
+
+    // Fine carved double frame
+    ctx.strokeStyle = 'rgba(54, 91, 67, 0.44)';
+    ctx.lineWidth = 7;
+    ctx.strokeRect(34, 314, W - 68, 1146);
+    ctx.strokeStyle = 'rgba(54, 91, 67, 0.18)';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(46, 326, W - 92, 1122);
+
+    // Rank tag
+    ctx.fillStyle = isTrain ? '#365b43' : '#596e80';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '600 40px "Songti SC", "STSong", "Noto Serif CJK SC", Georgia, serif';
+    ctx.fillText(entry.rank, W / 2, 392);
+
+    ctx.fillStyle = 'rgba(141, 154, 103, 0.55)';
+    ctx.fillRect(W / 2 - 58, 434, 116, 4);
+
+    // Hero character
+    ctx.fillStyle = ink;
+    ctx.font = '700 220px "Songti SC", "STSong", "Noto Serif CJK SC", "PingFang SC", serif';
+    ctx.fillText(isTrain ? '练' : '歇', W / 2, 608);
+
+    // Thin divider rule above proverb
+    ctx.fillStyle = 'rgba(54, 91, 67, 0.22)';
+    ctx.fillRect(72, 748, W - 144, 3);
+
+    // Proverb columns (traditional vertical reading right-to-left)
+    ctx.fillStyle = '#2d3d33';
+    const lines = entry.lines;
+    if (lines.length === 1) {
+      const txt = lines[0];
+      ctx.font = '600 66px "Songti SC", "STSong", "Noto Serif CJK SC", "PingFang SC", serif';
+      const step = 92;
+      const startY = 980 - ((txt.length - 1) * step) / 2;
+      for (let i = 0; i < txt.length; i++) {
+        ctx.fillText(txt[i], W / 2, startY + i * step);
+      }
+    } else {
+      const maxLen = Math.max(lines[0].length, lines[1].length);
+      const fontSize = maxLen <= 4 ? 54 : 46;
+      const step = maxLen <= 4 ? 76 : 64;
+      ctx.font = `600 ${fontSize}px "Songti SC", "STSong", "Noto Serif CJK SC", "PingFang SC", serif`;
+
+      // Subtle vertical separator between columns
+      ctx.fillStyle = 'rgba(141, 154, 103, 0.30)';
+      ctx.fillRect(W / 2 - 1.5, 810, 3, 390);
+
+      const drawCol = (str, cx) => {
+        ctx.fillStyle = '#28392f';
+        const startY = 1005 - ((str.length - 1) * step) / 2;
+        for (let i = 0; i < str.length; i++) {
+          ctx.fillText(str[i], cx, startY + i * step);
+        }
+      };
+      drawCol(lines[0], W / 2 + 64); // Right column first
+      drawCol(lines[1], W / 2 - 64); // Left column second
+    }
+
+    // Bottom vermilion/green stamp
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - 58, 1326, 116, 76, 12);
+    ctx.fill();
+    ctx.fillStyle = '#fafbf5';
+    ctx.font = '600 38px "Songti SC", "STSong", serif';
+    ctx.fillText(entry.seal, W / 2, 1365);
+
+    return c;
+  }
+
+  function makePlaqueTexture(isTrain, entry) {
+    const W = 512, H = 1536;
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    const ctx = c.getContext('2d');
+
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#f5eedc');
+    bg.addColorStop(1, '#ebe0c6');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.strokeStyle = 'rgba(145, 118, 72, 0.06)';
+    ctx.lineWidth = 4;
+    for (let i = 0; i < 18; i++) {
+      ctx.beginPath();
+      ctx.moveTo(28 * i, 0);
+      ctx.bezierCurveTo(28 * i + 14, 500, 28 * i - 14, 1020, 28 * i, H);
+      ctx.stroke();
+    }
+
+    const accent = isTrain ? '#365b43' : '#596e80';
+    const stamp = isTrain ? '#b5493a' : '#596e80';
+
+    // Top cord eyelet circle
+    ctx.fillStyle = '#8d9a67';
+    ctx.beginPath();
+    ctx.arc(256, 200, 36, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = '#36443a';
+    ctx.beginPath();
+    ctx.arc(256, 200, 21, 0, TAU);
+    ctx.fill();
+
+    // Inner gable frame
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.moveTo(64, 340);
+    ctx.lineTo(256, 114);
+    ctx.lineTo(448, 340);
+    ctx.lineTo(448, 1446);
+    ctx.lineTo(64, 1446);
+    ctx.closePath();
+    ctx.stroke();
+
+    ctx.fillStyle = '#7d847b';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '600 36px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText(entry.sign, 256, 376);
+
+    // Seal badge behind big glyph
+    ctx.fillStyle = stamp;
+    ctx.beginPath();
+    ctx.roundRect(116, 444, 280, 280, 56);
+    ctx.fill();
+
+    ctx.fillStyle = '#fafbf5';
+    ctx.font = '700 210px "Songti SC", "STSong", "Noto Serif CJK SC", serif';
+    ctx.fillText(isTrain ? '练' : '歇', 256, 588);
+
+    // Proverb lines
+    ctx.fillStyle = '#28392f';
+    const lines = entry.lines;
+    if (lines.length === 1) {
+      ctx.font = '600 66px "Songti SC", "STSong", "Noto Serif CJK SC", sans-serif';
+      ctx.fillText(lines[0], 256, 892);
+    } else {
+      ctx.font = '600 54px "Songti SC", "STSong", "Noto Serif CJK SC", sans-serif';
+      ctx.fillText(lines[0], 256, 850);
+      ctx.fillText(lines[1], 256, 932);
+    }
+
+    // Divider + calm note
+    ctx.fillStyle = 'rgba(141, 154, 103, 0.45)';
+    ctx.fillRect(156, 1018, 200, 4);
+
+    ctx.fillStyle = '#536052';
+    ctx.font = '500 32px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    ctx.fillText(entry.note, 256, 1094);
+
+    // Bottom stamp pill + 3-dot mark
+    ctx.fillStyle = 'rgba(54, 91, 67, 0.12)';
+    ctx.beginPath();
+    ctx.roundRect(176, 1200, 160, 62, 16);
+    ctx.fill();
+    ctx.fillStyle = accent;
+    ctx.font = '600 32px "Songti SC", "STSong", serif';
+    ctx.fillText(entry.seal, 256, 1232);
+
+    ctx.fillStyle = '#8d9a67';
+    for (const [dx, dy] of [[0, -10], [-14, 10], [14, 10]]) {
+      ctx.beginPath();
+      ctx.arc(256 + dx, 1344 + dy, 7, 0, TAU);
+      ctx.fill();
+    }
+
+    return c;
+  }
+
+  function makeBoxFrontPlateTexture() {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 512;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#f3eee0';
+    ctx.fillRect(0, 0, 256, 512);
+    ctx.strokeStyle = '#8d9a67';
+    ctx.lineWidth = 10;
+    ctx.strokeRect(20, 20, 216, 472);
+    ctx.fillStyle = '#365b43';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '600 76px "Songti SC", "STSong", "Noto Serif CJK SC", serif';
+    ctx.fillText('吉', 128, 178);
+    ctx.fillText('签', 128, 304);
+    ctx.fillStyle = '#8d9a67';
+    ctx.beginPath();
+    ctx.arc(128, 410, 12, 0, TAU);
+    ctx.fill();
+    return c;
+  }
+
+  // Shared close-up showcase pose in front of camera [2.8, 7.5, 10.2]
+  const CONTAINER_REVEAL_POS = [-0.88, 0, -0.42];
+  const HERO_FRONT_POS = [1.18, 2.14, 2.25];
+  const HERO_FRONT_Q = qMultiply(
+    qAxis([0, 1, 0], 0.22),
+    qMultiply(qAxis([1, 0, 0], -0.46), qAxis([0, 0, 1], -0.04))
+  );
+
+  // =========================================================================
+  // SCHEME A: 青竹签筒 (Bamboo Cylinder + 10 Inner Sticks + Hero Stick)
+  // =========================================================================
+  function createBambooScheme(getProverb) {
+    const stage = new LotsStage(
+      document.getElementById('phone-bamboo'),
+      document.getElementById('stage-bamboo'),
+      document.getElementById('gl-bamboo'),
+      document.getElementById('shadow-bamboo')
+    );
+
+    // 1. Turned Bamboo Cylinder (profile with sharp edges around brass band & nodes)
+    const cylRings = [
+      // Foot ring (flag 3 = trim)
+      { r: 0.00, y: 0.00, flag: 3 },
+      { r: 0.68, y: 0.00, flag: 3, sharp: true },
+      { r: 0.76, y: 0.07, flag: 3 },
+      { r: 0.78, y: 0.14, flag: 3, sharp: true },
+      // Lower body (flag 0)
+      { r: 0.78, y: 0.14, flag: 0 },
+      { r: 0.76, y: 0.56, flag: 0, sharp: true },
+      // Bamboo node ridge 1
+      { r: 0.79, y: 0.60, flag: 0 },
+      { r: 0.79, y: 0.64, flag: 0 },
+      { r: 0.755, y: 0.68, flag: 0, sharp: true },
+      // Mid waist
+      { r: 0.74, y: 1.04, flag: 0 },
+      { r: 0.76, y: 1.38, flag: 0, sharp: true },
+      // Sage-gold brass band (flag 2)
+      { r: 0.775, y: 1.38, flag: 2 },
+      { r: 0.775, y: 1.46, flag: 2, sharp: true },
+      // Upper flare
+      { r: 0.765, y: 1.46, flag: 0 },
+      { r: 0.805, y: 1.88, flag: 0, sharp: true },
+      // Rounded thick lip rim (flag 3 trim)
+      { r: 0.825, y: 1.94, flag: 3 },
+      { r: 0.822, y: 2.00, flag: 3 },
+      { r: 0.785, y: 2.04, flag: 3 },
+      { r: 0.735, y: 2.04, flag: 3 },
+      { r: 0.705, y: 1.99, flag: 3, sharp: true },
+      // Inner cavity (flag 1)
+      { r: 0.68, y: 1.65, flag: 1 },
+      { r: 0.65, y: 0.30, flag: 1, sharp: true },
+      { r: 0.00, y: 0.28, flag: 1 },
+    ];
+    const cylGeo = buildLathe(cylRings, 64);
+
+    // 2. Inner Stick Bundle geometry (reused across 10 sticks)
+    const innerStickGeo = buildBeveledSlab(bambooStickOutline(0.24, 2.02), 0.055, 0.014, 0.014, 0, 0.87, 2);
+
+    // 3. Hero Stick geometry (centered around Y=0 so close-up scales/rotates symmetrically)
+    const HERO_LEN = 2.04;
+    const heroStickGeo = buildBeveledSlab(centerOutlineY(bambooStickOutline(0.50, HERO_LEN)), 0.095, 0.022, 0.022, 3, 0.83, 2);
+
+    const FINISHES = [
+      {
+        name: '墨绿漆筒',
+        cyl: { color: [0.20, 0.34, 0.25], accent: [0.62, 0.67, 0.42], trim: [0.16, 0.27, 0.20], cavity: [0.10, 0.16, 0.12], grain: 0 },
+        stickBody: [0.91, 0.86, 0.74],
+      },
+      {
+        name: '原竹暖木',
+        cyl: { color: [0.76, 0.68, 0.49], accent: [0.22, 0.36, 0.27], trim: [0.20, 0.34, 0.25], cavity: [0.26, 0.22, 0.14], grain: 1 },
+        stickBody: [0.95, 0.91, 0.82],
+      },
+    ];
+
+    const TIP_COLORS = [
+      [0.71, 0.29, 0.23], // cinnabar
+      [0.21, 0.36, 0.26], // forest green
+      [0.52, 0.58, 0.38], // moss olive
+    ];
+
+    const texTrain = stage.createTextureFromCanvas(makeBambooStickTexture(true, getProverb(true)));
+    const texRest = stage.createTextureFromCanvas(makeBambooStickTexture(false, getProverb(false)));
+
+    function refreshTextures() {
+      stage.updateTextureFromCanvas(texTrain, makeBambooStickTexture(true, getProverb(true)));
+      stage.updateTextureFromCanvas(texRest, makeBambooStickTexture(false, getProverb(false)));
+      stage.draw();
+    }
+
+    const cylMesh = stage.addMesh(cylGeo, { ...FINISHES[0].cyl });
+
+    const INNER_LAYOUT = [
+      { r: 0.12, ang: 0.35, tilt: 0.05, yaw: 0.25, h: 0.42, tip: 0 },
+      { r: 0.17, ang: 2.35, tilt: 0.07, yaw: 1.45, h: 0.54, tip: 1 },
+      { r: 0.14, ang: 4.45, tilt: 0.06, yaw: 2.65, h: 0.38, tip: 2 },
+      { r: 0.34, ang: 0.12, tilt: 0.11, yaw: 0.75, h: 0.28, tip: 1 },
+      { r: 0.35, ang: 1.08, tilt: 0.12, yaw: 1.85, h: 0.35, tip: 0 },
+      { r: 0.36, ang: 2.02, tilt: 0.10, yaw: 0.35, h: 0.26, tip: 2 },
+      { r: 0.33, ang: 2.98, tilt: 0.13, yaw: 2.15, h: 0.37, tip: 1 },
+      { r: 0.35, ang: 3.92, tilt: 0.11, yaw: 1.05, h: 0.30, tip: 0 },
+      { r: 0.34, ang: 4.88, tilt: 0.12, yaw: 2.75, h: 0.34, tip: 2 },
+      { r: 0.33, ang: 5.75, tilt: 0.09, yaw: 0.55, h: 0.24, tip: 1 },
+    ];
+    const innerSticks = INNER_LAYOUT.map((cfg, idx) => ({
+      cfg,
+      mesh: stage.addMesh(innerStickGeo, {
+        color: FINISHES[0].stickBody,
+        accent: TIP_COLORS[cfg.tip],
+        grain: 1,
+      }),
+    }));
+
+    const heroMesh = stage.addMesh(heroStickGeo, {
+      color: [0.95, 0.91, 0.82],
+      accent: TIP_COLORS[0],
+      trim: [0.89, 0.83, 0.70],
+      texture: texTrain,
+      visible: false,
+    });
+
+    const cylShadow = { x: 0, y: 0, z: 0, radius: 0.19, opacity: 0.32, visible: true };
+    const stickShadow = { x: 0.95, y: 1.35, z: 1.65, radius: 0.22, opacity: 0.34, stretch: 1.25, angle: -0.15, visible: false };
+    stage.shadows.push(cylShadow, stickShadow);
+
+    // Update live geometry count
+    const totalVerts = cylMesh.count + innerSticks.length * innerStickGeo.length / 9 + heroMesh.count;
+    document.getElementById('stats-bamboo').textContent =
+      `总计 ${Math.round(totalVerts / 3).toLocaleString()} 个三角面 · 3 类复用网格 · 2 张动态签面贴图（384×1536）`;
+
+    let finishIdx = 0;
+    let currentMode = 'idle';
+    let lastOutcome = 'train';
+    let animId = 0;
+    let shakePhase = 0;
+
+    function applyFinish(idx) {
+      finishIdx = idx;
+      const f = FINISHES[idx];
+      cylMesh.color = f.cyl.color;
+      cylMesh.accent = f.cyl.accent;
+      cylMesh.trim = f.cyl.trim;
+      cylMesh.cavity = f.cyl.cavity;
+      cylMesh.grain = f.cyl.grain;
+      for (const s of innerSticks) s.mesh.color = f.stickBody;
+      stage.draw();
+    }
+
+    function poseCylinder(cx, cy, cz, qCyl, bundleLift = 0, bundleJitter = 0, explode = 0) {
+      cylMesh.position = [cx, cy, cz];
+      cylMesh.q = qCyl;
+      cylShadow.x = cx;
+      cylShadow.y = cy;
+      cylShadow.z = cz;
+
+      for (let i = 0; i < innerSticks.length; i++) {
+        const { cfg, mesh } = innerSticks[i];
+        const radial = cfg.r + explode * 0.28;
+        const lx = radial * Math.cos(cfg.ang);
+        const lz = radial * Math.sin(cfg.ang);
+        const jitter = bundleJitter * Math.sin(shakePhase * 1.4 + i * 1.7);
+        const ly = 0.26 + cfg.h + bundleLift + jitter * 0.14 + explode * (0.85 + (i % 3) * 0.22);
+
+        // Rotate stick locally (outward tilt + yaw), then transform by cylinder q
+        const qTilt = qAxis([Math.sin(cfg.ang), 0, -Math.cos(cfg.ang)], cfg.tilt + explode * 0.11);
+        const qYaw = qAxis([0, 1, 0], cfg.yaw);
+        const qLocal = qMultiply(qTilt, qYaw);
+        mesh.q = qMultiply(qCyl, qLocal);
+
+        // Rotate local offset (lx, ly, lz) by qCyl
+        const m = modelMatrix(qCyl, [cx, cy, cz]);
+        mesh.position = [
+          m[0] * lx + m[4] * ly + m[8] * lz + m[12],
+          m[1] * lx + m[5] * ly + m[9] * lz + m[13],
+          m[2] * lx + m[6] * ly + m[10] * lz + m[14],
+        ];
+      }
+    }
+
+    function setHeroResult(isTrain) {
+      lastOutcome = isTrain ? 'train' : 'rest';
+      heroMesh.texture = isTrain ? texTrain : texRest;
+      heroMesh.accent = isTrain ? [0.71, 0.29, 0.23] : [0.21, 0.36, 0.26];
+    }
+
+    function setHeroPose(px, py, pz, q, s = 1) {
+      heroMesh.position = [px, py, pz];
+      heroMesh.q = q;
+      heroMesh.scale = s;
+      stickShadow.x = clamp(px * 0.72, -1.9, 1.9);
+      stickShadow.z = clamp(pz * 0.72, -1.5, 1.7);
+      stickShadow.y = Math.max(0, py - 0.85);
+    }
+
+    function applyIdle() {
+      animId++;
+      currentMode = 'idle';
+      poseCylinder(0, 0, 0.22, [0, 0, 0, 1], 0, 0, 0);
+      heroMesh.visible = false;
+      stickShadow.visible = false;
+      updateUI('轻摇签筒，抽一支签。', '抽一签', '', false);
+      stage.draw();
+    }
+
+    function applyRevealed(isTrain) {
+      animId++;
+      currentMode = isTrain ? 'train' : 'rest';
+      setHeroResult(isTrain);
+      // Cylinder rests in the left-rear background of the tray
+      poseCylinder(CONTAINER_REVEAL_POS[0], 0, CONTAINER_REVEAL_POS[2], qAxis([0, 1, 0], 0.18), 0, 0, 0);
+      // Hero stick hovers enlarged in front of the camera for clear reading
+      heroMesh.visible = true;
+      stickShadow.visible = true;
+      setHeroPose(HERO_FRONT_POS[0], HERO_FRONT_POS[1], HERO_FRONT_POS[2], HERO_FRONT_Q, 1.32);
+      updateUI(isTrain ? '走吧，练一点。' : '今天，歇一歇。', '再抽一签', isTrain ? 'answer' : 'answer rest', false);
+      stage.draw();
+    }
+
+    function applyExplode() {
+      animId++;
+      currentMode = 'explode';
+      setHeroResult(true);
+      poseCylinder(-0.55, 0, -0.1, [0, 0, 0, 1], 0, 0, 1.0);
+      heroMesh.visible = true;
+      stickShadow.visible = true;
+      setHeroPose(1.32, 1.48, 0.35, qMultiply(qAxis([0, 1, 0], -0.24), qAxis([1, 0, 0], -0.16)), 1.0);
+      updateUI('拆解视图 · 可 360° 拖拽观察构件', '抽一签', '', false);
+      stage.draw();
+    }
+
+    function playShakeLoop() {
+      const id = ++animId;
+      currentMode = 'shake';
+      heroMesh.visible = false;
+      stickShadow.visible = false;
+      updateUI('摇晃签筒中…', '摇签中…', '', true);
+      const t0 = performance.now();
+      const tick = now => {
+        if (id !== animId) return;
+        const sec = (now - t0) / 1000;
+        shakePhase = sec * 13;
+        const swayX = Math.sin(sec * 11) * 0.28;
+        const lift = 0.42 + Math.abs(Math.sin(sec * 11)) * 0.24;
+        const tilt = qMultiply(qAxis([0, 0, 1], Math.cos(sec * 11) * 0.26), qAxis([1, 0, 0], 0.22 + Math.sin(sec * 6) * 0.08));
+        poseCylinder(swayX, lift, 0.22, tilt, 0.14, 1.0, 0);
+        stage.draw();
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    function playRevealSequence(isTrain) {
+      const id = ++animId;
+      currentMode = isTrain ? 'train' : 'rest';
+      setHeroResult(isTrain);
+      heroMesh.visible = false;
+      stickShadow.visible = false;
+      updateUI('摇签中，答案正在路上…', '抽签中…', '', true);
+
+      const t0 = performance.now();
+      const qEmerg = qAxis([1, 0, 0], 0.22);
+      const [rx, , rz] = CONTAINER_REVEAL_POS;
+      const [fx, fy, fz] = HERO_FRONT_POS;
+
+      const tick = now => {
+        if (id !== animId) return;
+        const el = now - t0;
+        if (el < 700) {
+          // Phase 1: shake and glide container to left-rear resting spot
+          const p = el / 700;
+          shakePhase = p * 16;
+          const decay = 1 - Math.pow(p, 2.2);
+          const swayX = Math.sin(p * Math.PI * 5) * 0.30 * decay;
+          const cz = 0.22 + (rz - 0.22) * easeInOut(p);
+          const cx = rx * easeInOut(p) + swayX;
+          const lift = Math.sin(p * Math.PI) * 0.48;
+          const q = qMultiply(
+            qAxis([0, 0, 1], Math.cos(p * Math.PI * 5) * 0.24 * decay),
+            qAxis([1, 0, 0], 0.22 * Math.sin(p * Math.PI))
+          );
+          poseCylinder(cx, lift, cz, q, 0.16 * Math.sin(p * Math.PI), decay, 0);
+        } else if (el < 1060) {
+          // Phase 2: selected stick emerges up from inside cylinder
+          const p = (el - 700) / 360;
+          const ep = easeOut(p);
+          poseCylinder(rx, 0, rz, qAxis([0, 1, 0], 0.18 * ep), 0, 0, 0);
+          heroMesh.visible = true;
+          stickShadow.visible = true;
+          setHeroPose(rx, 1.55 + ep * 1.42, rz + ep * 0.08, qEmerg, 0.85 + 0.15 * ep);
+        } else if (el < 1560) {
+          // Phase 3: swoops toward camera front and enlarges for showcase
+          const k = easeInOut((el - 1060) / 500);
+          poseCylinder(rx, 0, rz, qAxis([0, 1, 0], 0.18), 0, 0, 0);
+          const arc = Math.sin(k * Math.PI) * 0.42;
+          const px = rx + (fx - rx) * k;
+          const py = 2.97 * (1 - k) + fy * k + arc;
+          const pz = (rz + 0.08) + (fz - (rz + 0.08)) * k;
+          const sc = 1.0 + (1.32 - 1.0) * k;
+          setHeroPose(px, py, pz, qSlerp(qEmerg, HERO_FRONT_Q, k), sc);
+        } else {
+          applyRevealed(isTrain);
+          return;
+        }
+        stage.draw();
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    function updateUI(resText, btnText, cls, busy) {
+      const resEl = document.getElementById('result-bamboo');
+      const btn = document.getElementById('btn-bamboo');
+      const lbl = document.getElementById('btn-label-bamboo');
+      resEl.textContent = resText;
+      resEl.className = 'result-line ' + cls;
+      lbl.textContent = btnText;
+      btn.disabled = busy;
+    }
+
+    // Scheme controls
+    const col = document.querySelector('[data-scheme="bamboo"]');
+    col.querySelectorAll('[data-finish]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        col.querySelectorAll('[data-finish]').forEach(b => b.setAttribute('aria-pressed', 'false'));
+        btn.setAttribute('aria-pressed', 'true');
+        applyFinish(Number(btn.dataset.finish));
+      });
+    });
+    col.querySelector('[data-reset-view]').addEventListener('click', () => stage.resetView());
+    document.getElementById('btn-bamboo').addEventListener('click', () => {
+      playRevealSequence(lastOutcome !== 'train');
+    });
+
+    applyIdle();
+
+    return {
+      setMode(mode) {
+        if (mode === 'idle') applyIdle();
+        else if (mode === 'shake') playShakeLoop();
+        else if (mode === 'train') playRevealSequence(true);
+        else if (mode === 'rest') playRevealSequence(false);
+        else if (mode === 'explode') applyExplode();
+      },
+      snapMode(mode) {
+        if (mode === 'idle') applyIdle();
+        else if (mode === 'train') applyRevealed(true);
+        else if (mode === 'rest') applyRevealed(false);
+        else if (mode === 'explode') applyExplode();
+        else if (mode === 'shake') {
+          animId++;
+          poseCylinder(0.18, 0.52, 0.22, qMultiply(qAxis([0, 0, 1], 0.22), qAxis([1, 0, 0], 0.24)), 0.16, 0.8, 0);
+          heroMesh.visible = false;
+          stickShadow.visible = false;
+          updateUI('摇晃签筒中…', '摇签中…', '', true);
+          stage.draw();
+        }
+      },
+      setFinish(idx) {
+        col.querySelectorAll('[data-finish]').forEach(b => b.setAttribute('aria-pressed', b.dataset.finish == idx ? 'true' : 'false'));
+        applyFinish(idx);
+      },
+      isShowingHero: () => heroMesh.visible,
+      refreshTextures,
+      stage,
+    };
+  }
+
+  // =========================================================================
+  // SCHEME B: 八角木匣 (Beveled Octagonal Shaker + Peeking Tip + Thick Plaque)
+  // =========================================================================
+  function createOctagonScheme(getProverb) {
+    const stage = new LotsStage(
+      document.getElementById('phone-octagon'),
+      document.getElementById('stage-octagon'),
+      document.getElementById('gl-octagon'),
+      document.getElementById('shadow-octagon')
+    );
+
+    const boxGeo = buildOctagonShakerBody();
+
+    // Raised brass eyelet bezel on top of octagonal box + dark inner hole shaft
+    const holeRings = [
+      { r: 0.27, y: 2.15, flag: 3 },
+      { r: 0.27, y: 2.18, flag: 3 },
+      { r: 0.24, y: 2.21, flag: 3 },
+      { r: 0.20, y: 2.21, flag: 3 },
+      { r: 0.18, y: 2.18, flag: 3, sharp: true },
+      { r: 0.18, y: 1.05, flag: 1, sharp: true },
+      { r: 0.00, y: 1.05, flag: 1 },
+    ];
+    const holeGeo = buildLathe(holeRings, 36);
+
+    // Front inlaid seal badge on the +Z octagonal facet
+    const badgeGeo = buildBeveledSlab([
+      [-0.19, 0], [0.19, 0], [0.22, 0.03], [0.22, 0.78],
+      [0.19, 0.81], [-0.19, 0.81], [-0.22, 0.78], [-0.22, 0.03],
+    ], 0.045, 0.014, 0.014, 3);
+
+    // Peeking tip stick (inside hole)
+    const peekGeo = buildBeveledSlab(plaqueOutline(0.24, 1.35), 0.10, 0.02, 0.02, 3, 0.80, 2);
+
+    // Hero thick carved wooden plaque (圭首木签牌, centered around Y=0)
+    const heroPlaqueGeo = buildBeveledSlab(centerOutlineY(plaqueOutline(0.62, 1.84)), 0.18, 0.032, 0.032, 3, 2, 2);
+
+    const FINISHES = [
+      {
+        name: '白釉墨绿顶',
+        body: { color: [0.94, 0.92, 0.86], accent: [0.20, 0.34, 0.25], trim: [0.62, 0.67, 0.42], cavity: [0.10, 0.14, 0.11], grain: 0 },
+      },
+      {
+        name: '墨绿嵌暖木',
+        body: { color: [0.20, 0.34, 0.25], accent: [0.76, 0.66, 0.48], trim: [0.66, 0.69, 0.44], cavity: [0.09, 0.15, 0.11], grain: 1 },
+      },
+    ];
+
+    const texPlate = stage.createTextureFromCanvas(makeBoxFrontPlateTexture());
+    const texTrain = stage.createTextureFromCanvas(makePlaqueTexture(true, getProverb(true)));
+    const texRest = stage.createTextureFromCanvas(makePlaqueTexture(false, getProverb(false)));
+
+    function refreshTextures() {
+      stage.updateTextureFromCanvas(texTrain, makePlaqueTexture(true, getProverb(true)));
+      stage.updateTextureFromCanvas(texRest, makePlaqueTexture(false, getProverb(false)));
+      stage.draw();
+    }
+
+    const boxMesh = stage.addMesh(boxGeo, { ...FINISHES[0].body });
+    const holeMesh = stage.addMesh(holeGeo, { ...FINISHES[0].body });
+    const badgeMesh = stage.addMesh(badgeGeo, {
+      color: [0.95, 0.92, 0.85],
+      trim: [0.62, 0.67, 0.42],
+      texture: texPlate,
+    });
+    const peekMesh = stage.addMesh(peekGeo, {
+      color: [0.90, 0.84, 0.71],
+      accent: [0.71, 0.29, 0.23],
+      trim: [0.89, 0.83, 0.69],
+    });
+    const heroMesh = stage.addMesh(heroPlaqueGeo, {
+      color: [0.94, 0.89, 0.78],
+      trim: [0.83, 0.75, 0.59],
+      texture: texTrain,
+      visible: false,
+    });
+
+    const boxShadow = { x: 0, y: 0, z: 0, radius: 0.21, opacity: 0.31, visible: true };
+    const plaqueShadow = { x: 0.95, y: 1.35, z: 1.65, radius: 0.23, opacity: 0.34, stretch: 1.25, angle: -0.15, visible: false };
+    stage.shadows.push(boxShadow, plaqueShadow);
+
+    const totalVerts = boxMesh.count + holeMesh.count + badgeMesh.count + peekMesh.count + heroMesh.count;
+    document.getElementById('stats-octagon').textContent =
+      `总计 ${Math.round(totalVerts / 3).toLocaleString()} 个三角面 · 5 个独立装配零件 · 正反双贴图（512×1536）`;
+
+    let finishIdx = 0;
+    let lastOutcome = 'train';
+    let animId = 0;
+
+    function setHeroPose(px, py, pz, q, s = 1) {
+      heroMesh.position = [px, py, pz];
+      heroMesh.q = q;
+      heroMesh.scale = s;
+      plaqueShadow.x = clamp(px * 0.72, -1.9, 1.9);
+      plaqueShadow.z = clamp(pz * 0.72, -1.5, 1.7);
+      plaqueShadow.y = Math.max(0, py - 0.85);
+    }
+
+    function applyFinish(idx) {
+      finishIdx = idx;
+      const f = FINISHES[idx];
+      for (const m of [boxMesh, holeMesh]) {
+        m.color = f.body.color;
+        m.accent = f.body.accent;
+        m.trim = f.body.trim;
+        m.cavity = f.body.cavity;
+        m.grain = f.body.grain;
+      }
+      stage.draw();
+    }
+
+    function poseAssembly(bx, by, bz, qBox, peekOut = 0.08, explode = 0) {
+      boxMesh.position = [bx, by, bz];
+      boxMesh.q = qBox;
+
+      holeMesh.position = [bx, by + explode * 0.72, bz];
+      holeMesh.q = qBox;
+
+      const m = modelMatrix(qBox, [bx, by, bz]);
+      const placeLocal = (lx, ly, lz, qLocal) => ({
+        position: [
+          m[0] * lx + m[4] * ly + m[8] * lz + m[12],
+          m[1] * lx + m[5] * ly + m[9] * lz + m[13],
+          m[2] * lx + m[6] * ly + m[10] * lz + m[14],
+        ],
+        q: qLocal ? qMultiply(qBox, qLocal) : qBox,
+      });
+
+      // Front badge sits on +Z face (z = 0.885 at mid height)
+      const bPose = placeLocal(0, 0.64, 0.885 + explode * 0.55);
+      badgeMesh.position = bPose.position;
+      badgeMesh.q = bPose.q;
+
+      // Peeking tip sits in the top shaft (length 1.35; top reaches 2.21 + peekOut)
+      const tipBaseY = 2.21 - 1.35 + peekOut + explode * 1.15;
+      const pPose = placeLocal(0, tipBaseY, 0, qAxis([0, 1, 0], 0.2));
+      peekMesh.position = pPose.position;
+      peekMesh.q = pPose.q;
+
+      boxShadow.x = bx;
+      boxShadow.y = by;
+      boxShadow.z = bz;
+    }
+
+    function setHeroResult(isTrain) {
+      lastOutcome = isTrain ? 'train' : 'rest';
+      heroMesh.texture = isTrain ? texTrain : texRest;
+    }
+
+    function applyIdle() {
+      animId++;
+      poseAssembly(0, 0, 0.22, [0, 0, 0, 1], 0.14, 0);
+      peekMesh.visible = true;
+      heroMesh.visible = false;
+      plaqueShadow.visible = false;
+      updateUI('晃动木匣，听签声落下。', '摇一签', '', false);
+      stage.draw();
+    }
+
+    function applyRevealed(isTrain) {
+      animId++;
+      setHeroResult(isTrain);
+      poseAssembly(CONTAINER_REVEAL_POS[0], 0, CONTAINER_REVEAL_POS[2], qAxis([0, 1, 0], -0.14), -0.05, 0);
+      peekMesh.visible = false;
+      heroMesh.visible = true;
+      plaqueShadow.visible = true;
+      setHeroPose(HERO_FRONT_POS[0], HERO_FRONT_POS[1], HERO_FRONT_POS[2], HERO_FRONT_Q, 1.24);
+      updateUI(isTrain ? '走吧，练一点。' : '今天，歇一歇。', '再摇一签', isTrain ? 'answer' : 'answer rest', false);
+      stage.draw();
+    }
+
+    function applyExplode() {
+      animId++;
+      setHeroResult(true);
+      poseAssembly(-0.58, 0, -0.08, [0, 0, 0, 1], 0.22, 1.0);
+      peekMesh.visible = true;
+      heroMesh.visible = true;
+      plaqueShadow.visible = true;
+      setHeroPose(1.42, 1.40, 0.42, qMultiply(qAxis([0, 1, 0], -0.26), qAxis([1, 0, 0], -0.16)), 1.0);
+      updateUI('拆解视图 · 可 360° 拖拽观察构件', '摇一签', '', false);
+      stage.draw();
+    }
+
+    function playShakeLoop() {
+      const id = ++animId;
+      heroMesh.visible = false;
+      plaqueShadow.visible = false;
+      peekMesh.visible = true;
+      updateUI('摇晃木匣中…', '摇签中…', '', true);
+      const t0 = performance.now();
+      const tick = now => {
+        if (id !== animId) return;
+        const sec = (now - t0) / 1000;
+        const swayY = 0.42 + Math.abs(Math.sin(sec * 12)) * 0.28;
+        const q = qMultiply(
+          qAxis([0, 0, 1], Math.sin(sec * 10) * 0.26),
+          qAxis([1, 0, 0], 0.34 + Math.cos(sec * 12) * 0.14)
+        );
+        const peek = 0.16 + Math.max(0, Math.sin(sec * 12)) * 0.28;
+        poseAssembly(Math.sin(sec * 8) * 0.16, swayY, 0.22, q, peek, 0);
+        stage.draw();
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    function playRevealSequence(isTrain) {
+      const id = ++animId;
+      setHeroResult(isTrain);
+      heroMesh.visible = false;
+      plaqueShadow.visible = false;
+      peekMesh.visible = true;
+      updateUI('摇匣出签中…', '出签中…', '', true);
+
+      const t0 = performance.now();
+      const qTiltOut = qAxis([1, 0, 0], 0.24);
+      const [rx, , rz] = CONTAINER_REVEAL_POS;
+      const [fx, fy, fz] = HERO_FRONT_POS;
+
+      const tick = now => {
+        if (id !== animId) return;
+        const el = now - t0;
+        if (el < 750) {
+          const p = el / 750;
+          const decay = 1 - Math.pow(p, 2.0);
+          const lift = Math.sin(p * Math.PI) * 0.56;
+          const cz = 0.22 + (rz - 0.22) * easeInOut(p);
+          const cx = rx * easeInOut(p);
+          const q = qMultiply(
+            qAxis([0, 0, 1], Math.sin(p * Math.PI * 5) * 0.24 * decay),
+            qAxis([1, 0, 0], 0.35 * Math.sin(p * Math.PI))
+          );
+          const peek = 0.14 + Math.max(0, Math.sin(p * Math.PI * 5)) * 0.28;
+          poseAssembly(cx, lift, cz, q, peek, 0);
+        } else if (el < 1100) {
+          const p = (el - 750) / 350;
+          const ep = easeOut(p);
+          poseAssembly(rx, 0, rz, qAxis([0, 1, 0], -0.14 * ep), -0.05, 0);
+          peekMesh.visible = false;
+          heroMesh.visible = true;
+          plaqueShadow.visible = true;
+          setHeroPose(rx, 1.75 + ep * 1.32, rz + ep * 0.12, qTiltOut, 0.80 + 0.20 * ep);
+        } else if (el < 1600) {
+          const k = easeInOut((el - 1100) / 500);
+          poseAssembly(rx, 0, rz, qAxis([0, 1, 0], -0.14), -0.05, 0);
+          const arc = Math.sin(k * Math.PI) * 0.38;
+          const px = rx + (fx - rx) * k;
+          const py = 3.07 * (1 - k) + fy * k + arc;
+          const pz = (rz + 0.12) + (fz - (rz + 0.12)) * k;
+          const sc = 1.0 + (1.24 - 1.0) * k;
+          setHeroPose(px, py, pz, qSlerp(qTiltOut, HERO_FRONT_Q, k), sc);
+        } else {
+          applyRevealed(isTrain);
+          return;
+        }
+        stage.draw();
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    function updateUI(resText, btnText, cls, busy) {
+      const resEl = document.getElementById('result-octagon');
+      const btn = document.getElementById('btn-octagon');
+      const lbl = document.getElementById('btn-label-octagon');
+      resEl.textContent = resText;
+      resEl.className = 'result-line ' + cls;
+      lbl.textContent = btnText;
+      btn.disabled = busy;
+    }
+
+    const col = document.querySelector('[data-scheme="octagon"]');
+    col.querySelectorAll('[data-finish]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        col.querySelectorAll('[data-finish]').forEach(b => b.setAttribute('aria-pressed', 'false'));
+        btn.setAttribute('aria-pressed', 'true');
+        applyFinish(Number(btn.dataset.finish));
+      });
+    });
+    col.querySelector('[data-reset-view]').addEventListener('click', () => stage.resetView());
+    document.getElementById('btn-octagon').addEventListener('click', () => {
+      playRevealSequence(lastOutcome !== 'train');
+    });
+
+    applyIdle();
+
+    return {
+      setMode(mode) {
+        if (mode === 'idle') applyIdle();
+        else if (mode === 'shake') playShakeLoop();
+        else if (mode === 'train') playRevealSequence(true);
+        else if (mode === 'rest') playRevealSequence(false);
+        else if (mode === 'explode') applyExplode();
+      },
+      snapMode(mode) {
+        if (mode === 'idle') applyIdle();
+        else if (mode === 'train') applyRevealed(true);
+        else if (mode === 'rest') applyRevealed(false);
+        else if (mode === 'explode') applyExplode();
+        else if (mode === 'shake') {
+          animId++;
+          poseAssembly(0.14, 0.55, 0.22, qMultiply(qAxis([0, 0, 1], 0.22), qAxis([1, 0, 0], 0.38)), 0.34, 0);
+          peekMesh.visible = true;
+          heroMesh.visible = false;
+          plaqueShadow.visible = false;
+          updateUI('摇晃木匣中…', '摇签中…', '', true);
+          stage.draw();
+        }
+      },
+      setFinish(idx) {
+        col.querySelectorAll('[data-finish]').forEach(b => b.setAttribute('aria-pressed', b.dataset.finish == idx ? 'true' : 'false'));
+        applyFinish(idx);
+      },
+      isShowingHero: () => heroMesh.visible,
+      refreshTextures,
+      stage,
+    };
+  }
+
+  // ---- Boot both schemes & expose preview hooks ----
+  let activeStyle = 'ancient';
+  let activeProverbIdx = 0;
+  const getProverb = isTrain => {
+    const bank = PROVERB_STYLES[activeStyle][isTrain ? 'train' : 'rest'];
+    return bank[activeProverbIdx % bank.length];
+  };
+
+  const bamboo = createBambooScheme(getProverb);
+  const octagon = createOctagonScheme(getProverb);
+
+  const modeBtns = document.querySelectorAll('.global-controls .pill[data-mode]');
+  const styleBtns = document.querySelectorAll('.global-controls .pill[data-style]');
+
+  function setModeUI(mode) {
+    modeBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === mode ? 'true' : 'false'));
+  }
+
+  function revealHiddenSchemes() {
+    if (!bamboo.isShowingHero()) { setModeUI('train'); bamboo.snapMode('train'); }
+    if (!octagon.isShowingHero()) { setModeUI('train'); octagon.snapMode('train'); }
+  }
+
+  function applyStyle(styleKey) {
+    activeStyle = styleKey;
+    styleBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.style === styleKey ? 'true' : 'false'));
+    bamboo.refreshTextures();
+    octagon.refreshTextures();
+    revealHiddenSchemes();
+  }
+
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.mode;
+      setModeUI(mode);
+      bamboo.setMode(mode);
+      octagon.setMode(mode);
+    });
+  });
+
+  styleBtns.forEach(btn => {
+    btn.addEventListener('click', () => applyStyle(btn.dataset.style));
+  });
+
+  document.getElementById('btn-next-proverb').addEventListener('click', () => {
+    activeProverbIdx = (activeProverbIdx + 1) % 3;
+    bamboo.refreshTextures();
+    octagon.refreshTextures();
+    revealHiddenSchemes();
+  });
+
+  window.__lotsDebug = {
+    snap(mode) {
+      setModeUI(mode);
+      bamboo.snapMode(mode);
+      octagon.snapMode(mode);
+    },
+    style(styleKey, idx = 0) {
+      activeProverbIdx = idx;
+      applyStyle(styleKey);
+    },
+    finish(idx) {
+      bamboo.setFinish(idx);
+      octagon.setFinish(idx);
+    },
+    orbit(yawDelta, pitchAbs) {
+      bamboo.stage.setOrbit(yawDelta, pitchAbs);
+      octagon.stage.setOrbit(yawDelta, pitchAbs);
+    },
+    resetView() {
+      bamboo.stage.resetView();
+      octagon.stage.resetView();
+    },
+  };
+})();
+</script>
+</body>
+</html>

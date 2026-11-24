@@ -17,6 +17,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+from urllib.parse import urlencode
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 CHROME = os.environ.get('CHROME', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
@@ -107,7 +108,10 @@ def page_socket():
 
 
 def check(devtools, scene, pace, limit_s):
-    devtools.call('Page.navigate', url=f'{PREVIEW}?scene={scene}&check&pace={pace}')
+    params = {'scene': scene, 'check': ''}
+    if pace is not None:
+        params['pace'] = pace
+    devtools.call('Page.navigate', url=f'{PREVIEW}?{urlencode(params)}')
     deadline = time.time() + limit_s
     while time.time() < deadline:
         time.sleep(.5)
@@ -121,8 +125,9 @@ def check(devtools, scene, pace, limit_s):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('scenes', nargs='*')
-    parser.add_argument('--pace', choices=['timed', 'user'], default='timed')
-    parser.add_argument('--limit', type=int, default=240, help='seconds per scene')
+    parser.add_argument('--pace', choices=['timed', 'user'], help='override the registered pace')
+    parser.add_argument('--limit', type=int, help='seconds per scene')
+    parser.add_argument('--reduced-motion', action='store_true', help='test the reduced-motion reveal')
     args = parser.parse_args()
     scenes = args.scenes or sorted(d for d in os.listdir(SCENES) if os.path.isdir(os.path.join(SCENES, d)))
 
@@ -137,9 +142,15 @@ def main():
         try:
             devtools = DevTools(page_socket())
             devtools.call('Page.enable')
+            if args.reduced_motion:
+                devtools.call('Emulation.setEmulatedMedia', features=[
+                    {'name': 'prefers-reduced-motion', 'value': 'reduce'},
+                ])
             passed = True
             for scene in scenes:
-                status, text = check(devtools, scene, args.pace, args.limit)
+                # The slot machine has 216 distinct landings, each with a three-reel animation.
+                limit_s = args.limit or (1200 if scene == 'slot' else 240)
+                status, text = check(devtools, scene, args.pace, limit_s)
                 print(text, end='\n\n', flush=True)
                 passed &= status == 'pass'
             return 0 if passed else 1

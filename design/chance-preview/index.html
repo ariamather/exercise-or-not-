@@ -3,25 +3,79 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="light">
   <title>玩法预览</title>
-  <!-- Load the real packaged page; only the Android bridge below is a stand-in. -->
+  <!-- Use the packaged scenes and shell with a browser stand-in for the Android bridge. -->
   <base href="../../app/src/main/assets/chance/">
   <link rel="stylesheet" href="shell.css">
   <style>
-    .preview-bar{position:fixed;top:8px;right:8px;z-index:10;display:flex;flex-wrap:wrap;gap:6px;max-width:calc(100% - 16px);justify-content:flex-end;font:11px -apple-system,sans-serif}
-    .preview-bar a,.preview-bar span{padding:5px 9px;border-radius:8px;background:#e9eddf;color:#28392f;text-decoration:none}
-    .preview-bar a[aria-current]{background:#365b43;color:#fafbf5}
-    #check-result{position:fixed;left:8px;bottom:8px;z-index:10;margin:0;max-width:calc(100% - 16px);max-height:40vh;overflow:auto;padding:8px;border-radius:8px;background:#28392f;color:#fafbf5;font:11px ui-monospace,monospace;white-space:pre-wrap}
+    .preview-sheet {
+      inset: auto 0 0;
+      width: min(100%, 520px);
+      max-width: none;
+      margin: 0 auto;
+      padding: 24px 24px max(24px, env(safe-area-inset-bottom));
+      border: 0;
+      border-radius: 24px 24px 0 0;
+      background: #f6f5f0;
+      color: inherit;
+    }
+    .preview-sheet::backdrop { background: #28392f66; }
+    .game-options { display: flex; flex-wrap: wrap; gap: 8px; }
+    .game-options button {
+      min-height: 44px;
+      padding: 0 16px;
+      border: 1px solid #d8decf;
+      border-radius: 12px;
+      background: transparent;
+      font-size: 14px;
+    }
+    .game-options button[aria-pressed="true"] { background: #e9eddf; border-color: #9dac67; }
+    .probability-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .probability-heading h2 { flex: 1; margin: 0; font-size: 19px; font-weight: 600; }
+    #probability-value { font-size: 28px; font-variant-numeric: tabular-nums; }
+    .probability-close { width: 44px; height: 44px; border-radius: 50%; background: transparent; font-size: 26px; }
+    #probability-slider { width: 100%; height: 32px; margin: 0; accent-color: #365b43; }
+    #probability-slider:focus-visible { outline: 2px solid #9dac67; outline-offset: 2px; border-radius: 8px; }
+    .revolver-controls { display: grid; gap: 6px; margin-top: 12px; }
+    .revolver-stepper {
+      display: grid;
+      grid-template-columns: 48px minmax(4em, 1fr) 48px;
+      align-items: center;
+      width: min(100%, 224px);
+      margin: 0 auto;
+      text-align: center;
+    }
+    .revolver-stepper button {
+      height: 48px;
+      border: 1px solid #d8decf;
+      border-radius: 50%;
+      background: transparent;
+      font-size: 22px;
+    }
+    .revolver-stepper button:active:not(:disabled) { background: #e9eddf; }
+    .revolver-stepper button:disabled { opacity: .42; }
+    .revolver-stepper output { font-variant-numeric: tabular-nums; }
+    #revolver-rule { margin: 8px 0 0; color: #536052; font-size: 14px; text-align: center; }
+    #check-result { position: fixed; left: 8px; bottom: 8px; z-index: 10; margin: 0; max-width: calc(100% - 16px); max-height: 40vh; overflow: auto; padding: 8px; border-radius: 8px; background: #28392f; color: #fafbf5; font: 11px ui-monospace, monospace; white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <nav class="preview-bar" aria-label="预览玩法" id="p-bar"><span id="p-log">—</span></nav>
   <div class="page">
-    <header><div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
-      <button id="settings" class="icon-button" aria-label="设置训练概率"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg></button>
+    <header>
+      <div class="brand"><span class="brand-mark" aria-hidden="true">∴</span>练不练<span class="brand-dot">.</span></div>
+      <div class="header-actions">
+        <button id="game" class="header-button" aria-label="选择玩法" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 12h4m-2-2v4m7-1h.01m3-2h.01M7.39 6h9.22a4 4 0 0 1 3.92 3.22l1.44 7.2a2 2 0 0 1-3.38 1.81L16.35 16h-8.7l-2.24 2.23a2 2 0 0 1-3.38-1.81l1.44-7.2A4 4 0 0 1 7.39 6Z"/></svg>
+          玩法
+        </button>
+        <button id="probability" class="header-button" aria-label="设置练的概率" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7h3m5 0h8M4 17h9m5 0h2"/><circle cx="9.5" cy="7" r="2.5"/><circle cx="15.5" cy="17" r="2.5"/></svg>
+          概率
+        </button>
+      </div>
     </header>
     <main>
-      <h1>今天，<br>练不练<span>？</span></h1>
       <button class="stage" id="stage" disabled></button>
       <div class="result" id="result" role="status" aria-live="polite"></div>
       <div class="actions">
@@ -31,52 +85,288 @@
       </div>
     </main>
   </div>
+  <dialog class="preview-sheet" id="game-sheet" aria-label="选择玩法" closedby="any">
+    <div class="game-options" id="game-options"></div>
+  </dialog>
+  <dialog class="preview-sheet" id="probability-sheet" aria-labelledby="probability-title" closedby="any">
+    <div class="probability-heading">
+      <h2 id="probability-title"><label for="probability-slider">练的概率</label></h2>
+      <output id="probability-value" for="probability-slider" aria-hidden="true"></output>
+      <form method="dialog"><button class="probability-close" aria-label="关闭概率设置"><span aria-hidden="true">×</span></button></form>
+    </div>
+    <input id="probability-slider" type="range" min="0" max="1" step="any" list="probability-stops" autofocus>
+    <datalist id="probability-stops"></datalist>
+    <div class="revolver-controls" id="revolver-controls" hidden>
+      <div class="revolver-stepper" role="group" aria-label="装填数量">
+        <button id="revolver-load-less" type="button" aria-label="少装一发">−</button>
+        <output id="revolver-loaded"></output>
+        <button id="revolver-load-more" type="button" aria-label="多装一发">+</button>
+      </div>
+      <div class="revolver-stepper" role="group" aria-label="击发次数">
+        <button id="revolver-shoot-less" type="button" aria-label="少打一下">−</button>
+        <output id="revolver-shots"></output>
+        <button id="revolver-shoot-more" type="button" aria-label="多打一下">+</button>
+      </div>
+      <p id="revolver-rule" aria-live="polite"></p>
+    </div>
+  </dialog>
   <script>
   /*
    * Stand-in for ChanceViewModel + the WebView bridge.
    *
    *   ?scene=cup                         which scene folder to load
    *   &outcomes=1,2,3,4,5,6&train=4,5,6  the outcome model (default: the scene's entry in GAMES)
-   *   &pace=user                         reveal pace ('timed' by default)
+   *   &pace=user                         override the registered reveal pace
+   *   &stop=3-majority                   preview a probability stop
+   *   &stop=1-6-any                      preview an exact revolver setup
    *   &auto                              draw once after loading
    *   &check                             run the scene contract checks (see tools/scene-check/run.py)
    *
-   * Add a new game to GAMES so it gets a link here and is covered by the checks.
+   * Add new games to GAMES so the preview mirrors the available scenes and probability stops.
    */
-  const D6 = { outcomes: ['1', '2', '3', '4', '5', '6'], train: ['4', '5', '6'] };
+  const numbers = count => Array.from({ length: count }, (_, i) => String(i + 1));
+  const fractionStop = (k, n) => ({ key: `${k}/${n}`, chance: k / n });
+  function numberedModel(model, count) {
+    return {
+      model,
+      outcomes: numbers(count),
+      stops: Array.from({ length: count + 1 }, (_, k) => fractionStop(k, count)),
+      trains: (id, stop) => +id > count - parseInt(stop, 10) && +id <= count,
+    };
+  }
+  const D6 = numberedModel('d6', 6);
+  const faces = D6.outcomes;
+  const reelOutcomes = faces.flatMap(a => faces.flatMap(b => faces.map(c => [a, b, c].join(','))));
+  const reelMarks = [[], [1], [1, 4], [1, 3, 5], [1, 2, 4, 5], [1, 2, 3, 4, 5], [1, 2, 3, 4, 5, 6]];
+  const reelMinimum = { any: 1, majority: 2, all: 3 };
+  function reelTrains(id, stop) {
+    if (!/^[1-6],[1-6],[1-6]$/.test(id)) return false;
+    const [k, rule] = stop.split('-');
+    const hits = id.split(',').filter(face => reelMarks[k].includes(+face)).length;
+    return hits >= reelMinimum[rule];
+  }
+  const reelKeys = [
+    '0-majority', '1-majority', '3-all', '2-majority', '4-all', '1-any', '3-majority',
+    '5-all', '2-any', '4-majority', '3-any', '5-majority', '6-majority',
+  ];
+  const layouts = Array.from({ length: 7 }, () => []);
+  for (let mask = 0; mask < 64; mask++) {
+    const count = mask.toString(2).replace(/0/g, '').length;
+    layouts[count].push(mask);
+  }
+  const subdivisions = numbers(60);
+  function revolverTrains(id, stop) {
+    const number = Number(id);
+    if (!Number.isInteger(number) || number < 1 || number > 60) return false;
+    const [k, turns, rule] = stop.split('-');
+    const options = layouts[k];
+    const mask = options[(number - 1) % options.length];
+    const active = (1 << turns) - 1;
+    return rule === 'any' ? (mask & active) !== 0 : (mask & active) === active;
+  }
+  const revolverKeys = [
+    '0-1-any', '2-2-all', '1-1-any', '3-2-all', '2-1-any', '4-2-all', '3-1-any',
+    '2-2-any', '4-1-any', '3-2-any', '5-1-any', '4-2-any', '6-1-any',
+  ];
+  function countedStops(keys, outcomes, trains) {
+    return keys.map(key => ({
+      key,
+      chance: outcomes.filter(id => trains(id, key)).length / outcomes.length,
+    }));
+  }
+  const revolverAnyKeys = layouts.flatMap((_, loaded) => numbers(6).map(shots => `${loaded}-${shots}-any`));
+  const revolverStops = countedStops([...new Set([...revolverKeys, ...revolverAnyKeys])], subdivisions, revolverTrains);
+  const revolverByKey = new Map(revolverStops.map(stop => [stop.key, stop]));
+  // Keep the original slider stops as representatives. For new chances, take the first
+  // combination in load count, then shot count order.
+  const revolverByChance = new Map();
+  for (const stop of revolverStops) {
+    if (!revolverByChance.has(stop.chance)) revolverByChance.set(stop.chance, stop);
+  }
+  const wheelStops = [[0, 12], [1, 10], [2, 10], [3, 12], [4, 12], [6, 12], [8, 12], [9, 12], [8, 10], [9, 10], [12, 12]];
   const GAMES = {
     dice: { name: '骰子', ...D6 },
     cup: { name: '骰盅', ...D6 },
+    lots: { name: '签筒', ...numberedModel('lots', 10) },
+    scratch: { name: '刮刮乐', pace: 'user', ...numberedModel('scratch', 10) },
+    revolver: {
+      name: '左轮', model: 'revolver', pace: 'user', outcomes: subdivisions, trains: revolverTrains,
+      stops: [...revolverByChance.values()].sort((a, b) => a.chance - b.chance),
+    },
+    slot: {
+      name: '老虎机', model: 'slot', outcomes: reelOutcomes, trains: reelTrains,
+      stops: countedStops(reelKeys, reelOutcomes, reelTrains),
+    },
+    wheel: {
+      name: '转盘', model: 'wheel', pace: 'user', outcomes: subdivisions,
+      stops: wheelStops.map(([k, n]) => fractionStop(k, n)),
+      trains(id, stop) {
+        const [k, n] = stop.split('/').map(Number);
+        return +id >= 1 && +id * n <= k * 60;
+      },
+    },
   };
-  (function () {
-    const params = new URLSearchParams(location.search);
-    // shell.js picks the scene from ?scene=; open the cup when the file is opened directly.
-    if (!params.has('scene')) { location.replace(location.pathname + '?scene=cup'); return; }
-    const sceneId = params.get('scene');
-    const game = GAMES[sceneId] || {};
-    const list = key => (params.get(key) || '').split(',').filter(Boolean);
-    const outcomes = list('outcomes').length ? list('outcomes') : (game.outcomes || D6.outcomes);
-    const train = list('train').length ? list('train') : (game.train || D6.train);
-    const pace = params.get('pace') === 'user' ? 'user' : 'timed';
 
-    const history = [];
-    const log = t => { history.push(t); document.getElementById('p-log').textContent = t; document.body.dataset.log = history.join(' | '); };
+  function nearestStop(stops, chance) {
+    return stops.reduce((nearest, stop) => Math.abs(stop.chance - chance) < Math.abs(nearest.chance - chance) ? stop : nearest);
+  }
+  function snap(stops, target) {
+    // Changing games preserves the requested probability without snapping it to an endpoint.
+    return nearestStop(target > 0 && target < 1 ? stops.slice(1, -1) : stops, target);
+  }
+
+  (function () {
+    const url = new URL(location.href);
+    const params = url.searchParams;
+    // shell.js picks the scene from ?scene=; open the cup when the file is opened directly.
+    if (!params.has('scene')) {
+      params.set('scene', 'cup');
+      location.replace(url.href);
+      return;
+    }
+    const sceneId = params.get('scene');
+    window.addEventListener('popstate', () => {
+      // Scene scripts are fixed at load time, including after a browser history traversal.
+      if (new URLSearchParams(location.search).get('scene') === sceneId) return;
+      delete document.body.dataset.log;
+      location.reload();
+    });
+    const game = Object.hasOwn(GAMES, sceneId) ? GAMES[sceneId] : D6;
+    // Slot ids contain commas between reel faces. Use "|" between complete slot outcomes.
+    const list = key => (params.get(key) || '').split(sceneId === 'slot' ? '|' : ',').filter(Boolean);
+    const outcomes = params.has('outcomes') ? list('outcomes') : game.outcomes;
+    const pace = params.get('pace') || game.pace || 'timed';
+    const saved = window.history.state?.chancePreview;
+    const isRevolver = sceneId === 'revolver';
+    const overrideKey = params.get('stop');
+    const override = isRevolver ? revolverByKey.get(overrideKey) : game.stops.find(stop => stop.key === overrideKey);
+    let target = saved?.target ?? override?.chance ?? 0.5;
+    let revolverStop = revolverByKey.get(saved?.revolverStopKey);
+    if (revolverStop?.chance !== target) revolverStop = undefined;
+    if (!saved && isRevolver) revolverStop = override;
+    let selectedStop = (isRevolver && revolverStop) || snap(game.stops, target);
+    let lastDraw = saved?.lastDraw ?? null;
+    let changedStop = saved?.changedStop ?? false;
+    const trainOverride = params.has('train') ? new Set(list('train')) : null;
+    const previewState = () => ({ target, lastDraw, revolverStopKey: revolverStop?.key });
+    const save = () => window.history.replaceState({ chancePreview: { ...previewState(), changedStop } }, '');
+
+    const events = [];
+    const log = t => { events.push(t); document.body.dataset.log = events.join(' | '); };
     window.__errors = [];
     window.addEventListener('error', e => { window.__errors.push(e.message); log('error: ' + e.message); });
     window.addEventListener('unhandledrejection', e => { const m = e.reason && e.reason.message || String(e.reason); window.__errors.push(m); log('rejection: ' + m); });
 
-    const bar = document.getElementById('p-bar');
+    const gameSheet = document.getElementById('game-sheet');
+    const probabilitySheet = document.getElementById('probability-sheet');
+    const options = document.getElementById('game-options');
     for (const [id, g] of Object.entries(GAMES)) {
-      const a = document.createElement('a');
-      a.textContent = g.name;
-      a.href = location.pathname + '?scene=' + id;
-      if (id === sceneId) a.setAttribute('aria-current', 'page');
-      bar.insertBefore(a, bar.lastElementChild);
+      const option = document.createElement('button');
+      option.textContent = g.name;
+      option.setAttribute('aria-pressed', String(id === sceneId));
+      option.addEventListener('click', () => {
+        gameSheet.close();
+        if (id === sceneId) return;
+        // Start the new scene with its regular outcomes and the same requested probability.
+        const next = new URL(location.href);
+        next.search = '?' + new URLSearchParams({ scene: id });
+        window.history.pushState({ chancePreview: previewState() }, '', next.href);
+        location.reload();
+      });
+      options.append(option);
     }
 
-    let state = { outcome: null, hasResult: false, train: false, drawing: false, requestId: 0, pace, error: '' };
+    const shownDraw = lastDraw?.model === game.model ? lastDraw : null;
+    let state = {
+      outcome: shownDraw?.outcome ?? null, hasResult: lastDraw !== null, train: lastDraw?.train ?? false,
+      drawing: false, requestId: 0, pace, stopKey: shownDraw?.stopKey ?? selectedStop.key, error: '',
+    };
     let nextId = 0;
     const push = () => window.EonChance.render(Object.assign({}, state));
+
+    const slider = document.getElementById('probability-slider');
+    const ticks = document.getElementById('probability-stops');
+    const probabilityValue = document.getElementById('probability-value');
+    const revolverControls = document.getElementById('revolver-controls');
+    const loadedOutput = document.getElementById('revolver-loaded');
+    const shotsOutput = document.getElementById('revolver-shots');
+    const ruleOutput = document.getElementById('revolver-rule');
+    const loadLess = document.getElementById('revolver-load-less');
+    const loadMore = document.getElementById('revolver-load-more');
+    const shootLess = document.getElementById('revolver-shoot-less');
+    const shootMore = document.getElementById('revolver-shoot-more');
+    revolverControls.hidden = !isRevolver;
+    for (const stop of game.stops) {
+      const tick = document.createElement('option');
+      tick.value = stop.chance;
+      ticks.append(tick);
+    }
+    function showStop() {
+      const percent = `${Math.round(selectedStop.chance * 100)}%`;
+      slider.value = selectedStop.chance;
+      slider.setAttribute('aria-valuetext', percent);
+      probabilityValue.textContent = percent;
+      if (isRevolver) {
+        const [loaded, shots, rule] = selectedStop.key.split('-');
+        loadedOutput.textContent = `装 ${loaded} 发`;
+        shotsOutput.textContent = `打 ${shots} 下`;
+        const condition = rule === 'all' ? '全部命中才练' : '至少中一次就练';
+        if (ruleOutput.textContent !== condition) ruleOutput.textContent = condition;
+        loadLess.disabled = loaded === '0';
+        loadMore.disabled = loaded === '6';
+        shootLess.disabled = shots === '1';
+        shootMore.disabled = shots === '6';
+      }
+    }
+    function selectStop(stop) {
+      const previous = selectedStop;
+      selectedStop = stop;
+      showStop();
+      if (stop === previous) return;
+      if (isRevolver) revolverStop = stop;
+      else if (target !== stop.chance) revolverStop = undefined;
+      target = stop.chance;
+      changedStop = true;
+      if (state.outcome === null) {
+        state.stopKey = stop.key;
+        push();
+      }
+    }
+    function selectSliderStop(stop) {
+      // Moving the slider within the same probability should keep an exact revolver setup.
+      if (stop.chance === selectedStop.chance) slider.value = selectedStop.chance;
+      else selectStop(stop);
+    }
+    slider.addEventListener('input', () => selectSliderStop(nearestStop(game.stops, slider.valueAsNumber)));
+    slider.addEventListener('change', save);
+    slider.addEventListener('keydown', event => {
+      const index = game.stops.findIndex(stop => stop.chance === selectedStop.chance);
+      const last = game.stops.length - 1;
+      const indices = {
+        ArrowLeft: Math.max(0, index - 1), ArrowDown: Math.max(0, index - 1),
+        ArrowRight: Math.min(last, index + 1), ArrowUp: Math.min(last, index + 1),
+        Home: 0, End: last,
+      };
+      if (!Object.hasOwn(indices, event.key)) return;
+      event.preventDefault();
+      selectSliderStop(game.stops[indices[event.key]]);
+      save();
+    });
+    function stepRevolver(loadChange, shotChange) {
+      const [loaded, shots] = selectedStop.key.split('-').map(Number);
+      const stop = revolverByKey.get(`${loaded + loadChange}-${shots + shotChange}-any`);
+      if (!stop) return;
+      selectStop(stop);
+      save();
+    }
+    if (isRevolver) {
+      loadLess.addEventListener('click', () => stepRevolver(-1, 0));
+      loadMore.addEventListener('click', () => stepRevolver(1, 0));
+      shootLess.addEventListener('click', () => stepRevolver(0, -1));
+      shootMore.addEventListener('click', () => stepRevolver(0, 1));
+    }
+    showStop();
+
     const listeners = [];
     const emit = event => listeners.splice(0).forEach(fn => fn(event));
     // Tests force the next outcome; otherwise every outcome is equally likely.
@@ -88,8 +378,13 @@
     window.AndroidChance = {
       ready() { log('ready'); emit({ type: 'ready' }); push(); if (params.has('auto')) setTimeout(() => this.draw(), 300); },
       draw(forced) {
+        if (state.drawing) return;
         const outcome = forced != null ? String(forced) : outcomes[Math.floor(Math.random() * outcomes.length)];
-        state = Object.assign({}, state, { drawing: true, requestId: ++nextId, outcome, hasResult: true, train: train.includes(outcome), error: '' });
+        const stopKey = selectedStop.key;
+        const train = trainOverride && !changedStop ? trainOverride.has(outcome) : game.trains(outcome, stopKey);
+        lastDraw = { model: game.model, outcome, train, stopKey };
+        save();
+        state = Object.assign({}, state, { drawing: true, requestId: ++nextId, outcome, hasResult: true, train, stopKey, error: '' });
         log('drew ' + outcome);
         push();
       },
@@ -101,12 +396,14 @@
         push();
       },
       failed(id) {
+        if (id !== state.requestId) return;
         log('failed ' + id);
         emit({ type: 'failed', id });
         state = Object.assign({}, state, { drawing: false, requestId: 0, error: '动画未能完成，请重试' });
         push();
       },
-      settings() { log('settings'); },
+      game() { gameSheet.showModal(); },
+      probability() { probabilitySheet.showModal(); },
       record() { log('record'); },
       haptic(kind) { if (navigator.vibrate) navigator.vibrate(kind === 'thud' ? 22 : 6); },
     };

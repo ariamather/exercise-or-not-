@@ -1,0 +1,12 @@
+.scratch-stage {
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.scratch-stage.is-orbiting {
+  cursor: grabbing;
+}
+
+.scratch-stage.is-scratching {
+  cursor: none;
+}

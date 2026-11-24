@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Color
 import android.os.Build
 import android.view.HapticFeedbackConstants
+import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -32,6 +33,8 @@ import java.io.IOException
 private const val SCENE_HOST = ChanceAssets.HOST
 private const val ASSET_ROOT = ChanceAssets.ROOT
 
+private enum class ChancePanel { Game, Probability }
+
 /**
  * The home page: a packaged web scene reveals what [ChanceViewModel] already drew and saved.
  * Records and settings remain Compose UI.
@@ -43,7 +46,7 @@ fun ChanceScreen(viewModel: ChanceViewModel, onOpenRecord: () -> Unit, modifier:
     val drawing by viewModel.drawing.collectAsStateWithLifecycle()
     val animation by viewModel.animation.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
-    var showSettings by rememberSaveable { mutableStateOf(false) }
+    var panel by rememberSaveable { mutableStateOf<ChancePanel?>(null) }
     val openRecord by rememberUpdatedState(onOpenRecord)
     var scene by remember { mutableStateOf<ChanceWebView?>(null) }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -51,10 +54,11 @@ fun ChanceScreen(viewModel: ChanceViewModel, onOpenRecord: () -> Unit, modifier:
     val answer = animation?.result ?: result
     // A result drawn with another game still answers today; it can be shown here when both
     // games reveal the same kind of outcome (the die and the cup are both d6).
-    val outcome = answer?.takeIf { it.modelId == setup.game.model.id }?.outcomeId
+    val sceneResult = answer?.takeIf { it.modelId == setup.game.model.id }
     val sceneId = setup.game.sceneId
     val state = JSONObject().apply {
-        put("outcome", outcome ?: JSONObject.NULL)
+        put("outcome", sceneResult?.outcomeId ?: JSONObject.NULL)
+        put("stopKey", sceneResult?.stopKey ?: setup.stop.key)
         put("hasResult", answer != null)
         put("train", answer?.train ?: false)
         put("drawing", drawing)
@@ -69,7 +73,8 @@ fun ChanceScreen(viewModel: ChanceViewModel, onOpenRecord: () -> Unit, modifier:
             ChanceWebView(
                 context,
                 onDraw = viewModel::drawAnimated,
-                onSettings = { showSettings = true },
+                onGame = { panel = ChancePanel.Game },
+                onProbability = { panel = ChancePanel.Probability },
                 onRecord = { openRecord() },
                 onFinished = viewModel::animationFinished,
                 onFailed = viewModel::animationFailed,
@@ -104,13 +109,18 @@ fun ChanceScreen(viewModel: ChanceViewModel, onOpenRecord: () -> Unit, modifier:
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    if (showSettings) {
-        ChanceSettingsSheet(
-            setup,
-            onStop = viewModel::setStop,
+    when (panel) {
+        ChancePanel.Game -> ChanceGameSheet(
+            gameId = setup.game.id,
             onGame = viewModel::setGame,
-            onDismiss = { showSettings = false },
+            onDismiss = { panel = null },
         )
+        ChancePanel.Probability -> ChanceProbabilitySheet(
+            setup = setup,
+            onStop = viewModel::setStop,
+            onDismiss = { panel = null },
+        )
+        null -> Unit
     }
 }
 
@@ -118,7 +128,8 @@ fun ChanceScreen(viewModel: ChanceViewModel, onOpenRecord: () -> Unit, modifier:
 private class ChanceWebView(
     context: Context,
     onDraw: () -> Unit,
-    onSettings: () -> Unit,
+    onGame: () -> Unit,
+    onProbability: () -> Unit,
     onRecord: () -> Unit,
     onFinished: (Long, String) -> Unit,
     onFailed: (Long) -> Unit,
@@ -131,6 +142,8 @@ private class ChanceWebView(
         private set
 
     init {
+        // Compose fills the screen; WebView also needs a bounded height for CSS viewport units.
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         setBackgroundColor(Color.rgb(246, 245, 240))
         isVerticalScrollBarEnabled = false
         settings.apply {
@@ -167,7 +180,8 @@ private class ChanceWebView(
                 deliver()
             }
             @JavascriptInterface fun draw() = onMain(onDraw)
-            @JavascriptInterface fun settings() = onMain(onSettings)
+            @JavascriptInterface fun game() = onMain(onGame)
+            @JavascriptInterface fun probability() = onMain(onProbability)
             @JavascriptInterface fun record() = onMain(onRecord)
             @JavascriptInterface fun finished(id: Long, outcome: String) = onMain { onFinished(id, outcome) }
             @JavascriptInterface fun failed(id: Long) = onMain { onFailed(id) }

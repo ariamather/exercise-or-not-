@@ -7,11 +7,13 @@
  *     tray: { halfX: 2.85, halfZ: 2.5, corner: .44 },
  *     eye: [2.8, 7.5, 10.2], target: [0, .7, 0],  // camera
  *   });
- *   const prop = scene.addMesh(vertices, [r, g, b], shadow, { texture, band });
+ *   const prop = scene.addMesh(vertices, [r, g, b], shadow, { texture, band, scale, accent, trim, cavity, grain, cull });
  *   scene.loadTexture(host.asset('face.webp')).then(t => { prop.texture = t; scene.draw(); });
+ *   prop.texture = scene.canvasTexture(offscreenCanvas, prop.texture);
  *
  * Vertices are 9 floats: [x,y,z, nx,ny,nz, u,v, cavity?1:0]. `band` draws the dice cup's rim
- * band and darker base. Packaged locally with the Android app; no network or external runtime. */
+ * band and darker base; multi-material props (when accent/trim/cavity are given) map vFace
+ * 0/1/2/3 to primary/cavity/accent/trim. Packaged locally with the Android app; no network. */
 (function () {
   'use strict';
   const TAU = Math.PI * 2;
@@ -25,7 +27,7 @@
   function qMultiply(a,b){return [...add(add(scale(b.slice(0,3),a[3]),scale(a.slice(0,3),b[3])),cross(a,b)),a[3]*b[3]-dot(a.slice(0,3),b.slice(0,3))];}
   function qAxis(axis, angle){return [...scale(axis,Math.sin(angle/2)),Math.cos(angle/2)];}
   function qSlerp(a,b,t){let d=dot(a,b);if(d<0){b=scale(b,-1);d=-d;}if(d>.9995)return normalize(a.map((v,i)=>v+(b[i]-v)*t));const angle=Math.acos(clamp(d,-1,1));return a.map((v,i)=>(v*Math.sin((1-t)*angle)+b[i]*Math.sin(t*angle))/Math.sin(angle));}
-  function modelMatrix(q,p){const [x,y,z,w]=q,xx=x*x,yy=y*y,zz=z*z;return new Float32Array([1-2*(yy+zz),2*(x*y+z*w),2*(x*z-y*w),0,2*(x*y-z*w),1-2*(xx+zz),2*(y*z+x*w),0,2*(x*z+y*w),2*(y*z-x*w),1-2*(xx+yy),0,...p,1]);}
+  function modelMatrix(q,p,s=1){const [x,y,z,w]=q,xx=x*x,yy=y*y,zz=z*z;return new Float32Array([(1-2*(yy+zz))*s,2*(x*y+z*w)*s,2*(x*z-y*w)*s,0,2*(x*y-z*w)*s,(1-2*(xx+zz))*s,2*(y*z+x*w)*s,0,2*(x*z+y*w)*s,2*(y*z-x*w)*s,(1-2*(xx+yy))*s,0,...p,1]);}
   function cameraMatrix(eye,target){const z=normalize(add(eye,scale(target,-1))),x=normalize(cross([0,1,0],z)),y=cross(z,x);return new Float32Array([x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x,eye),-dot(y,eye),-dot(z,eye),1]);}
   function perspective(aspect){const f=1/Math.tan(30*Math.PI/360),n=.1,far=60;return new Float32Array([f/aspect,0,0,0,0,f,0,0,0,0,(far+n)/(n-far),-1,0,0,2*far*n/(n-far),0]);}
   const FACES=[
@@ -50,6 +52,7 @@
     precision highp float;
     varying vec3 vNormal; varying vec3 vWorld; varying vec2 vUv; varying float vFace;
     uniform vec3 uEye; uniform float uSolid; uniform vec3 uColor; uniform sampler2D uTex; uniform float uTextured; uniform float uBand;
+    uniform float uMultiMat; uniform vec3 uAccentColor; uniform vec3 uTrimColor; uniform vec3 uCavityColor; uniform float uGrain;
     float pipDistance(vec2 p){
       float d=10.0;
       if(vFace<1.5 || (vFace>2.5 && vFace<3.5) || (vFace>4.5 && vFace<5.5))d=length(p);
@@ -60,9 +63,26 @@
     }
     void main(){
       if(uSolid>.5){
-        // Props (e.g. a dice cup): one brand colour under the die's lights. vFace>.5 marks the cavity.
+        // Props (dice cup, lots tube, sticks) under the die's lights.
         vec3 sn=normalize(vNormal),sl=normalize(vec3(-3.0,7.0,5.0)),sv=normalize(uEye-vWorld);
         float sk=max(dot(sn,sl),0.0),sf=max(dot(sn,normalize(vec3(5.0,1.0,2.0))),0.0);
+        if(uMultiMat>.5){
+          if(vFace>.5&&vFace<1.5){
+            float depthShade=mix(.68,1.0,clamp(vUv.y,0.0,1.0));
+            gl_FragColor=vec4(uCavityColor*(.28+sk*.14+sf*.06)*depthShade,1.0);return;
+          }
+          vec3 base=uColor;
+          if(vFace<.5&&uTextured>.5)base=texture2D(uTex,vUv).rgb;
+          else if(vFace>1.5&&vFace<2.5)base=uAccentColor;
+          else if(vFace>2.5)base=uTrimColor;
+          if(uGrain>.5&&vFace<.5&&uTextured<.5){
+            float g=sin(vUv.x*90.0+sin(vUv.y*14.0)*1.4)*.018+sin(vUv.y*42.0)*.010;
+            base*=(1.0+g);
+          }
+          vec3 c=base*(.50+sk*.44+sf*.10);
+          c+=pow(max(dot(sn,normalize(sl+sv)),0.0),36.0)*.14+pow(1.0-abs(dot(sn,sv)),3.0)*.06;
+          gl_FragColor=vec4(c,1.0);return;
+        }
         vec3 base=uTextured>.5?texture2D(uTex,vUv).rgb:uColor;
         if(vFace<.5&&uBand>.5){
           float band=smoothstep(.555,.565,vUv.y)*(1.0-smoothstep(.59,.60,vUv.y));
@@ -100,7 +120,7 @@
       if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.program));
       gl.useProgram(this.program);const data=geometry();this.vertexCount=data.length/9;this.buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
       this.attribs=[['aPosition',3,0],['aNormal',3,3],['aUv',2,6],['aFace',1,8]].map(([name,size,offset])=>{const a=gl.getAttribLocation(this.program,name);gl.enableVertexAttribArray(a);return [a,size,offset];});this.bindBuffer(this.buffer);
-      this.uniforms=Object.fromEntries(['uModel','uVP','uEye','uSolid','uColor','uTex','uTextured','uBand'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
+      this.uniforms=Object.fromEntries(['uModel','uVP','uEye','uSolid','uColor','uTex','uTextured','uBand','uMultiMat','uAccentColor','uTrimColor','uCavityColor','uGrain'].map(n=>[n,gl.getUniformLocation(this.program,n)]));
       this.meshes=[];this.dieVisible=options.die!==false;this.tray=Object.assign({halfX:2.85,halfZ:2.5,corner:.44},options.tray);
       this.eye=options.eye||[2.8,7.5,10.2];this.view=cameraMatrix(this.eye,options.target||[0,.7,0]);this.q=faceRotation(1,-.3);this.position=[0,EonDicePhysics.HALF,.65];this.air=0;this.rolling=false;this.lost=false;this.generation=0;
       gl.enable(gl.DEPTH_TEST);gl.enable(gl.CULL_FACE);gl.clearColor(0,0,0,0);
@@ -118,7 +138,9 @@
     bindBuffer(buffer){const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);for(const [a,size,offset] of this.attribs)gl.vertexAttribPointer(a,size,gl.FLOAT,false,36,offset*4);}
     /* A solid prop lit like the die. data: 9 floats per vertex [x,y,z, nx,ny,nz, u,v, cavity?1:0];
      * the mesh origin is its base. shadow: blob radius as a fraction of stage height (0 = none). */
-    addMesh(data,color,shadow=0,options={}){const gl=this.gl,buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);const mesh={buffer,count:data.length/9,color,shadow,q:[0,0,0,1],position:[0,0,0],visible:true,texture:options.texture||null,band:options.band?1:0};this.meshes.push(mesh);return mesh;}
+    addMesh(data,color,shadow=0,options={}){const gl=this.gl,buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);const mesh={buffer,count:data.length/9,color,shadow,q:[0,0,0,1],position:[0,0,0],scale:options.scale??1,visible:options.visible!==false,texture:options.texture||null,band:options.band?1:0,multiMat:!!(options.accent||options.trim||options.cavity||options.multiMat),accent:options.accent||color,trim:options.trim||color,cavity:options.cavity||color,grain:options.grain?1:0,cull:!!options.cull};this.meshes.push(mesh);return mesh;}
+    /* Uploads an offscreen canvas as a linear clamped texture (reusing `existing` avoids leaks). */
+    canvasTexture(canvas,existing=null){const gl=this.gl,t=existing||gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,canvas);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);if(!existing)for(const [k,v] of [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])gl.texParameteri(gl.TEXTURE_2D,k,v);return t;}
     /* Any packaged image (png, webp, jpg); any size works (no mipmaps, edges clamped). */
     loadTexture(src){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{const gl=this.gl,t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);for(const [k,v] of [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])gl.texParameteri(gl.TEXTURE_2D,k,v);resolve(t);};img.onerror=()=>reject(new Error('cannot load '+src));img.src=src;});}
     blob(x3,z3,size,opacity,air){
@@ -166,8 +188,8 @@
       gl.uniform1f(u.uSolid,0);
       if(this.dieVisible){this.bindBuffer(this.buffer);gl.uniformMatrix4fv(u.uModel,false,modelMatrix(this.q,this.position));gl.drawArrays(gl.TRIANGLES,0,this.vertexCount);}
       if(this.meshes.some(m=>m.visible)){
-        gl.disable(gl.CULL_FACE);gl.uniform1f(u.uSolid,1);
-        for(const m of this.meshes){if(!m.visible)continue;this.bindBuffer(m.buffer);gl.uniform3fv(u.uColor,m.color);gl.uniform1f(u.uBand,m.band);gl.uniform1f(u.uTextured,m.texture?1:0);if(m.texture){gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,m.texture);gl.uniform1i(u.uTex,0);}gl.uniformMatrix4fv(u.uModel,false,modelMatrix(m.q,m.position));gl.drawArrays(gl.TRIANGLES,0,m.count);}
+        gl.uniform1f(u.uSolid,1);
+        for(const m of this.meshes){if(!m.visible)continue;if(m.cull)gl.enable(gl.CULL_FACE);else gl.disable(gl.CULL_FACE);this.bindBuffer(m.buffer);gl.uniform3fv(u.uColor,m.color);gl.uniform1f(u.uBand,m.band);gl.uniform1f(u.uMultiMat,m.multiMat?1:0);if(m.multiMat){gl.uniform3fv(u.uAccentColor,m.accent);gl.uniform3fv(u.uTrimColor,m.trim);gl.uniform3fv(u.uCavityColor,m.cavity);gl.uniform1f(u.uGrain,m.grain);}gl.uniform1f(u.uTextured,m.texture?1:0);if(m.texture){gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,m.texture);gl.uniform1i(u.uTex,0);}gl.uniformMatrix4fv(u.uModel,false,modelMatrix(m.q,m.position,m.scale));gl.drawArrays(gl.TRIANGLES,0,m.count);}
         gl.enable(gl.CULL_FACE);
       }
       this.drawFloor();

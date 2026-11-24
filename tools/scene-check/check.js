@@ -28,17 +28,38 @@
     document.body.append(pre);
   }
 
+  // The revolver waits for an explicit tap for every round, including the first.
+  async function playRounds() {
+    const rounds = Number(P().state().stopKey.split('-')[1]);
+    const button = document.getElementById('draw');
+    for (let i = 0; i < rounds; i++) {
+      const limit = performance.now() + REVEAL_LIMIT_MS;
+      while (button.disabled && performance.now() < limit) await sleep(50);
+      if (!ok(P().state().drawing && !button.disabled, 'round ' + (i + 1) + ' awaits input')) return;
+      button.click();
+      await sleep(80);
+    }
+  }
+
   async function reveal(outcome, label) {
     const next = P().next();
     const started = performance.now();
     P().draw(outcome);
-    if (P().pace === 'user') {
+    const manual = new URLSearchParams(location.search).get('scene') === 'revolver';
+    if (manual && (P().pace !== 'user' || label === 'after interrupt')) {
+      await sleep(50);
+      await playRounds();
+    } else if (P().pace === 'user') {
       await sleep(300);
-      const button = document.getElementById('draw');
-      ok(!button.disabled, `${label}: skip button enabled during a user-paced reveal`);
-      button.click();
+      // Reduced motion and short reveals may already have finished. The button then draws again.
+      if (P().state().drawing) {
+        const skip = document.getElementById('skip');
+        const button = skip && !skip.hidden ? skip : document.getElementById('draw');
+        ok(!button.disabled, `${label}: skip button enabled during a user-paced reveal`);
+        button.click();
+      }
     }
-    const e = await timeout(next, P().pace === 'user' ? 2000 : REVEAL_LIMIT_MS);
+    const e = await timeout(next, P().pace === 'user' && !manual ? 2000 : REVEAL_LIMIT_MS);
     const ms = Math.round(performance.now() - started);
     ok(e.type === 'finished' && e.outcome === outcome, `${label}: reveal ${outcome} -> ${e.type} ${e.outcome ?? ''} (${ms} ms)`);
     await sleep(50);
@@ -64,7 +85,7 @@
       Object.assign(P().state(), { outcome: null, hasResult: false, drawing: false, requestId: 0 });
       P().push();
       await sleep(30);
-      ok(true, 'show(outcome) and show(null)');
+      ok(errorLine.hidden, 'show(outcome) and show(null)' + (errorLine.hidden ? '' : ': ' + errorLine.textContent));
     } catch (e) { ok(false, 'show threw ' + e.message); }
 
     // Leaving the page mid-reveal: Android drops the request and shows the saved outcome.
