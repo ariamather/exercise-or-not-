@@ -11,3 +11,33 @@ captures/
 !debug.keystore
 dist/
 /scratch/
+
+# 项目文档仅在本地保存
+docs/
+documents/
+文档/
+*.md
+*.markdown
+*.rst
+*.adoc
+*.txt
+*.rtf
+*.pdf
+*.doc
+*.docx
+*.odt
+*.pages
+*.ppt
+*.pptx
+*.odp
+*.key
+*.xls
+*.xlsx
+*.ods
+*.numbers
+
+# 构建清单和许可证
+!CMakeLists.txt
+!requirements*.txt
+!LICENSE*
+!NOTICE*
