@@ -1,0 +1,49 @@
+<view class="history-screen">
+  <view class="history-header" style="padding-top: {{statusTop}}px; padding-right: {{capsuleRight}}px">
+    <button class="icon-button" bindtap="backToRecord" aria-label="返回">←</button>
+    <text class="history-title">历史记录</text>
+    <button class="icon-button" bindtap="openSettings" aria-label="设置与备份">⚙</button>
+  </view>
+
+  <view class="history-body">
+    <view wx:if="{{error}}" class="history-error">{{error}} <button class="text-button" bindtap="onShow">重试</button></view>
+
+    <view wx:if="{{date}}" class="filter-row"><text>{{date}}</text><button class="text-button" bindtap="showAll">看全部</button></view>
+
+    <block wx:if="{{!workoutCount && !error}}">
+      <view class="history-empty">还没有训练记录</view>
+      <view class="hint empty-hint">换了手机？可以在右上角设置里从备份恢复。</view>
+    </block>
+
+    <block wx:elif="{{workoutCount}}">
+      <training-hint wx:if="{{showBackupHint}}" text="记录只保存在这台手机上，建议到右上角设置里导出一份备份。" bind:dismiss="dismissBackupHint" />
+      <view class="hint history-hint">点一次训练可继续记录或修改</view>
+      <block wx:for="{{workouts}}" wx:key="id" wx:for-item="workout">
+      <view wx:if="{{!workout.deleted}}" class="workout-card"
+        data-id="{{workout.id}}" bindtap="openWorkout" aria-label="打开 {{workout.date}} 的训练">
+        <view class="card-heading">
+          <view class="card-description">
+            <view class="workout-date">{{workout.date}}</view>
+            <view wx:if="{{workout.totalSets}}" class="hint">{{workout.items.length}} 个动作 · {{workout.totalSets}} 组</view>
+            <view wx:else class="hint draft-hint">未确认 · 只有待确认的组</view>
+          </view>
+          <view class="menu-anchor">
+            <button class="icon-button" data-id="{{workout.id}}" catchtap="toggleMenu" aria-label="{{workout.date}} 的更多操作">⋮</button>
+            <view wx:if="{{menuId === workout.id}}" class="dropdown">
+              <button wx:if="{{workout.totalSets}}" data-id="{{workout.id}}" catchtap="reuseWorkout">复用到今天</button>
+              <button data-id="{{workout.id}}" catchtap="deleteWorkout">删除</button>
+            </view>
+          </view>
+        </view>
+        <view wx:for="{{workout.items}}" wx:key="id" class="compact-item">{{item.name}}  {{item.performance}}</view>
+      </view>
+      </block>
+    </block>
+  </view>
+
+  <view wx:if="{{menuId}}" class="menu-scrim" catchtap="closeMenu" />
+  <view wx:if="{{notice}}" class="snackbar" aria-live="polite">
+    <text>{{notice}}</text><button wx:if="{{canUndo}}" class="text-button" bindtap="undo">撤销</button>
+  </view>
+</view>
+<training-nav />

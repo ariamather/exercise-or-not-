@@ -1,0 +1,35 @@
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 26px;
+  height: 70px;
+  color: #28392f;
+  font-size: 19px;
+  font-weight: 600;
+}
+.mark {
+  width: 27px;
+  height: 27px;
+  border-radius: 8px;
+  transform: rotate(-8deg);
+  position: relative;
+  background: #365b43;
+}
+.mark view {
+  position: absolute;
+  width: 3.5px;
+  height: 3.5px;
+  border-radius: 50%;
+  background: #f6f5f0;
+  left: 25%;
+  top: 25%;
+}
+.mark view:nth-child(2) {
+  left: 44%;
+  top: 44%;
+}
+.mark view:nth-child(3) {
+  left: 63%;
+  top: 63%;
+}

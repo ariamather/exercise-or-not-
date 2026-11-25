@@ -1,0 +1,14 @@
+page {
+  min-height: 100%;
+  background: #f6f5f0;
+  color: #28392f;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+view, button, input, scroll-view {
+  box-sizing: border-box;
+}
+button {
+  font-family: inherit;
+}
+
+page { box-sizing:border-box; padding-bottom:calc(68px + env(safe-area-inset-bottom)); }

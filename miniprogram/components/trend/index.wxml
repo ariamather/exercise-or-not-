@@ -1,0 +1,1 @@
+<canvas id="plot" type="2d" class="plot {{compact ? 'mini' : ''}}" aria-label="{{description}}" bindtouchstart="pointAt" bindtouchmove="pointAt"/>

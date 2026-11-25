@@ -1,0 +1,9 @@
+<view class="settings">
+  <include src="../backup/index.wxml"/>
+  <view class="privacy">
+    <view class="label">隐私</view><view class="body">训练数据只在这台手机上。</view>
+    <button class="more" bindtap="privacy">查看隐私说明</button>
+    <view class="version">小程序 · 对应 Android 0.4.0 · 数据格式 v1 · 备份格式 v1</view>
+  </view>
+</view>
+<training-nav/>

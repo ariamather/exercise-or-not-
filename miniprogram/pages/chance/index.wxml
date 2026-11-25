@@ -1,0 +1,90 @@
+<page-meta page-style="{{panel ? 'overflow: hidden;' : ''}}" />
+<view class="chance-page" style="padding-top: {{headerInset}}px;">
+  <view class="chance-header">
+    <view class="chance-brand"><view class="chance-brand-mark">∴</view><text>练不练</text><text class="chance-brand-dot">.</text></view>
+    <view class="chance-header-actions">
+      <button class="chance-header-button" bindtap="openPanel" data-panel="games" aria-label="选择玩法" disabled="{{drawing}}">
+        <view class="chance-game-icon"><view class="chance-game-cross" /><view class="chance-game-dots" /></view>玩法
+      </button>
+      <button class="chance-header-button" bindtap="openPanel" data-panel="probability" aria-label="设置练的概率" disabled="{{drawing}}">
+        <view class="chance-settings-icon"><view /><view /></view>概率
+      </button>
+    </view>
+  </view>
+
+  <view class="chance-main">
+    <view class="chance-stage chance-stage-{{gameId}}" aria-label="{{presentation.stageLabel}}" bindtap="onStageTap"
+      bindtouchstart="onTouchStart" catchtouchmove="onTouchMove" bindtouchend="onTouchEnd" bindtouchcancel="onTouchCancel">
+      <block wx:for="{{surfaces}}" wx:key="generation">
+        <canvas type="2d" id="chance-shadow" hidden="{{!!panel}}" class="chance-surface {{panel ? 'chance-surface-hidden' : ''}}" />
+        <canvas type="webgl" id="chance-gl" hidden="{{!!panel}}" class="chance-surface {{item.overlay ? 'chance-webgl-overlay' : ''}} {{panel ? 'chance-surface-hidden' : ''}}" binderror="onContextLost" />
+        <canvas wx:if="{{item.gameId === 'revolver'}}" type="2d" id="chance-effects" hidden="{{!!panel}}" class="chance-surface {{panel ? 'chance-surface-hidden' : ''}}" />
+      </block>
+      <view wx:if="{{presentation.track.length}}" class="revolver-track" aria-hidden="true">
+        <view wx:for="{{presentation.track}}" wx:key="index" class="{{item.state}}">{{item.text}}</view>
+      </view>
+      <view wx:if="{{presentation.cue}}" class="revolver-cue">{{presentation.cue}}</view>
+      <button wx:if="{{presentation.spinLabel}}" class="revolver-spin" catchtap="spinChamber">{{presentation.spinLabel}}</button>
+      <view wx:if="{{presentation.hint}}" class="scene-hint">{{presentation.hint}}</view>
+    </view>
+
+    <view class="chance-status {{result ? 'chance-answer' : ''}} {{result && !result.train ? 'chance-rest' : ''}}" aria-live="polite">{{presentation.status}}</view>
+    <view class="chance-actions">
+      <view wx:if="{{error && !panel}}" class="chance-error" role="alert">{{error}}</view>
+      <button wx:if="{{!sceneReady && error}}" class="chance-primary" bindtap="retryScene">重新加载</button>
+      <button wx:else class="chance-primary" disabled="{{!sceneReady || presentation.actionDisabled}}" bindtap="onPrimary">
+        <text>{{presentation.action}}</text><text aria-hidden="true">→</text>
+      </button>
+      <button wx:if="{{presentation.skip}}" class="chance-shortcut" bindtap="skipDraw">{{presentation.skipText}}</button>
+      <button class="chance-shortcut" bindtap="goToRecord">{{drawing || !result ? '已经决定了，直接记录 ↗' : result.train ? '去记录今天的训练 ↗' : '想练也可以，直接记录 ↗'}}</button>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{panel}}" class="chance-overlay">
+  <view class="chance-backdrop" bindtap="closePanel" catchtouchmove="holdBackdrop" />
+  <view class="chance-sheet {{sheetDragging ? 'chance-sheet-dragging' : ''}}" style="transform: translateY({{sheetOffset}}px);">
+    <view class="sheet-handle-target" bindtouchstart="onSheetHandleStart" catchtouchmove="onSheetTouchMove"
+      bindtouchend="onSheetTouchEnd" bindtouchcancel="resetSheetGesture"><view class="sheet-handle" /></view>
+    <scroll-view scroll-y enhanced bounces="{{false}}" class="chance-sheet-scroll" style="height: {{sheetBodyHeight}}px;"
+      bindscroll="onSheetScroll" bindtouchstart="onSheetTouchStart" bindtouchmove="onSheetTouchMove"
+      bindtouchend="onSheetTouchEnd" bindtouchcancel="resetSheetGesture">
+      <view class="chance-sheet-content">
+    <view wx:if="{{panel === 'games'}}" class="game-options">
+      <button wx:for="{{gameOptions}}" wx:key="id" class="game-option {{item.id === gameId ? 'option-current' : ''}}"
+        data-game="{{item.id}}" bindtap="chooseGame">{{item.name}}</button>
+    </view>
+    <block wx:else>
+      <view class="sheet-heading">
+        <view>练的概率</view>
+        <view class="sheet-percent">{{probability}}%</view>
+        <button class="sheet-close" aria-label="关闭" bindtap="closePanel">×</button>
+      </view>
+      <view class="chance-slider">
+        <view class="slider-ticks">
+          <view wx:for="{{stops}}" wx:key="key" class="slider-tick" style="left: {{item.position}}%;" />
+        </view>
+        <slider min="0" max="1000" step="1" value="{{sliderValue}}" block-size="22" activeColor="#365b43"
+          backgroundColor="#dfe5da" block-color="#365b43" bindchanging="previewProbability" bindchange="chooseProbability" />
+      </view>
+      <view class="probability-labels"><text>0%</text><text>100%</text></view>
+      <view class="sheet-rule">{{rule}}</view>
+      <view wx:if="{{revolver}}" class="revolver-options">
+        <view class="revolver-row">
+          <button aria-label="少装一发" data-field="loaded" data-delta="-1" bindtap="adjustRevolver" disabled="{{revolver.loaded === 0}}">−</button>
+          <text>装 {{revolver.loaded}} 发</text>
+          <button aria-label="多装一发" data-field="loaded" data-delta="1" bindtap="adjustRevolver" disabled="{{revolver.loaded === 6}}">+</button>
+        </view>
+        <view class="revolver-row">
+          <button aria-label="少打一下" data-field="shots" data-delta="-1" bindtap="adjustRevolver" disabled="{{revolver.shots === 1}}">−</button>
+          <text>打 {{revolver.shots}} 下</text>
+          <button aria-label="多打一下" data-field="shots" data-delta="1" bindtap="adjustRevolver" disabled="{{revolver.shots === 6}}">+</button>
+        </view>
+        <view class="revolver-rule">{{revolver.all ? '全部命中才练' : '至少中一次就练'}}</view>
+      </view>
+    </block>
+        <view wx:if="{{error}}" class="chance-error" role="alert">{{error}}</view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

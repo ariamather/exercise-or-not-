@@ -1,0 +1,1 @@
+<training-nav wx:if="{{!modalOpen}}" active="{{active}}"/>

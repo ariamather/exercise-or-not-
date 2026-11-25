@@ -1,0 +1,42 @@
+<view class="stats-header" style="padding-top:{{statusTop}}px"><brand-header/></view>
+<view style="height:calc(70px + {{statusTop}}px)" aria-hidden="true"></view>
+<view class="screen">
+  <view class="title">统计.</view>
+  <view wx:if="{{error}}" class="small">{{error}}<button bindtap="onShow">重新读取</button></view>
+  <view wx:elif="{{empty}}"><view>还没有可统计的训练</view><view class="small">记完第一组后，这里会出现训练日历和每个动作的变化。</view><button class="action" bindtap="openRecord">去记录 ↗</button></view>
+  <block wx:else>
+    <view class="eyebrow">本月</view><view><text class="hero">{{monthDays}}</text><text>天练过</text></view><view class="small">{{comparison}}</view>
+    <view class="metrics"><view><text class="num">{{monthSets}}</text>组<text>本月完成组数</text></view><view><text class="num">{{monthExercises}}</text>个<text>本月练过的动作</text></view><view><text class="num">{{weekly}}</text>天<text>近 12 周每周</text></view></view>
+    <view class="section"><text>训练日历</text><text class="small">近 12 周 · 每格一天</text></view>
+    <view class="card heat">
+      <view class="heat-row"><view class="week-label"></view><view class="month" wx:for="{{labels}}" wx:key="week">{{item.text}}</view></view>
+      <view wx:for="{{rows}}" wx:key="weekday" wx:for-item="row" class="heat-row"><view class="week-label">{{row.label}}</view>
+        <view wx:for="{{row.cells}}" wx:key="date" class="slot">
+          <button wx:if="{{!item.future}}" class="cell {{date===item.date?'picked':''}} {{today===item.date?'today':''}}" style="background-color:{{item.color}}" data-date="{{item.date}}" aria-label="{{item.date}}，{{item.count}}组" bindtap="chooseDay"></button>
+        </view>
+      </view>
+      <view class="legend"><text>点一格查看那天</text>少<view wx:for="{{heatColors}}" wx:key="*this" style="background:{{item}}"></view>多</view>
+      <view class="section compact"><text>{{dateLabel}}</text><text class="small" wx:if="{{day}}">共 {{day.totalSets}} 组</text></view>
+      <block wx:if="{{day}}"><view class="chips"><text wx:for="{{day.items}}" wx:key="exerciseId">{{item.name}}　{{item.sets}} 组</text></view><button class="action" bindtap="openWorkout">打开这次训练 ↗</button></block>
+      <text wx:else class="small">{{date===today?'今天还没有记录':'这天没有训练记录'}}</text>
+    </view>
+    <view class="section"><text>动作</text><text class="small">每次训练的最佳一组</text></view>
+    <view wx:for="{{exercises}}" wx:key="id" wx:for-item="ex" class="card exercise">
+      <button class="exercise-row" data-id="{{ex.id}}" bindtap="toggle">
+        <view class="name"><text>{{ex.name}}</text><text class="small">{{ex.mode}} · {{ex.count}} 次训练</text></view>
+        <trend-plot wx:if="{{ex.sessions.length>1}}" class="spark" compact="{{true}}" sessions="{{ex.sessions}}" unit="{{ex.unit}}" />
+        <view class="metric"><text>{{ex.lastValue}} {{ex.unit}}</text><text class="small">{{ex.change}}</text></view><text class="arrow">{{openId===ex.id?'⌃':'⌄'}}</text>
+      </button>
+      <view wx:if="{{openId===ex.id && focus}}" class="detail">
+        <view><text class="big">{{focus.value}}</text>　{{focus.suffix}}</view>
+        <view class="small">{{focus.long}} · 最佳一组{{active===ex.sessions.length-1?'（最近一次）':''}} · 共 {{focus.count}} 组</view><view class="small">{{focus.sets}}</view>
+        <trend-plot class="active-trend" id="active-trend" wx:if="{{ex.sessions.length>1}}" description="{{ex.name}}每次训练最佳一组，{{ex.rangeLabel}}。完整数值见表格。" sessions="{{ex.sessions}}" unit="{{ex.unit}}" active="{{active}}" bind:select="focusPoint"/>
+        <view class="table-toggle"><text class="small">{{ex.sessions.length>1?ex.rangeLabel:'再练一次就能看到变化'}}</text><button class="action" bindtap="toggleTable">{{showTable?'收起表格':'以表格查看'}}</button></view>
+        <block wx:if="{{showTable}}"><view class="tr small"><text>日期</text><text>最佳一组</text><text>全部组（{{ex.unit==='次'?'次':'kg × 次'}}）</text></view>
+          <view class="tr" wx:for="{{table}}" wx:key="id"><text>{{item.short}}</text><text>{{item.value}} {{item.suffix}}</text><text>{{item.sets}}</text></view>
+        </block>
+      </view>
+    </view>
+    <view class="footer small">数据只在这台手机上</view>
+  </block>
+</view>

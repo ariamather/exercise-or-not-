@@ -1,0 +1,267 @@
+.screen {
+  padding: 18px 24px 28px;
+  font-size: 15px;
+}
+.title {
+  font-size: 28px;
+  font-weight: 500;
+  margin-bottom: 28px;
+}
+.small {
+  font-size: 11px;
+  color: #737d71;
+  font-weight: 400;
+  line-height: 1.65;
+}
+.eyebrow {
+  color: #737d71;
+  letter-spacing: 2.5px;
+  font-weight: 600;
+  font-size: 10px;
+}
+.hero {
+  font-size: 64px;
+  line-height: 1.15;
+  letter-spacing: -2px;
+  font-weight: 600;
+  margin-right: 8px;
+}
+.metrics {
+  display: flex;
+  border-block: 1px solid #e3e5dc;
+  margin-top: 20px;
+}
+.metrics view {
+  flex: 1;
+  padding: 12px 3px 12px 12px;
+  font-size: 11px;
+  color: #737d71;
+  border-left: 1px solid #e3e5dc;
+}
+.metrics view:first-child {
+  border: 0;
+  padding-left: 0;
+}
+.metrics .num {
+  display: inline;
+  font-size: 20px;
+  font-weight: 600;
+  color: #28392f;
+  margin-right: 2px;
+}
+.metrics text {
+  display: block;
+}
+.section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 27px 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.card {
+  border: 1px solid #e3e5dc;
+  border-radius: 22px;
+  background: #fbfcf7;
+}
+.heat {
+  padding: 16px 12px 14px;
+}
+.heat-row {
+  display: flex;
+  align-items: center;
+}
+.week-label {
+  width: 18px;
+  color: #90978c;
+  font-size: 9px;
+}
+.month,
+.slot {
+  flex: 1;
+  min-width: 0;
+}
+.month {
+  font-size: 10px;
+  color: #737d71;
+  height: 16px;
+  white-space: nowrap;
+}
+.slot {
+  position: relative;
+  margin: 1px;
+}
+.slot::before {
+  content: "";
+  display: block;
+  padding-top: 100%;
+}
+.cell {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 4px;
+  min-height: 0;
+  min-width: 0;
+}
+button::after {
+  border: 0;
+}
+.cell.today {
+  box-shadow: inset 0 0 0 1px #677961;
+}
+.cell.picked {
+  box-shadow:
+    inset 0 0 0 2px #28392f,
+    inset 0 0 0 3.5px #fbfcf7;
+}
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 12px 0;
+  font-size: 10px;
+  color: #737d71;
+}
+.legend text {
+  margin-right: auto;
+}
+.legend view {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+}
+.compact {
+  margin: 0 0 6px;
+  border-top: 1px solid #e3e5dc;
+  padding-top: 12px;
+  font-size: 13px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chips text {
+  color: #536052;
+  background: #e9eddf;
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 12px;
+}
+.action {
+  margin: 4px 0 0;
+  width: auto;
+  text-align: left;
+  background: none;
+  color: #365b43;
+  padding: 5px 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.exercise {
+  margin-bottom: 10px;
+}
+.exercise-row {
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  padding: 12px 16px;
+  gap: 10px;
+  line-height: 1.4;
+  color: #28392f;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 600;
+}
+.name {
+  flex: 1;
+  min-width: 0;
+}
+.name text,
+.metric text {
+  display: block;
+}
+.metric {
+  text-align: right;
+  font-size: 14px;
+}
+.arrow {
+  color: #879081;
+}
+.spark {
+  width: 54px;
+}
+.detail {
+  border-top: 1px solid #e3e5dc;
+  margin: 0 16px;
+  padding: 12px 0;
+  font-size: 13px;
+}
+.big {
+  font-size: 30px;
+  font-weight: 600;
+}
+.table-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.tr {
+  display: grid;
+  grid-template-columns: 0.8fr 1fr 1.8fr;
+  gap: 5px;
+  font-size: 12px;
+  padding: 8px 0;
+  border-top: 1px solid #e3e5dc;
+}
+.footer {
+  margin-top: 28px;
+}
+@media (max-width: 340px) {
+  .spark {
+    display: none;
+  }
+}
+.slot button.cell:not([size="mini"]) {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 100%;
+  padding: 0;
+}
+.metrics {
+  border-top: 1px solid #e3e5dc;
+  border-bottom: 1px solid #e3e5dc;
+}
+
+button.exercise-row:not([size='mini']) {
+  width:100%;
+  margin:0;
+  padding:14px 16px;
+  border-radius:22px;
+}
+button.action:not([size='mini']) {
+  width:auto;
+  padding:6px 0;
+  margin:4px 0 0;
+}
+.table-toggle .action {flex-shrink:0;}
+
+.stats-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  background: #f6f5f0;
+}

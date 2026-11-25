@@ -1,0 +1,13 @@
+<view class="backup-section">
+  <text class="backup-heading">备份与恢复</text>
+  <text class="backup-copy">训练记录和玩法设置保存在这台手机。换机或重装前，请先导出备份。</text>
+  <text wx:if="{{lastExportText}}" class="backup-meta">上次导出 · {{lastExportText}}</text>
+  <button class="backup-button backup-primary" bindtap="exportBackup" disabled="{{busy}}">导出备份</button>
+  <button class="backup-button" bindtap="chooseBackup" disabled="{{busy}}">从备份恢复</button>
+  <text class="backup-meta">从微信聊天中选择 JSON 备份。</text>
+  <block wx:if="{{restoreText}}">
+    <text class="backup-meta">上次恢复 · {{restoreText}}</text>
+    <button class="backup-button" bindtap="confirmUndoRestore" disabled="{{busy}}">撤销上次恢复</button>
+  </block>
+  <text wx:if="{{backupNote}}" class="backup-meta" aria-live="polite">{{backupNote}}</text>
+</view>

@@ -1,0 +1,95 @@
+.bar {
+  background: #f6f5f0;
+  padding: 0 24px env(safe-area-inset-bottom);
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+}
+.tabs {
+  border-top: 1px solid #e3e5dc;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  padding: 9px 0;
+}
+.tab {
+  margin: 0;
+  padding: 0 14px;
+  min-height: 44px;
+  border-radius: 12px;
+  font-size: 12px;
+  background: transparent;
+  color: #7d847b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.tab::after {
+  border: 0;
+}
+.selected {
+  color: #365b43;
+  background: #e9eddf;
+}
+.icon {
+  width: 20px;
+  height: 20px;
+  position: relative;
+}
+.chance {
+  border: 1.5px solid currentColor;
+  box-sizing: border-box;
+  border-radius: 5px;
+}
+.chance view {
+  position: absolute;
+  border-radius: 50%;
+  width: 3px;
+  height: 3px;
+  background: currentColor;
+  left: 3px;
+  top: 3px;
+}
+.chance view:nth-child(2) {
+  left: 7px;
+  top: 7px;
+}
+.chance view:nth-child(3) {
+  left: 11px;
+  top: 11px;
+}
+.record::before {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 16px;
+  background: currentColor;
+  transform: rotate(44deg);
+  top: 2px;
+  left: 7px;
+  border-radius: 2px 2px 0 0;
+}
+.stats {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+}
+.stats view {
+  width: 3px;
+  height: 6px;
+  border: 1px solid currentColor;
+  border-radius: 1px;
+}
+.stats view:nth-child(2) {
+  height: 11px;
+}
+.stats view:nth-child(3) {
+  height: 15px;
+}
+.tabs button.tab:not([size="mini"]) {
+  width: auto;
+  margin: 0;
+}

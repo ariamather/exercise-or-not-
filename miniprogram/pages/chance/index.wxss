@@ -1,0 +1,113 @@
+.chance-page {
+  --brand: #365b43;
+  width: 100%;
+  max-width: 520px;
+  height: calc(100vh - 68px - env(safe-area-inset-bottom));
+  min-height: 445px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  color: #28392f;
+}
+.chance-page button, .chance-sheet button {
+  margin: 0;
+  box-sizing: border-box;
+  padding: 0;
+  line-height: 1.4;
+  font-weight: 500;
+}
+.chance-page button::after, .chance-sheet button::after { border: 0; }
+.chance-header { height: 70px; flex: none; display: flex; align-items: center; justify-content: space-between; }
+.chance-brand { flex: none; display: flex; align-items: center; padding-left: 26px; font-size: 19px; font-weight: 600; letter-spacing: .5px; white-space: nowrap; }
+.chance-brand-mark { display: flex; align-items: center; justify-content: center; width: 27px; height: 27px; padding-bottom: 3px; margin-right: 9px; border-radius: 8px; background: #365b43; color: #f6f5f0; font-family: Georgia, serif; font-size: 25px; transform: rotate(-8deg); }
+.chance-brand-dot { color: #8d9a67; margin-left: 2px; }
+.chance-header-actions { flex: none; display: flex; gap: 4px; align-items: center; padding-right: 18px; }
+.chance-page .chance-header-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: auto;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 8px;
+  color: #28392f;
+  background: transparent;
+  border-radius: 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.chance-header-button:active { background: #e9eddf; }
+.chance-header-button[disabled] { opacity: .5; }
+.chance-game-icon {
+  position: relative;
+  width: 17px;
+  height: 12px;
+  border: 1.4px solid currentColor;
+  border-radius: 4px 4px 5px 5px;
+  transform: perspective(22px) rotateX(23deg);
+}
+.chance-game-cross, .chance-game-cross::before { position: absolute; background: currentColor; height: 1px; width: 6px; }
+.chance-game-cross { left: 1px; top: 4px; }
+.chance-game-cross::before { content: ''; left: 0; transform: rotate(90deg); }
+.chance-game-dots { position: absolute; left: 10px; top: 3px; height: 2px; width: 2px; border-radius: 50%; background: currentColor; box-shadow: 2px 2px currentColor; }
+.chance-settings-icon { position: relative; width: 17px; height: 14px; }
+.chance-settings-icon view { position: absolute; width: 16px; height: 1.4px; top: 3px; border-radius: 2px; background: currentColor; }
+.chance-settings-icon view + view { top: 10px; }
+.chance-settings-icon view::after { content: ''; box-sizing: border-box; position: absolute; top: -2.2px; left: 3px; width: 6px; height: 6px; border: 1.4px solid currentColor; border-radius: 50%; background: #f6f5f0; }
+.chance-settings-icon view + view::after { left: 8px; }
+.chance-main { display: flex; flex-direction: column; flex: 1; min-height: 0; padding-bottom: 14px; }
+.chance-stage { position: relative; flex: 0 1 auto; width: 100%; min-height: 180px; max-height: 456px; height: 100vw; margin-top: auto; }
+.chance-stage-cup, .chance-stage-lots, .chance-stage-wheel { height: 86vw; }
+.chance-stage-scratch, .chance-stage-revolver { height: 77vw; }
+.chance-surface { position: absolute; display: block; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.chance-webgl-overlay { position: fixed; z-index: 3; width: 100vw; height: 100vh; }
+.chance-surface-hidden { display: none !important; }
+.scene-hint { position: absolute; inset: auto 16px 6px; text-align: center; color: #647364; font-size: 11px; line-height: 1.4; pointer-events: none; }
+.revolver-track, .revolver-cue { position: absolute; pointer-events: none; }
+.revolver-track { inset: auto 0 21px; display: flex; justify-content: center; gap: 6px; }
+.revolver-cell { display: flex; align-items: center; justify-content: center; width: 29px; height: 29px; border-radius: 50%; border: 1px solid #b4bbae; background: #f3f3eb; color: #405d48; font-size: 12px; font-weight: 600; }
+.revolver-cell.next-round { border: 2px solid #8a783f; }
+.revolver-cell.mark { background: #365b43; color: #fafbf5; border-color: #365b43; }
+.revolver-cell.blank { background: #e8e9e5; color: #545f61; border-color: #c5c9c2; }
+.revolver-cell.outside-rounds { opacity: .58; }
+.revolver-cue { inset: auto 12px 1px; color: #586b5d; font-size: 12px; line-height: 1.4; text-align: center; }
+.chance-page .revolver-spin { position: absolute; top: 6%; right: 7%; padding: 8px 11px; border: 1px solid #b5beae; border-radius: 999px; background: #f6f5f0; color: #486351; font-size: 12px; }
+.chance-status { flex: none; min-height: 40px; display: flex; align-items: center; justify-content: center; text-align: center; margin: 0 20px 6px; font-size: 19px; line-height: 1.4; font-weight: 500; letter-spacing: 1px; }
+.chance-status.chance-answer { font-size: 27px; font-weight: 550; }
+.chance-status.chance-rest { color: #596e80; }
+.chance-actions { flex: none; margin-bottom: auto; padding: 0 min(8vw, 32px); }
+.chance-page .chance-primary { width: 100%; min-height: 55px; display: flex; align-items: center; justify-content: center; gap: 35px; border-radius: 18px; color: #fafbf5; background: #365b43; font-size: 15px; letter-spacing: 2px; }
+.chance-page .chance-primary:active { background: #294b36; }
+.chance-page .chance-primary[disabled] { color: #fafbf5; background: #365b43; opacity: .6; }
+.chance-page .chance-shortcut { width: 100%; min-height: 48px; color: #657066; background: transparent; font-size: 12px; font-weight: 400; padding: 12px 4px; }
+.chance-error { color: #ba1a1a; font-size: 12px; text-align: center; line-height: 1.6; margin: 0 0 12px; }
+.chance-overlay { position: fixed; z-index: 50; inset: 0; display: flex; align-items: flex-end; overflow: hidden; }
+.chance-backdrop { position: absolute; inset: 0; background: #1e322a60; }
+.chance-sheet { position: relative; box-sizing: border-box; width: 100%; max-width: 520px; margin: 0 auto; padding-bottom: calc(20px + env(safe-area-inset-bottom)); border-radius: 26px 26px 0 0; background: #fafaf5; color: #26392e; transition: transform 170ms ease-out; }
+.chance-sheet::after { position: absolute; top: 100%; right: 0; left: 0; height: 14px; background: #fafaf5; content: ''; }
+.chance-sheet-dragging { transition: none; }
+.sheet-handle-target { height: 34px; display: flex; align-items: center; justify-content: center; }
+.sheet-handle { width: 34px; height: 4px; border-radius: 8px; background: #cdd6cc; }
+.chance-sheet-content { padding: 0 24px 5px; }
+.sheet-heading { display: flex; align-items: center; gap: 8px; min-height: 48px; margin-bottom: 7px; font-size: 19px; font-weight: 500; }
+.sheet-heading > view:first-child { flex: 1; }
+.sheet-percent { color: #355e46; font-size: 28px; }
+.chance-sheet .sheet-close { display: flex; justify-content: center; align-items: center; width: 48px; height: 48px; border-radius: 50%; color: #355e46; background: transparent; font-size: 30px; }
+.game-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.chance-sheet button.game-option:not([size='mini']) { width: auto; min-width: 58px; min-height: 36px; margin: 0; padding: 6px 13px; border: 1px solid #bfc8bb; border-radius: 8px; color: #3b5a43; background: transparent; font-size: 13px; }
+.chance-sheet button.option-current:not([size='mini']) { color: #274b32; background: #d9e8d6; border-color: #d9e8d6; }
+.chance-slider { position: relative; margin: 10px 0 3px; }
+.chance-sheet slider { position: relative; margin: 0 4px; }
+.slider-ticks { position: absolute; inset: 12px 12px auto; }
+.slider-tick { position: absolute; top: -2px; width: 3px; height: 4px; border-radius: 2px; background: #a8b5a7; }
+.probability-labels { display: flex; justify-content: space-between; margin: 0 8px; color: #657468; font-size: 12px; }
+.sheet-rule { margin: 11px 0 0; color: #3e5445; text-align: center; font-size: 14px; }
+.revolver-options { display: flex; flex-direction: column; gap: 7px; margin: 12px auto 0; max-width: 224px; }
+.revolver-row { display: flex; align-items: center; gap: 6px; }
+.revolver-row text { flex: 1; text-align: center; font-size: 16px; }
+.chance-sheet .revolver-row button { width: 48px; height: 48px; border: 1px solid #aebbad; border-radius: 50%; color: #355e46; background: transparent; font-size: 22px; }
+.chance-sheet .revolver-row button[disabled] { opacity: .4; }
+.revolver-rule { color: #647367; text-align: center; font-size: 13px; }
+.chance-sheet .chance-error { margin: 13px 0 0; }
+@media (max-height: 610px) { .chance-header { height: 56px; } }

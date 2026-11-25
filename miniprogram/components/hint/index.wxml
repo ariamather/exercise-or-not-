@@ -1,0 +1,1 @@
+<view class="hint"><text wx:if="{{title}}" class="title">{{title}}</text><text>{{text}}</text><button bindtap="dismiss">知道了</button></view>

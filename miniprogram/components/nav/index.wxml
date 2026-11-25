@@ -1,0 +1,5 @@
+<view class="bar"><view class="tabs">
+<button wx:for="{{tabs}}" wx:key="page" class="tab {{(active || selected) === item.page ? 'selected' : ''}}" data-page="{{item.page}}" bindtap="open" aria-label="{{item.label}}">
+  <view class="icon {{item.page}}"><view></view><view></view><view></view></view><text>{{item.label}}</text>
+</button>
+</view></view>

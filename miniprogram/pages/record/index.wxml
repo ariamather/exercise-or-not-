@@ -1,0 +1,271 @@
+<template name="record-exercise-card">
+  <view class="exercise-card">
+    <view class="row exercise-heading">
+      <button class="exercise-title" bindtap="openExerciseHistory">{{item.name}}</button>
+      <text class="mode-tag">{{item.modeLabel}}</text>
+      <view class="menu-anchor">
+        <button class="icon-button" data-menu="item" bindtap="toggleMenu" aria-label="{{item.name}}的更多操作">⋮</button>
+        <view wx:if="{{menu === 'item'}}" class="dropdown">
+          <button bindtap="openExerciseHistory">动作历史</button>
+          <button bindtap="removeExercise">移除动作</button>
+        </view>
+      </view>
+    </view>
+
+    <block wx:if="{{item.rows.length}}">
+      <view class="set-row set-header"><text>组</text><text>上次</text><text>本次</text><text></text></view>
+      <button wx:for="{{item.rows}}" wx:for-item="set" wx:key="id" class="set-row logged-set"
+        data-id="{{set.id}}" bindtap="openEdit" aria-label="修改第 {{set.number}} 组">
+        <text>{{set.number}}</text><text>{{set.previous}}</text><text>{{set.current}}</text><text class="check">✓</text>
+      </button>
+    </block>
+
+    <view wx:if="{{item.draftId}}" class="draft">
+      <view class="row draft-header">
+        <text>第 {{item.number}} 组</text>
+        <text wx:if="{{item.draftPrevious}}" class="muted">上次 {{item.draftPrevious}}</text>
+      </view>
+      <view class="row metric-heading">
+        <text>{{item.weightLabel}}</text>
+        <view class="menu-anchor">
+          <button class="step-menu-button" disabled="{{justSaved}}" data-menu="step" bindtap="toggleMenu">± {{stepWeight}} kg ▾</button>
+          <view wx:if="{{menu === 'step'}}" class="dropdown">
+            <button wx:for="{{weightSteps}}" wx:key="*this" data-step="{{item}}" bindtap="chooseStep">± {{item}} kg</button>
+          </view>
+        </view>
+      </view>
+      <view class="row stepper">
+        <button class="step-button" aria-label="减少重量" data-delta="-1" disabled="{{justSaved || 0 >= draftWeight}}" bindtap="nudgeWeight">−</button>
+        <view class="measurement"><text>{{draftWeight}}</text><text class="unit">kg</text></view>
+        <button class="step-button" aria-label="增加重量" data-delta="1" disabled="{{justSaved || draftWeight >= weightStepperMax}}" bindtap="nudgeWeight">＋</button>
+      </view>
+      <view class="slider-area" catchtouchstart="cancelCardTouch">
+        <slider class="metric-slider" aria-label="调整重量" min="{{weightMin * 2}}" max="{{weightMax * 2}}" step="1" value="{{draftWeight * 2}}"
+          activeColor="#365b43" backgroundColor="#d1ddcd" block-color="#fbfcf7" block-size="24"
+          disabled="{{justSaved}}" bindchanging="changeWeight" bindchange="changeWeight" />
+        <view class="row slider-labels"><text>{{weightMin}}</text><text>{{weightMax}}</text></view>
+      </view>
+
+      <view class="rule" />
+      <view class="row metric-heading">次数</view>
+      <view class="row stepper">
+        <button class="step-button" aria-label="减少次数" data-delta="-1" disabled="{{justSaved || 1 >= draftReps}}" bindtap="nudgeReps">−</button>
+        <view class="measurement"><text>{{draftReps}}</text><text class="unit">次</text></view>
+        <button class="step-button" aria-label="增加次数" data-delta="1" disabled="{{justSaved || draftReps >= repsStepperMax}}" bindtap="nudgeReps">＋</button>
+      </view>
+      <view class="slider-area" catchtouchstart="cancelCardTouch">
+        <slider class="metric-slider" aria-label="调整次数" min="1" max="{{repsMax}}" step="1" value="{{draftReps}}"
+          activeColor="#365b43" backgroundColor="#d1ddcd" block-color="#fbfcf7" block-size="24"
+          disabled="{{justSaved}}" bindchanging="changeReps" bindchange="changeReps" />
+        <view class="row slider-labels"><text>1</text><text>{{repsMax}}</text></view>
+      </view>
+      <view wx:if="{{draftError}}" class="form-error" aria-live="polite">{{draftError}}</view>
+      <button class="complete-button" data-id="{{item.draftId}}" disabled="{{justSaved}}" bindtap="confirmSet">
+        <text>✓</text><text>{{justSaved ? '已记录' : '完成这一组'}}</text>
+      </button>
+    </view>
+    <view wx:else class="draft">
+      <view wx:if="{{draftError}}" class="form-error" aria-live="polite">{{draftError}}</view>
+      <button class="complete-button" bindtap="prepareDraft">继续记录</button>
+    </view>
+  </view>
+</template>
+
+<view class="record-page">
+  <view class="brand" style="padding-top: {{statusTop}}px; padding-right: {{capsuleRight}}px"><brand-header /></view>
+  <view class="brand-space" style="height: calc(70px + {{statusTop}}px)" aria-hidden="true" />
+  <view class="record-body">
+    <view class="row record-heading">
+      <text class="title">{{past ? '这次的记录.' : '今天的记录.'}}</text>
+      <button class="text-button" bindtap="openHistory">历史 ↗</button>
+    </view>
+    <view class="row date-row" wx:if="{{!loading && date}}">
+      <button class="text-button date-control" data-kind="change" bindtap="openDate" aria-label="修改训练日期">
+        <text>{{dateLabel}}</text><view class="calendar-icon" />
+      </button>
+      <text class="count">{{totalSets}} 组完成</text>
+      <view class="menu-anchor">
+        <button class="icon-button" data-menu="date" bindtap="toggleMenu" aria-label="记录选项">⋮</button>
+        <view wx:if="{{menu === 'date'}}" class="dropdown">
+          <button data-kind="new" bindtap="openDate">新建记录</button>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{resume}}" class="row record-banner">
+      <text>上次训练 {{resume.label}}</text><button class="text-button" data-id="{{resume.id}}" bindtap="openExisting">继续那次</button>
+    </view>
+    <view wx:if="{{past}}" class="row record-banner">
+      <text>{{dateLabel}}的训练</text><button class="text-button" bindtap="returnToToday">回到今天</button>
+    </view>
+    <training-hint wx:if="{{showRecordHint}}" text="添加一个动作，调好重量和次数，完成这一组后就会记下这次表现。" bind:dismiss="dismissRecordHint" />
+    <view wx:if="{{error}}" class="row error-banner">
+      <text>{{error}}</text><button class="icon-button" bindtap="clearError" aria-label="关闭提示">×</button>
+    </view>
+
+    <block wx:if="{{item}}">
+      <view class="row pager">
+        <button class="icon-button" disabled="{{index === 0}}" bindtap="previousItem" aria-label="上一个动作">←</button>
+        <text aria-live="polite">{{index + 1}} / {{itemCount}}</text>
+        <button class="icon-button" disabled="{{index + 1 >= itemCount}}" bindtap="nextItem" aria-label="下一个动作">→</button>
+      </view>
+      <view class="pager-window {{pagerActive ? 'pager-window-active' : ''}}"
+        bindtouchstart="onCardTouchStart" bindtouchmove="onCardTouchMove"
+        bindtouchend="onCardTouchEnd" bindtouchcancel="cancelCardTouch">
+        <view class="pager-track {{pagerSettling ? 'pager-settling' : ''}}"
+          style="{{pagerActive ? 'transform: translate3d(' + pagerOffset + 'px, 0, 0)' : ''}}">
+          <view wx:if="{{pagerBefore}}" class="pager-neighbor pager-before" aria-hidden="true">
+            <template is="record-exercise-card" data="{{...pagerBefore}}" />
+          </view>
+          <template is="record-exercise-card"
+            data="{{item, menu, weightSteps, justSaved, stepWeight, weightMin, weightMax, draftWeight, weightStepperMax, draftReps, repsMax, repsStepperMax, draftError}}" />
+          <view wx:if="{{pagerAfter}}" class="pager-neighbor pager-after" aria-hidden="true">
+            <template is="record-exercise-card" data="{{...pagerAfter}}" />
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <button class="add-exercise" disabled="{{loading || !date}}" bindtap="openPicker"><text>＋</text><text>添加动作</text></button>
+    <button wx:if="{{!item}}" class="empty-history text-button" bindtap="openHistory">从历史复用</button>
+  </view>
+
+  <view wx:if="{{menu}}" class="menu-scrim" catchtap="hideMenu" />
+  <view wx:if="{{notice}}" class="row snackbar" aria-live="polite">
+    <text>{{notice}}</text><button wx:if="{{canUndo}}" class="text-button" bindtap="undo">撤销</button>
+  </view>
+</view>
+
+<view wx:if="{{sheet}}" class="overlay sheet-layer">
+  <view class="scrim" catchtap="closeSheet" catchtouchmove="ignoreTouch" />
+  <view class="sheet">
+    <view class="sheet-handle" bindtap="closeSheet" />
+    <block wx:if="{{sheet === 'picker'}}">
+      <view class="row sheet-heading">
+        <text>添加动作</text>
+        <button class="icon-button" bindtap="toggleSearch" aria-label="搜索或自定义动作"><view class="search-icon" /></button>
+      </view>
+      <input wx:if="{{showSearch}}" class="outlined-input search-input" value="{{query}}" placeholder="搜索或新建动作"
+        maxlength="60" aria-label="搜索或新建动作" bindinput="onSearchInput" />
+      <view wx:if="{{pickerError}}" class="form-error" aria-live="polite">{{pickerError}}</view>
+      <scroll-view class="sheet-scroll" style="height: {{pickerHeight}}rpx" scroll-y>
+        <block wx:if="{{recent.length}}">
+          <view class="picker-label">最近使用</view>
+          <view wx:for="{{recent}}" wx:key="id" class="row picker-row">
+            <button class="picker-item" data-id="{{item.id}}" bindtap="pickExercise"><text>{{item.name}}</text><text>{{item.label}}</text></button>
+            <button class="icon-button" aria-label="管理 {{item.name}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="manageExercise">⋮</button>
+          </view>
+        </block>
+        <block wx:if="{{others.length}}">
+          <view class="picker-label">{{recent.length ? '其他' : '全部动作'}}</view>
+          <view wx:for="{{others}}" wx:key="id" class="row picker-row">
+            <button class="picker-item" data-id="{{item.id}}" bindtap="pickExercise"><text>{{item.name}}</text><text>{{item.label}}</text></button>
+            <button class="icon-button" aria-label="管理 {{item.name}}" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="manageExercise">⋮</button>
+          </view>
+        </block>
+        <view wx:if="{{presets.length && (recent.length || others.length)}}" class="picker-label">常用动作</view>
+        <button wx:for="{{presets}}" wx:key="name" class="row preset-row" data-name="{{item.name}}" data-mode="{{item.weightMode}}" bindtap="pickPreset">
+          <text>{{item.name}}</text><text>{{item.label}} ＋</text>
+        </button>
+        <button wx:if="{{!showSearch}}" class="text-button custom-exercise" bindtap="showCustomSearch">自定义动作</button>
+        <button wx:if="{{canCreate}}" class="text-button custom-exercise" bindtap="beginCreate">新建「{{queryName}}」</button>
+      </scroll-view>
+    </block>
+
+    <block wx:elif="{{history}}">
+      <view class="sheet-heading">{{history.name}}</view>
+      <view class="history-hint">{{history.sessions.length ? '最近 ' + history.sessions.length + ' 次（最多 20 次）' : '还没有已记录的组'}}</view>
+      <scroll-view wx:if="{{history.sessions.length}}" class="sheet-scroll" style="height: {{history.scrollHeight}}rpx" scroll-y>
+        <view wx:for="{{history.sessions}}" wx:key="id" wx:for-item="session" class="exercise-session">
+          <view class="session-date">{{session.date}}<text wx:if="{{session.current}}">　　本次</text></view>
+          <view wx:for="{{session.sets}}" wx:key="id">{{item.label}}</view>
+        </view>
+      </scroll-view>
+    </block>
+  </view>
+</view>
+
+<view wx:if="{{dialog}}" class="overlay dialog-layer">
+  <view class="scrim" catchtap="closeDialog" catchtouchmove="ignoreTouch" />
+  <view class="dialog {{dialog === 'change-date' || dialog === 'new-date' ? 'date-dialog' : ''}}">
+    <block wx:if="{{dialog === 'edit'}}">
+      <view class="dialog-title">修改这一组</view>
+      <view class="row edit-inputs">
+        <view class="edit-field">
+          <text>{{edit.weightLabel}} · kg</text>
+          <input class="outlined-input" type="digit" value="{{edit.weight}}" aria-label="{{edit.weightLabel}}" bindinput="changeEditWeight" />
+        </view>
+        <view class="edit-field">
+          <text>次数</text>
+          <input class="outlined-input" type="number" value="{{edit.reps}}" aria-label="次数" bindinput="changeEditReps" />
+        </view>
+      </view>
+      <view wx:if="{{dialogError}}" class="form-error">{{dialogError}}</view>
+      <view class="row dialog-actions edit-actions">
+        <button class="text-button destructive" bindtap="deleteEdit">删除</button>
+        <button class="text-button" bindtap="closeDialog">取消</button>
+        <button class="text-button" bindtap="saveEdit">保存</button>
+      </view>
+    </block>
+
+    <block wx:elif="{{dialog === 'create'}}">
+      <view class="dialog-title">新建「{{newName}}」</view>
+      <view class="history-hint">重量怎么记？之后有记录就不能再改。</view>
+      <radio-group bindchange="chooseMode">
+        <label wx:for="{{modes}}" wx:key="id" class="row radio-row">
+          <radio value="{{item.id}}" checked="{{newMode === item.id}}" color="#365b43" />
+          <text>{{item.description}}</text>
+        </label>
+      </radio-group>
+      <view wx:if="{{dialogError}}" class="form-error">{{dialogError}}</view>
+      <view class="row dialog-actions">
+        <button class="text-button" bindtap="closeDialog">取消</button>
+        <button class="text-button" bindtap="commitCreate">新建</button>
+      </view>
+    </block>
+
+    <block wx:elif="{{dialog === 'rename'}}">
+      <view class="dialog-title">改名</view>
+      <input class="outlined-input" value="{{newName}}" placeholder="动作名称" aria-label="动作名称" maxlength="60" bindinput="changeName" />
+      <view class="history-hint">历史记录里保留原来的名称。</view>
+      <view wx:if="{{dialogError}}" class="form-error">{{dialogError}}</view>
+      <view class="row dialog-actions">
+        <button class="text-button" bindtap="closeDialog">取消</button>
+        <button class="text-button" bindtap="commitRename">保存</button>
+      </view>
+    </block>
+
+    <block wx:else>
+      <view class="date-dialog-caption">{{dateInputMode ? '输入日期' : '选择日期'}}</view>
+      <view class="row date-dialog-header">
+        <text>{{dateChoiceLabel}}</text>
+        <button class="icon-button" bindtap="toggleDateInput" aria-label="{{dateInputMode ? '切换为日历' : '输入日期'}}">{{dateInputMode ? '▦' : '✎'}}</button>
+      </view>
+      <input wx:if="{{dateInputMode}}" class="outlined-input date-input" value="{{dateInput}}" placeholder="YYYY-MM-DD"
+        aria-label="训练日期" maxlength="10" bindinput="changeDateInput" />
+      <block wx:else>
+        <view class="row calendar-heading">
+          <button class="text-button calendar-month" bindtap="toggleYearPicker">{{calendar.label}} {{dateYearPicker ? '▴' : '▾'}}</button>
+          <button class="icon-button" data-month="{{calendar.previous}}" disabled="{{!calendar.previous}}" bindtap="changeMonth" aria-label="上个月">‹</button>
+          <button class="icon-button" data-month="{{calendar.next}}" disabled="{{!calendar.next}}" bindtap="changeMonth" aria-label="下个月">›</button>
+        </view>
+        <scroll-view wx:if="{{dateYearPicker}}" class="calendar-year-scroll" scroll-y scroll-into-view="{{dateYearTarget}}">
+          <view class="calendar-years">
+            <button wx:for="{{dateYears}}" wx:key="*this" id="calendar-year-{{item}}" data-year="{{item}}" bindtap="chooseYear">{{item}}</button>
+          </view>
+        </scroll-view>
+        <view wx:else class="calendar-grid">
+          <text>日</text><text>一</text><text>二</text><text>三</text><text>四</text><text>五</text><text>六</text>
+          <view wx:for="{{calendar.cells}}" wx:key="key" class="calendar-cell">
+            <button wx:if="{{item.day}}" class="{{item.date === dateChoice ? 'calendar-selected' : item.date === today ? 'calendar-today' : ''}}"
+              data-date="{{item.date}}" disabled="{{item.disabled}}" bindtap="chooseDate">{{item.day}}</button>
+          </view>
+        </view>
+      </block>
+      <view wx:if="{{dialogError}}" class="form-error calendar-error">{{dialogError}}</view>
+      <view class="row dialog-actions">
+        <button class="text-button" bindtap="closeDialog">取消</button>
+        <button class="text-button" bindtap="applyDate">{{dialog === 'new-date' ? '新建' : '修改日期'}}</button>
+      </view>
+    </block>
+  </view>
+</view>

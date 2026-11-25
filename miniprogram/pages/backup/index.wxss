@@ -1,0 +1,8 @@
+.backup-section { margin:16px; }
+.backup-heading { display:block; font-size:14px; font-weight:600; color:#365b43; }
+.backup-copy { display:block; margin:12px 0; font-size:14px; line-height:1.55; }
+.backup-meta { display:block; margin:12px 0; color:#52695d; font-size:12px; line-height:1.55; }
+.backup-button { margin:10px 0 0; border:1px solid #8c9683; border-radius:24px; background:transparent; color:#365b43; font-size:14px; font-weight:500; }
+.backup-button::after { border:0; }
+.backup-primary { border-color:#1c5040; background:#1c5040; color:white; }
+.backup-button[disabled] { opacity:.58; }

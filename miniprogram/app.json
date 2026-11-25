@@ -1,0 +1,45 @@
+{
+  "pages": [
+    "pages/chance/index",
+    "pages/record/index",
+    "pages/stats/index",
+    "pages/history/index",
+    "pages/backup/index",
+    "pages/settings/index"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#F6F5F0",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F6F5F0",
+    "navigationBarTitleText": "练不练"
+  },
+  "tabBar": {
+    "color": "#64746C",
+    "selectedColor": "#164D3E",
+    "backgroundColor": "#FCFCF6",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/chance/index",
+        "text": "玩法"
+      },
+      {
+        "pagePath": "pages/record/index",
+        "text": "记录"
+      },
+      {
+        "pagePath": "pages/stats/index",
+        "text": "统计"
+      }
+    ],
+    "custom": true
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
+  "usingComponents": {
+    "training-nav": "/components/nav/index",
+    "brand-header": "/components/brand/index",
+    "training-hint": "/components/hint/index"
+  }
+}
